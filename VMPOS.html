@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA VARIEDADES M&M - V9.35 (VERSIÓN DEFINITIVA Y FLUIDA)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbO2-MazSUKp-sXo9Xh7f7dg4NFpSkH70",
+            authDomain: "variedadesmm-38061.firebaseapp.com",
+            databaseURL: "https://variedadesmm-38061-default-rtdb.firebaseio.com", 
+            projectId: "variedadesmm-38061",
+            storageBucket: "variedadesmm-38061.firebasestorage.app",
+            messagingSenderId: "670155683804",
+            appId: "1:670155683804:web:96b1c633a2da387cb5c119"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+    </script>
+
+    <style>
+        .tab-active { border-bottom: 4px solid currentColor; font-weight: bold; color: white !important; }
+        .hidden { display: none !important; }
+        .contenedor-flexible { display: flex; flex-direction: column; gap: 20px; }
+        @media (min-width: 1024px) {
+            .contenedor-flexible { flex-direction: row; align-items: flex-start; }
+            .zona-busqueda { flex: 1; }
+            .zona-cobro { width: 400px; position: sticky; top: 100px; }
+        }
+        @media print {
+            .no-print { display: none !important; }
+            #print-area { display: block !important; color: #000 !important; background: white; }
+            .ticket-mode { width: 72mm; font-family: 'Arial', sans-serif; font-size: 11px; padding: 2mm; }
+            .a4-mode { width: 210mm; padding: 10mm; font-family: 'Verdana', sans-serif; }
+            .a4-mode table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .a4-mode th, .a4-mode td { border: 1px solid #000; padding: 8px; text-align: left; font-size: 12px; }
+        }
+        #print-area { display: none; }
+        #modal-tienda button { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="print-area"></div>
+
+    <!-- MODAL DE LOGIN PERSONALIZADO -->
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[9999] backdrop-blur-md">
+        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-sm text-center border-4 border-indigo-500">
+            <h2 class="text-2xl font-black mb-6 text-indigo-700 uppercase italic">Iniciar Sesión</h2>
+            <input type="email" id="login-user" placeholder="Correo electrónico" class="w-full p-4 bg-gray-100 rounded-xl mb-4 outline-none focus:ring-2 ring-indigo-500 font-bold">
+            <input type="password" id="login-pass" placeholder="Contraseña" class="w-full p-4 bg-gray-100 rounded-xl mb-6 outline-none focus:ring-2 ring-indigo-500 font-bold" onkeypress="if(event.key==='Enter') ejecutarLogin()">
+            <button onclick="ejecutarLogin()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 uppercase">Entrar al Sistema</button>
+        </div>
+    </div>
+
+    <!-- MODALES PERSONALIZADOS -->
+    <div id="sys-msg-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[9999] backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-4 border-indigo-500">
+            <h3 id="sys-msg-title" class="text-xl font-black mb-2 text-gray-800 uppercase italic">Atención</h3>
+            <p id="sys-msg-text" class="text-sm text-gray-600 mb-6 font-bold"></p>
+            <div id="sys-msg-buttons" class="flex gap-3 justify-center"></div>
+        </div>
+    </div>
+
+    <div id="sys-prompt-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[9999] backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-4 border-indigo-500">
+            <h3 id="sys-prompt-title" class="text-xl font-black mb-2 text-gray-800 uppercase italic">Entrada Requerida</h3>
+            <p id="sys-prompt-text" class="text-sm text-gray-600 mb-4 font-bold"></p>
+            <input type="text" id="sys-prompt-input" class="w-full p-4 border-2 rounded-xl mb-6 outline-none focus:border-indigo-500 font-black text-center text-lg">
+            <div class="flex gap-3 justify-center">
+                <button onclick="closeSysPrompt()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-xl font-black flex-1 uppercase text-xs transition-colors">Cancelar</button>
+                <button id="sys-prompt-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-black flex-1 uppercase text-xs transition-colors shadow-lg">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SELECCIÓN TIENDA -->
+    <div id="modal-tienda" class="fixed inset-0 bg-gray-900 bg-opacity-90 hidden items-center justify-center z-[999] backdrop-blur-sm">
+        <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full border-4 border-indigo-500">
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-gray-800">🚨 ATENCIÓN VENDEDOR<br><span class="text-xl font-normal text-gray-500">¿En qué tienda estás trabajando hoy?</span></h2>
+            <div class="flex flex-col gap-4 mt-8">
+                <button onclick="seleccionarTienda('Variedades Maria', this)" class="w-full py-5 bg-blue-700 text-white font-black rounded-xl text-2xl hover:bg-blue-800 shadow-lg uppercase">🏪 Variedades Maria</button>
+                <button onclick="seleccionarTienda('Marisol', this)" class="w-full py-5 bg-pink-700 text-white font-black rounded-xl text-2xl hover:bg-pink-800 shadow-lg uppercase">🏬 Tienda Marisol</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LOGIN ADMIN -->
+    <div id="modal-login-admin" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[9999] backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center border-4 border-yellow-400">
+            <div class="text-4xl mb-2">🔑</div>
+            <h2 class="text-lg font-black mb-4 italic uppercase text-gray-800">Modo Administrador</h2>
+            <input type="password" id="input-pin-admin" placeholder="••••" class="w-full p-4 border-2 rounded-2xl text-center text-2xl font-black tracking-widest outline-none focus:border-yellow-500 mb-4" maxlength="4" autocomplete="off">
+            <div class="flex gap-2">
+                <button type="button" onclick="closeAdminLogin()" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-xs text-gray-500 transition-colors hover:bg-gray-300">Cancelar</button>
+                <button type="button" onclick="verifyAdminPin()" class="flex-1 bg-yellow-500 text-white py-3 rounded-xl font-black uppercase text-xs transition-colors hover:bg-yellow-600 shadow-lg">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <nav id="navbar" class="text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50 no-print transition-colors">
+        <div>
+            <h1 id="tienda-txt" class="text-xl md:text-2xl font-black uppercase italic tracking-tighter">VARIEDADES M&M</h1>
+            <div class="flex gap-2 mt-1">
+                <p id="rol-txt" class="text-[10px] bg-black/20 px-2 py-1 rounded font-bold uppercase text-yellow-300">MODO CAJERO</p>
+                <p id="estado-red" class="text-[10px] bg-green-500 px-2 py-1 rounded font-bold uppercase shadow text-white transition-all">🟢 ONLINE</p>
+            </div>
+        </div>
+        <div class="flex gap-1 md:gap-2">
+            <button onclick="cambiarTienda()" class="bg-white text-gray-800 px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-gray-200 transition-colors">🔄 Tienda</button>
+            <button id="btn-admin" onclick="accesoAdmin()" class="bg-yellow-500 text-white px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-yellow-600 transition-colors">🔑 Admin</button>
+        </div>
+    </nav>
+
+    <div id="tab-bar" class="shadow flex justify-around no-print border-b text-gray-200 sticky top-[68px] z-40 transition-colors">
+        <button onclick="setTab('ventas')" id="tab-ventas" class="py-4 flex-1 tab-active text-[11px] md:text-sm font-black uppercase">🛒 Ventas</button>
+        <button onclick="setTab('inventario')" id="tab-inventario" class="py-4 flex-1 text-[11px] md:text-sm font-black uppercase">📦 Stock</button>
+        <button onclick="setTab('historial')" id="tab-historial" class="py-4 flex-1 text-[11px] md:text-sm font-black uppercase">Tickets</button>
+        <button onclick="setTab('cierre')" id="tab-cierre" class="py-4 flex-1 text-[11px] md:text-sm font-black uppercase">Cierre</button>
+        <button onclick="setTab('reportes')" id="tab-reportes" class="py-4 flex-1 text-[11px] md:text-sm font-black uppercase hidden bg-black/30 text-yellow-300">📊 Reportes</button>
+    </div>
+
+    <main class="p-4 w-full max-w-[1400px] mx-auto no-print">
+        
+        <!-- SECCIÓN VENTAS -->
+        <div id="section-ventas" class="contenedor-flexible">
+            <div class="zona-busqueda space-y-4">
+               <input type="text" id="busqueda" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
+                <div id="res-busqueda" class="bg-white divide-y shadow-xl rounded-xl overflow-hidden border"></div>
+                <div class="bg-white p-4 rounded-2xl shadow-md min-h-[300px] border">
+                    <table class="w-full text-left font-bold text-sm md:text-lg border-separate border-spacing-y-2"><tbody id="cart-body"></tbody></table>
+                </div>
+            </div>
+            <div id="cobro-card" class="zona-cobro text-white p-6 md:p-8 rounded-3xl shadow-2xl transition-colors">
+                <div class="text-5xl md:text-6xl font-black text-center mb-6 text-yellow-400">Q <span id="total-txt">0.00</span></div>
+                <input type="number" id="pago-txt" class="w-full p-4 rounded-2xl bg-black/20 text-3xl text-center border-2 border-white/20 outline-none font-black" placeholder="PAGO Q" oninput="calcVuelto()">
+                <div class="text-2xl md:text-3xl font-bold text-green-400 text-center my-4 italic">Cambio: Q <span id="vuelto-txt">0.00</span></div>
+                <button id="btn-cobrar" onclick="procesarVenta()" class="w-full bg-green-500 hover:bg-green-600 py-6 rounded-2xl font-black text-3xl shadow-lg transition-transform active:scale-95 uppercase border-b-8 border-green-800">COBRAR</button>
+            </div>
+        </div>
+
+        <!-- SECCIÓN INVENTARIO -->
+        <div id="section-inventario" class="hidden space-y-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl shadow gap-4">
+                <h2 class="text-xl font-black uppercase italic">Control de Inventario</h2>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button onclick="imprimirInventarioA4()" class="bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow hover:bg-blue-800 transition-colors">📄 Lista A4</button>
+                    <button id="btn-descargar-excel" onclick="descargarExcel()" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">⬇️ Bajar Excel</button>
+                    <input type="file" id="input-excel" accept=".xlsx, .xls" class="hidden" onchange="cargarExcel(event)">
+                    <button id="btn-excel-prod" onclick="document.getElementById('input-excel').click()" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">⬆️ Subir Excel</button>
+                    <button id="btn-nuevo-prod" onclick="abrirModal()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">+ Nuevo</button>
+                    <button id="btn-vaciar-inv" onclick="eliminarTodoElInventario()" class="hidden bg-red-600 hover:bg-red-800 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">🗑️ Vaciar Todo</button>
+                </div>
+            </div>
+            
+            <div id="admin-financial-cards" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-red-600 text-white p-4 rounded-xl shadow-md border border-red-700">
+                    <p class="text-xs font-bold uppercase opacity-80 italic">💰 Capital Invertido Total (En esta tienda)</p>
+                    <b id="inv-total-capital" class="text-2xl md:text-3xl font-black">Q 0.00</b>
+                </div>
+                <div class="bg-green-600 text-white p-4 rounded-xl shadow-md border border-green-700">
+                    <p class="text-xs font-bold uppercase opacity-80 italic">📈 Ganancia Estimada Total (En esta tienda)</p>
+                    <b id="inv-total-ganancia" class="text-2xl md:text-3xl font-black">Q 0.00</b>
+                </div>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl shadow border">
+                <input type="text" id="busqueda-inventario" autocomplete="off" placeholder="🔍 BUSCAR POR NOMBRE O CÓDIGO EN INVENTARIO..." class="w-full p-3 border-2 rounded-xl text-md outline-none focus:border-indigo-500 font-bold uppercase shadow-sm" oninput="buscarInventarioDebounce()">
+            </div>
+
+            <div class="bg-white rounded-2xl shadow overflow-x-auto border">
+                <table class="w-full text-sm text-center font-bold"><thead class="bg-gray-100 uppercase border-b"><tr><th class="p-4 text-left">Producto</th><th id="th-costo" class="p-4 hidden">Costo</th><th class="p-4">Precio</th><th id="th-ganancia" class="p-4 hidden">Ganancia</th><th class="p-4">Stock</th><th class="p-4">Acción</th></tr></thead><tbody id="inv-body" class="divide-y italic"></tbody></table>
+            </div>
+        </div>
+
+        <!-- SECCIÓN HISTORIAL -->
+        <div id="section-historial" class="hidden space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow border flex flex-col sm:flex-row justify-between items-center gap-4">
+                <h2 class="text-xl font-black uppercase italic">Historial de Tickets</h2>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold uppercase text-gray-500">Filtrar por Fecha:</label>
+                    <input type="date" id="filtro-fecha-ticket" class="p-2 border-2 rounded-xl font-bold text-sm outline-none focus:border-indigo-500 shadow-sm shadow-indigo-100" onchange="render()">
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow border overflow-hidden">
+                <table class="w-full text-sm text-center font-bold italic"><thead class="bg-gray-100 uppercase border-b"><tr><th class="p-4">Ticket</th><th class="p-4">Total</th><th class="p-4">Estado</th><th class="p-4">Acción</th></tr></thead><tbody id="his-body" class="divide-y"></tbody></table>
+            </div>
+        </div>
+
+        <!-- SECCIÓN CIERRE -->
+        <div id="section-cierre" class="hidden max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-6 rounded-3xl shadow-xl border text-center">
+                <h2 class="text-xl font-black mb-6 uppercase italic">Cierre del Día</h2>
+                <div class="grid grid-cols-3 gap-2 mb-6 font-black uppercase text-[9px] italic">
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">Lib+Farma<br><b id="c-lib" class="text-lg text-blue-800">Q 0.00</b></div>
+                    <div class="bg-pink-50 p-4 rounded-xl border border-pink-100">Maq<br><b id="c-maq" class="text-lg text-pink-800">Q 0.00</b></div>
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">Otr<br><b id="c-otr" class="text-lg text-gray-800">Q 0.00</b></div>
+                </div>
+                <div id="c-total-bg" class="p-8 rounded-2xl text-white mb-6 transition-colors">
+                    <p class="text-xs uppercase font-bold opacity-70 italic">VENTA TOTAL ACUMULADA</p>
+                    <b id="c-total" class="text-5xl font-black">Q 0.00</b>
+                </div>
+                <button onclick="finalizarJornada()" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl uppercase shadow-lg hover:bg-red-700 transition-colors">Finalizar Jornada</button>
+            </div>
+            <div id="admin-tools" class="hidden grid grid-cols-1 md:grid-cols-4 gap-2 bg-red-50 p-4 rounded-2xl border-2 border-red-200">
+                <button onclick="limpiarSoloVentasPrueba()" class="bg-orange-600 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-orange-700 transition-colors">BORRAR SÓLO PRUEBAS</button>
+                <button onclick="limpiarCierresPasados()" class="bg-black text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-gray-800 transition-colors">BORRAR TODO</button>
+                <button onclick="limpiarCierresAnosAnteriores()" class="bg-red-800 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-red-900 transition-colors">🗑️ BORRAR AÑOS PASADOS</button>
+                <button onclick="cambiarPinAdmin()" class="bg-purple-600 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-purple-700 transition-colors">🔑 CAMBIAR PIN ADMIN</button>
+            </div>
+            <div id="lista-cierres" class="space-y-3"></div>
+        </div>
+
+        <!-- SECCIÓN REPORTES -->
+        <div id="section-reportes" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-3xl shadow-xl border">
+                <h2 class="text-2xl font-black mb-4 text-center uppercase italic text-indigo-950">📊 REPORTE MAESTRO DE VENTAS</h2>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end bg-gray-50 p-4 rounded-2xl border mb-6">
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1 text-gray-500">Desde (Inicio):</label>
+                        <input type="date" id="rep-inicio" class="w-full p-3 border-2 rounded-xl font-bold text-sm outline-none focus:border-indigo-500" onchange="cargarReportePorFechas()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1 text-gray-500">Hasta (Fin):</label>
+                        <input type="date" id="rep-fin" class="w-full p-3 border-2 rounded-xl font-bold text-sm outline-none focus:border-indigo-500" onchange="cargarReportePorFechas()">
+                    </div>
+                    <div class="col-span-2 md:col-span-2 flex flex-wrap gap-2">
+                        <button onclick="cargarReportePorFechas()" class="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-xl font-black uppercase text-xs shadow transition-colors">🔄 Actualizar</button>
+                        <button onclick="abrirModalAjuste()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white p-3 rounded-xl font-black uppercase text-xs shadow-lg transition-colors">🛠️ Ajuste Sin Stock</button>
+                        <button onclick="imprimirReporteMaestro()" class="w-full bg-black hover:bg-gray-800 text-white p-3 rounded-xl font-black uppercase text-xs shadow-lg transition-colors">🖨️ Imprimir Resumen</button>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-50 border-4 border-indigo-200 p-5 rounded-3xl mb-6 shadow-md">
+                    <h3 class="text-lg font-black text-indigo-900 uppercase italic mb-4 text-center border-b border-indigo-200 pb-2">💸 CONTROL DE EFECTIVO Y DEPÓSITOS (POR SOCIA)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white border-2 border-blue-200 rounded-3xl p-5 shadow">
+                            <h4 class="text-md font-black text-blue-900 uppercase italic mb-3 text-center border-b pb-1">LIBRERÍA Y FARMACIA</h4>
+                            <div class="space-y-2 font-bold text-sm">
+                                <div class="flex justify-between text-gray-700"><span>Efectivo Total Generado (Ventas - Gastos):</span><span id="efectivo-gen-lib">Q 0.00</span></div>
+                                <div class="flex justify-between text-green-600"><span>(-) Depósitos Ya Registrados:</span><span id="efectivo-dep-lib">Q 0.00</span></div>
+                                <div id="box-pen-lib" class="flex justify-between bg-blue-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors">
+                                    <span class="font-black italic">EFECTIVO FÍSICO PENDIENTE:</span><span class="font-black" id="efectivo-pen-lib">Q 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white border-2 border-pink-200 rounded-3xl p-5 shadow">
+                            <h4 class="text-md font-black text-pink-900 uppercase italic mb-3 text-center border-b pb-1">MAQUILLAJE</h4>
+                            <div class="space-y-2 font-bold text-sm">
+                                <div class="flex justify-between text-gray-700"><span>Efectivo Total Generado (Ventas - Gastos):</span><span id="efectivo-gen-maq">Q 0.00</span></div>
+                                <div class="flex justify-between text-green-600"><span>(-) Depósitos Ya Registrados:</span><span id="efectivo-dep-maq">Q 0.00</span></div>
+                                <div id="box-pen-maq" class="flex justify-between bg-pink-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors">
+                                    <span class="font-black italic">EFECTIVO FÍSICO PENDIENTE:</span><span class="font-black" id="efectivo-pen-maq">Q 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white p-4 rounded-2xl border-2 border-green-200">
+                            <h3 class="text-sm font-black uppercase mb-4 text-green-800 italic">📥 Ingresar Nuevo Depósito</h3>
+                            <div class="space-y-3 text-xs font-bold">
+                                <label class="text-gray-500 uppercase">El depósito pertenece a:</label>
+                                <select id="dep-area" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black uppercase outline-none">
+                                    <option value="LIBRERIA">A CUENTA DE LIBRERÍA</option>
+                                    <option value="MAQUILLAJE">A CUENTA DE MAQUILLAJE</option>
+                                </select>
+                                <input type="text" id="dep-ref" placeholder="No. Boleta o Referencia..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
+                                <input type="number" id="dep-monto" placeholder="Monto Depositado Q" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none">
+                                <button onclick="guardarDeposito(this)" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Registrar Depósito</button>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px] md:col-span-2">
+                            <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Depósitos</h3>
+                            <div class="overflow-y-auto flex-1 text-xs">
+                                <table class="w-full text-left font-bold">
+                                    <thead class="bg-gray-100 uppercase border-b sticky top-0">
+                                        <tr><th class="p-2">Fecha</th><th class="p-2">Área</th><th class="p-2">Boleta/Ref</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Acción</th></tr>
+                                    </thead>
+                                    <tbody id="depositos-body" class="divide-y"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-black text-gray-800 uppercase italic mb-4 border-b pb-2">🩺 Salud Financiera (Ganancias Neta)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+                        <div class="space-y-2 font-bold text-sm">
+                            <div class="flex justify-between"><span>Ventas Totales Librería:</span><span class="text-blue-800" id="ind-ventas-lib">Q 0.00</span></div>
+                            <div class="flex justify-between bg-white p-2 rounded-xl border"><span>(+) Ganancia (Lo que le ganaste):</span><span class="text-green-600 font-black" id="ind-ganancia-lib">Q 0.00</span></div>
+                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) Gastos Propios:</span><span id="ind-gastos-lib">Q 0.00</span></div>
+                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) 50% Gastos Compartidos:</span><span id="ind-gastoscomp-lib">Q 0.00</span></div>
+                            <div class="flex justify-between text-blue-900 border-t pt-2 mt-2"><span class="font-black italic">UTILIDAD NETA LIB:</span><span class="font-black" id="ind-utilidad-lib">Q 0.00</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-pink-50 border border-pink-100 rounded-2xl p-5">
+                        <div class="space-y-2 font-bold text-sm">
+                            <div class="flex justify-between"><span>Ventas Totales Maquillaje:</span><span class="text-pink-800" id="ind-ventas-maq">Q 0.00</span></div>
+                            <div class="flex justify-between bg-white p-2 rounded-xl border"><span>(+) Ganancia (Lo que le ganaste):</span><span class="text-green-600 font-black" id="ind-ganancia-maq">Q 0.00</span></div>
+                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) Gastos Propios:</span><span id="ind-gastos-maq">Q 0.00</span></div>
+                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) 50% Gastos Compartidos:</span><span id="ind-gastoscomp-maq">Q 0.00</span></div>
+                            <div class="flex justify-between text-pink-900 border-t pt-2 mt-2"><span class="font-black italic">UTILIDAD NETA MAQ:</span><span class="font-black" id="ind-utilidad-maq">Q 0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-100 border rounded-2xl p-4 mb-6 text-center text-xs font-bold text-gray-700 max-w-md mx-auto">⚠️ <span class="uppercase font-black">Categoría "Otros":</span> Ventas Q <span id="ind-ventas-otr">0.00</span> | Ganancia Q <span id="ind-ganancia-otr">0.00</span><br><span class="text-[9px]">(El dinero y ganancias de 'Otros' ya está repartido 50/50 arriba)</span></div>
+
+                <div class="mb-8 border-4 border-red-100 bg-white p-4 rounded-3xl">
+                    <h2 class="text-lg font-black mb-2 text-center uppercase italic text-red-800">🚨 Análisis de Inventario Muerto</h2>
+                    <div class="flex flex-col sm:flex-row gap-2 items-center mb-4 max-w-md mx-auto">
+                        <select id="dias-estancado" class="w-full sm:flex-1 p-3 border-2 rounded-xl font-bold bg-gray-50 outline-none"><option value="30">Últimos 30 días</option><option value="60">Últimos 60 días</option><option value="90">Últimos 90 días</option></select>
+                        <button onclick="analizarEstancados()" class="w-full sm:w-auto bg-red-600 text-white px-4 py-3 rounded-xl font-black uppercase text-xs shadow-md hover:bg-red-700 transition-colors">Analizar</button>
+                    </div>
+                    <div id="res-estancados" class="hidden bg-gray-50 rounded-2xl shadow-inner border p-4"><p class="text-center font-bold text-red-600 mb-2">Capital Retenido: <span id="cap-estancado" class="text-2xl font-black">Q 0.00</span></p><div class="overflow-y-auto max-h-[300px] text-xs"><table class="w-full text-left font-bold"><thead class="bg-red-100 text-red-900 uppercase border-b sticky top-0"><tr><th class="p-2">Producto</th><th class="p-2 text-center">Stock</th><th class="p-2 text-right">Dinero</th></tr></thead><tbody id="estancados-body" class="divide-y"></tbody></table></div></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-50 p-4 rounded-2xl border">
+                        <h3 class="text-sm font-black uppercase mb-4 text-gray-700 italic">💸 Pago de Gastos Físicos</h3>
+                        <div class="space-y-3 text-xs font-bold">
+                            <label class="text-gray-500 uppercase">¿De qué cuenta salió el pago?</label>
+                            <select id="gasto-asignacion" class="w-full p-3 border-2 rounded-xl bg-white font-black uppercase outline-none"><option value="COMPARTIDO">MITAD Y MITAD (Luz, Alquiler...)</option><option value="LIBRERIA">SOLO LIBRERÍA</option><option value="MAQUILLAJE">SOLO MAQUILLAJE</option></select>
+                            <input type="text" id="gasto-desc" placeholder="Ej. Recibo de Luz..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
+                            <input type="number" id="gasto-monto" placeholder="Monto (Q) 0.00" class="w-full p-3 border-2 rounded-xl text-red-600 text-lg font-black outline-none">
+                            <button onclick="guardarGasto(this)" class="w-full bg-red-600 hover:bg-red-800 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Guardar Gasto</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px] md:col-span-2">
+                        <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Gastos</h3>
+                        <div class="overflow-y-auto flex-1 text-xs"><table class="w-full text-left font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0"><tr><th class="p-2">Fecha</th><th class="p-2">Área</th><th class="p-2">Detalle</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Acción</th></tr></thead><tbody id="gastos-body" class="divide-y"></tbody></table></div>
+                    </div>
+                </div>
+
+                <div class="mt-6 border-t pt-4">
+                    <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Ventas (Tickets del Rango)</h3>
+                    <div class="overflow-x-auto max-h-[300px] overflow-y-auto text-xs rounded-xl border"><table class="w-full text-center font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0 z-10"><tr><th class="p-3">Fecha</th><th class="p-3">Ticket</th><th class="p-3 text-blue-800">Librería+Farm</th><th class="p-3 text-pink-800">Maquillaje</th><th class="p-3 text-gray-600">Otros</th><th class="p-3 bg-gray-200">Total</th><th class="p-3 bg-green-100 text-green-800">Ganancia</th></tr></thead><tbody id="rep-ventas-body" class="divide-y"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL AJUSTE FINANCIERO -->
+    <div id="modal-ajuste" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[400] backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md p-8 rounded-[2rem] shadow-2xl border-4 border-yellow-400">
+            <h2 class="text-xl font-black mb-2 text-yellow-600 uppercase italic">🛠️ Ajuste Financiero</h2>
+            <p class="text-[10px] text-gray-500 font-bold uppercase mb-6">Ingreso de dinero sin afectar el inventario</p>
+            
+            <div class="space-y-4 font-bold text-xs">
+                <div>
+                    <label class="text-gray-500 uppercase">Tienda de Destino</label>
+                    <select id="ajuste-tienda" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black text-indigo-700 outline-none">
+                        <option value="Variedades Maria">Variedades María</option>
+                        <option value="Marisol">Tienda Marisol</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase">Categoría</label>
+                    <select id="ajuste-cat" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black outline-none">
+                        <option value="LIBRERIA">LIBRERÍA Y FARMACIA</option>
+                        <option value="MAQUILLAJE">MAQUILLAJE</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase">Fecha del Ingreso Atrasado</label>
+                    <input type="date" id="ajuste-fecha" class="w-full p-3 border-2 rounded-xl font-black text-gray-700 outline-none">
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase">Monto Total a Ingresar (Q)</label>
+                    <input type="number" id="ajuste-monto" placeholder="0.00" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none focus:border-yellow-500">
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-8">
+                <button type="button" onclick="document.getElementById('modal-ajuste').classList.add('hidden')" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-gray-600 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button type="button" onclick="ejecutarAjuste()" class="flex-[2] bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-xl font-black uppercase shadow-lg transition-colors">Guardar Ingreso</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PRODUCTO -->
+    <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h2 class="text-xl font-black mb-4 italic uppercase">Producto</h2>
+            <div class="space-y-3 font-bold text-xs">
+                <select id="p-cat" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black italic outline-none focus:border-indigo-500">
+                    <option value="LIBRERIA">LIBRERIA</option>
+                    <option value="MAQUILLAJE">MAQUILLAJE</option>
+                    <option value="FARMACIA">FARMACIA (MEDICAMENTOS)</option>
+                    <option value="OTROS">OTROS</option>
+                </select>
+                <input type="text" id="p-cod" placeholder="Código" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
+                <input type="text" id="p-nom" placeholder="Nombre" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
+                <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
+                <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
+                
+                <div id="div-farma-modal" class="hidden border-2 border-green-400 p-3 rounded-xl bg-green-50">
+                    <label class="text-[10px] text-green-800 uppercase font-black">💊 Precio Especial por Blister / Caja</label>
+                    <div class="flex gap-2 mt-2">
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Trae (Unidades):</label>
+                            <input type="number" id="p-farma-cant" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 10">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Precio Blister Q:</label>
+                            <input type="number" id="p-farma-precio" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 12.00">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="div-oferta-modal" class="hidden border-2 border-yellow-400 p-3 rounded-xl bg-yellow-50">
+                    <label class="text-[10px] text-yellow-800 uppercase font-black">🏷️ Configurar Oferta Automática (Opcional)</label>
+                    <input type="number" id="p-oferta-precio" placeholder="Precio Rebajado Unidad Q" class="w-full p-2 border-2 border-yellow-200 rounded-lg mt-2 text-yellow-700 font-black outline-none">
+                    <div class="flex gap-2 mt-2">
+                        <div class="w-1/2"><label class="text-[9px] text-gray-500 uppercase">Inicia:</label><input type="date" id="p-oferta-inicio" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none"></div>
+                        <div class="w-1/2"><label class="text-[9px] text-gray-500 uppercase">Termina:</label><input type="date" id="p-oferta-fin" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none"></div>
+                    </div>
+                </div>
+
+                <input type="number" id="p-stock" placeholder="Añadir Stock Físico (EN UNIDADES/PASTILLAS)" class="w-full p-3 border-2 rounded-xl outline-none focus:border-indigo-500">
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="guardarProd()" class="flex-1 bg-indigo-700 text-white py-3 rounded-xl font-black uppercase hover:bg-indigo-800 transition-colors">Guardar</button>
+                    <button type="button" onclick="cerrarModal()" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-gray-500 hover:bg-gray-300 transition-colors">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE MOVIMIENTO -->
+    <div id="modal-movimiento" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-[200] backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"><div class="p-6 bg-indigo-900 text-white flex justify-between items-center"><div><h2 class="text-xl font-black uppercase italic">Movimientos</h2><p id="mov-fecha" class="text-xs opacity-70"></p></div><button type="button" onclick="cerrarMovimiento()" class="text-2xl font-black hover:text-red-400 transition-colors">✕</button></div><div class="p-4 overflow-y-auto"><table class="w-full text-left text-sm font-bold"><tbody id="mov-body" class="divide-y"></tbody></table></div><div class="p-6 bg-gray-50 border-t flex justify-between items-center"><span class="font-black italic">Total Jornada:</span><span id="mov-total" class="text-2xl font-black text-indigo-700">Q 0.00</span></div></div>
+    </div>
+
+    <!-- SCRIPT PRINCIPAL -->
+    <script>
+        let db = { tiendaActual: 'Variedades Maria', rol: 'VENDEDOR', productos: [], ventas: [], cMaria: 1, cMarisol: 1, admin_pin: '1892' };
+        let cart = []; let debounceTimerInventario; 
+
+        function sysAlert(text, title = "Atención") {
+            document.getElementById('sys-msg-title').innerText = title;
+            document.getElementById('sys-msg-text').innerText = text;
+            const btnContainer = document.getElementById('sys-msg-buttons');
+            btnContainer.innerHTML = '';
+            const btn = document.createElement('button');
+            btn.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-black w-full transition-colors uppercase text-xs";
+            btn.innerText = "Aceptar";
+            btn.onclick = () => document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden');
+            btnContainer.appendChild(btn);
+            document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+        }
+
+        function sysConfirm(text, onConfirm, title = "Confirmar Acción") {
+            document.getElementById('sys-msg-title').innerText = title;
+            document.getElementById('sys-msg-text').innerText = text;
+            const btnContainer = document.getElementById('sys-msg-buttons');
+            btnContainer.innerHTML = '';
+            
+            const btnNo = document.createElement('button');
+            btnNo.className = "bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-3 rounded-xl font-black flex-1 transition-colors uppercase text-xs";
+            btnNo.innerText = "Cancelar";
+            btnNo.onclick = () => document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden');
+            
+            const btnYes = document.createElement('button');
+            btnYes.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-black flex-1 transition-colors shadow-lg uppercase text-xs";
+            btnYes.innerText = "Confirmar";
+            btnYes.onclick = () => { 
+                document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden'); 
+                if(onConfirm) onConfirm(); 
+            };
+            
+            btnContainer.appendChild(btnNo);
+            btnContainer.appendChild(btnYes);
+            document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+        }
+
+        function sysPrompt(text, onConfirm, title = "Entrada Requerida") {
+            document.getElementById('sys-prompt-title').innerText = title;
+            document.getElementById('sys-prompt-text').innerText = text;
+            document.getElementById('sys-prompt-input').value = "";
+            document.getElementById('sys-prompt-modal').classList.replace('hidden', 'flex');
+            
+            document.getElementById('sys-prompt-submit').onclick = () => {
+                const val = document.getElementById('sys-prompt-input').value;
+                document.getElementById('sys-prompt-modal').classList.replace('flex', 'hidden');
+                if(onConfirm) onConfirm(val);
+            };
+        }
+
+        function closeSysPrompt() {
+            document.getElementById('sys-prompt-modal').classList.replace('flex', 'hidden');
+        }
+
+        function getPrecioActual(p) {
+            if (p.precio_oferta && p.oferta_inicio && p.oferta_fin) {
+                const hoy = new Date(); hoy.setHours(0,0,0,0);
+                const [iY, iM, iD] = p.oferta_inicio.split('-'); const [fY, fM, fD] = p.oferta_fin.split('-');
+                if (hoy >= new Date(iY, iM-1, iD) && hoy <= new Date(fY, fM-1, fD, 23, 59, 59)) return parseFloat(p.precio_oferta);
+            } return parseFloat(p.venta);
+        }
+
+        function calcularSubtotal(c, cantidad) {
+            let pBase = getPrecioActual(c);
+            if(c.cat === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
+                let blisters = Math.floor(cantidad / c.cant_blister); let sueltas = cantidad % c.cant_blister;
+                return (blisters * c.precio_blister) + (sueltas * pBase);
+            } return pBase * cantidad;
+        }
+
+        window.onload = () => {
+            const f = new Date(); 
+            const primerDia = new Date(f.getFullYear(), f.getMonth(), 1);
+            if(document.getElementById('rep-inicio')) document.getElementById('rep-inicio').value = `${primerDia.getFullYear()}-${String(primerDia.getMonth() + 1).padStart(2, '0')}-${String(primerDia.getDate()).padStart(2, '0')}`;
+            if(document.getElementById('rep-fin')) document.getElementById('rep-fin').value = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+            if(document.getElementById('filtro-fecha-ticket')) document.getElementById('filtro-fecha-ticket').value = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+            
+            const backupLocal = localStorage.getItem('backup_pos'); 
+            if (backupLocal) { try { db = JSON.parse(backupLocal); db.rol = 'VENDEDOR'; render(); } catch(e) {} }
+
+            document.getElementById('login-modal').style.display = 'flex';
+
+            database.ref('tienda_datos').on('value', snap => { 
+                if(snap.val()) { 
+                    const rolPrevio = db.rol; 
+                    const tiendaCongelada = db.tiendaActual; 
+
+                    db = snap.val(); 
+                    
+                    db.rol = rolPrevio; 
+                    db.tiendaActual = tiendaCongelada; 
+
+                    if(!db.productos) db.productos = []; 
+                    if(!db.ventas) db.ventas = []; 
+                    else if(!Array.isArray(db.ventas)) db.ventas = Object.values(db.ventas); 
+                    if(!db.admin_pin) db.admin_pin = '1892'; 
+                    
+                    localStorage.setItem('backup_pos', JSON.stringify(db)); 
+                    render(); 
+                } 
+            });
+
+            window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
+            window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); });
+            if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
+        };
+
+        function ejecutarLogin() {
+            const u = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pass').value;
+            firebase.auth().signInWithEmailAndPassword(u, p)
+                .then(() => { 
+                    document.getElementById('login-modal').style.display = 'none';
+                    sysAlert("¡Inicio de sesión correcto! Base de datos asegurada.", "Bienvenido"); 
+                })
+                .catch(() => {
+                    if (!navigator.onLine && localStorage.getItem('backup_pos')) {
+                        document.getElementById('login-modal').style.display = 'none';
+                        sysAlert("⚠️ ESTÁS SIN INTERNET. Se cargará la copia de seguridad local.");
+                    } else {
+                        sysAlert("Usuario/contraseña incorrectos o error de red. Intenta de nuevo.", "Error");
+                    }
+                });
+        }
+
+        // --- SISTEMA OFFLINE MEJORADO ---
+        function persistir() { 
+            localStorage.setItem('backup_pos', JSON.stringify(db)); 
+            if(navigator.onLine) {
+                database.ref('tienda_datos').set(db).catch(err => console.log("Se subirá automáticamente cuando haya conexión."));
+            } else {
+                console.log("Modo Offline: Datos guardados solo localmente. Sincronizará al volver la red.");
+            }
+        }
+        
+        function parseDateSafely(locStr, filtroStr) {
+            if(filtroStr) return filtroStr; 
+            if(!locStr) return "1970-01-01";
+            let p = locStr.split(',')[0].trim().split('/');
+            if(p.length === 3) {
+                let d = parseInt(p[0]), m = parseInt(p[1]), y = parseInt(p[2]);
+                if(m > 12) { let t = d; d = m; m = t; } 
+                return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            }
+            return "1970-01-01";
+        }
+
+        function buscarInventarioDebounce() { clearTimeout(debounceTimerInventario); debounceTimerInventario = setTimeout(() => { render(); }, 300); }
+
+        function render() {
+            const isA = db.rol === 'ADMIN'; const color = db.tiendaActual === 'Variedades Maria' ? '#312e81' : '#9d174d';
+            document.getElementById('navbar').style.backgroundColor = isA ? '#000' : color; document.getElementById('tab-bar').style.backgroundColor = color;
+            document.getElementById('tienda-txt').innerText = db.tiendaActual; document.getElementById('rol-txt').innerText = isA ? "ADMINISTRADOR (DUEÑO)" : "MODO CAJERO";
+            document.getElementById('btn-admin').innerText = isA ? "SALIR" : "🔑 Admin";
+            
+            ['tab-inventario','tab-historial','tab-cierre'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+            document.getElementById('tab-reportes').classList.toggle('hidden', !isA); if (!isA && !document.getElementById('section-reportes').classList.contains('hidden')) setTab('ventas');
+            document.getElementById('btn-nuevo-prod').classList.toggle('hidden', !isA); 
+            document.getElementById('btn-excel-prod').classList.toggle('hidden', !isA); 
+            document.getElementById('btn-descargar-excel').classList.toggle('hidden', !isA); 
+            if(document.getElementById('btn-vaciar-inv')) document.getElementById('btn-vaciar-inv').classList.toggle('hidden', !isA);
+            document.getElementById('admin-tools').classList.toggle('hidden', !isA);
+            document.getElementById('th-costo').classList.toggle('hidden', !isA); document.getElementById('th-ganancia').classList.toggle('hidden', !isA); document.getElementById('admin-financial-cards').classList.toggle('hidden', !isA);
+            document.getElementById('div-costo-modal').classList.toggle('hidden', !isA); document.getElementById('div-oferta-modal').classList.toggle('hidden', !isA); 
+            document.getElementById('cobro-card').style.backgroundColor = color; document.getElementById('c-total-bg').style.backgroundColor = color;
+
+            const ib = document.getElementById('inv-body'); let htmlInventario = ''; const filtroInv = document.getElementById('busqueda-inventario') ? document.getElementById('busqueda-inventario').value.trim().toLowerCase() : '';
+            
+            let acumuladoCapitalGlobal = 0; let acumuladoGananciaGlobal = 0;
+
+            db.productos.sort((a,b) => a.nombre.localeCompare(b.nombre)).forEach((p) => {
+                const stockActualTienda = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0);
+                const precioAct = getPrecioActual(p); const estaEnOferta = (precioAct !== parseFloat(p.venta));
+
+                if (isA) { 
+                    acumuladoCapitalGlobal += ((p.costo || 0) * stockActualTienda); 
+                    acumuladoGananciaGlobal += ((precioAct - (p.costo || 0)) * stockActualTienda); 
+                }
+                if (filtroInv !== '' && !p.nombre.toLowerCase().includes(filtroInv) && !p.codigo.toLowerCase().includes(filtroInv)) return;
+
+                if(stockActualTienda > 0 || isA) {
+                    const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
+                    const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
+                    htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black">${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
+                }
+            });
+
+            ib.innerHTML = htmlInventario; 
+            if (isA) { 
+                document.getElementById('inv-total-capital').innerText = `Q ${acumuladoCapitalGlobal.toFixed(2)}`; 
+                document.getElementById('inv-total-ganancia').innerText = `Q ${acumuladoGananciaGlobal.toFixed(2)}`; 
+            }
+
+            const hb = document.getElementById('his-body'); let htmlHistorial = ''; let tL=0, tM=0, tO=0, tT=0;
+            const fechaFiltro = document.getElementById('filtro-fecha-ticket') ? document.getElementById('filtro-fecha-ticket').value : '';
+
+            db.ventas.forEach((v, idx) => {
+                // FILTRO ESTRICTO DE TIENDA
+                if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
+                
+                if(v.estado !== 'ANULADA' && v.jornada_abierta) {
+                    tT += v.total;
+                    v.det.forEach(d => { let sub = d.cant * d.pre; if(d.cat==='LIBRERIA' || d.cat==='FARMACIA') tL += sub; else if(d.cat==='MAQUILLAJE') tM += sub; else tO += sub; });
+                }
+                
+                // FILTRO ESTRICTO DE FECHA
+                let mostrarEnHistorial = true;
+                const fechaVentaStr = parseDateSafely(v.fecha, v.fecha_filtro);
+                if (fechaFiltro && fechaVentaStr !== fechaFiltro) mostrarEnHistorial = false;
+
+                if (mostrarEnHistorial) htmlHistorial += `<tr class="${v.estado==='ANULADA'?'opacity-30 bg-red-50':''}"><td class="p-3">#${v.ticket}</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">${v.estado}</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button>${v.estado==='OK' && isA ? `<button type="button" onclick="anularVenta(${idx})" class="text-red-500 font-black hover:text-red-700 transition-colors">X</button>` : ''} ${isA ? `<button type="button" onclick="eliminarVentaRegistroUnico(${idx})" class="text-red-700 font-black hover:scale-125 transition-transform">🗑️</button>` : ''}</td></tr>`;
+            });
+
+            hb.innerHTML = htmlHistorial; document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`; document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`; document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`; document.getElementById('c-total').innerText = `Q ${tT.toFixed(2)}`;
+            cargarCierres(); if(isA) cargarReportePorFechas();
+        }
+
+        // --- LÓGICA ESTRICTA DE ANULACIÓN Y ELIMINACIÓN ---
+        function anularVenta(idx) { 
+            sysConfirm("¿ANULAR ESTA VENTA Y DEVOLVER STOCK?", () => {
+                const v = db.ventas[idx];
+                if(v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada anteriormente.");
+                
+                v.det.forEach(i => { 
+                    const p = db.productos.find(x => x.codigo === i.codigo); 
+                    if(p){ 
+                        if(v.tienda === 'Variedades Maria') p.stock_maria = (p.stock_maria || 0) + i.cant; 
+                        else p.stock_marisol = (p.stock_marisol || 0) + i.cant; 
+                    } 
+                }); 
+                v.estado = 'ANULADA'; 
+                persistir(); 
+                render(); 
+                sysAlert("Venta anulada. El stock ha regresado al inventario.", "Éxito");
+            });
+        }
+
+        function eliminarVentaRegistroUnico(idx) { 
+            sysConfirm("⚠️ ¿Deseas ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
+                const v = db.ventas[idx]; 
+                
+                if (v.estado !== 'ANULADA') { 
+                    v.det.forEach(i => { 
+                        const p = db.productos.find(x => x.codigo === i.codigo); 
+                        if(p) { 
+                            if(v.tienda === 'Variedades Maria') p.stock_maria = (p.stock_maria || 0) + i.cant; 
+                            else p.stock_marisol = (p.stock_marisol || 0) + i.cant; 
+                        } 
+                    }); 
+                } 
+                
+                db.ventas.splice(idx, 1); 
+                persistir(); 
+                render(); 
+                sysAlert("Registro eliminado de la base de datos.", "Éxito");
+            });
+        }
+
+        // --- PROCESAMIENTO DE VENTA FLUIDO ---
+        function procesarVenta() { 
+            const t = parseFloat(document.getElementById('total-txt').innerText); 
+            if(!cart.length || t <= 0) return; 
+            const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
+            if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
+
+            const tiendaLocal = db.tiendaActual;
+            
+            for (let item of cart) { 
+                const p = db.productos.find(x => x.codigo === item.codigo); 
+                if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
+                const stockDisp = tiendaLocal === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); 
+                if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
+            }
+
+            const f = new Date(); 
+            const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+
+            const detallesVenta = cart.map(c => { 
+                let sub = calcularSubtotal(c, c.cant); 
+                return { codigo: c.codigo, nombre: c.nombre, cant: c.cant, pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
+            });
+
+            let isMaria = tiendaLocal === 'Variedades Maria';
+            let num = isMaria ? (db.cMaria || 1) : (db.cMarisol || 1);
+            
+            const nuevaVenta = {
+                ticket: num,
+                fecha: new Date().toLocaleString(),
+                fecha_filtro: fechaFiltro,
+                total: t,
+                pago: pago,
+                tienda: tiendaLocal,
+                estado: 'OK',
+                jornada_abierta: true,
+                det: detallesVenta
+            };
+
+            // Modificación local instantánea
+            db.ventas.unshift(nuevaVenta);
+            if(isMaria) db.cMaria = num + 1; else db.cMarisol = num + 1;
+
+            cart.forEach(item => { 
+                const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
+                if(pIdx > -1) { 
+                    if(isMaria) db.productos[pIdx].stock_maria -= item.cant; 
+                    else db.productos[pIdx].stock_marisol -= item.cant; 
+                } 
+            });
+
+            // Persistencia en segundo plano
+            persistir(); 
+            cart = []; 
+            document.getElementById('pago-txt').value = ''; 
+            renderCart(); 
+            render(); 
+
+            // Preguntar si imprime
+            setTimeout(() => {
+                sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                    imprimirTicket(nuevaVenta);
+                }, "Venta Exitosa");
+            }, 100);
+        }
+
+        // --- FUNCIONES DE AJUSTE FINANCIERO ---
+        function abrirModalAjuste() {
+            if(db.rol !== 'ADMIN') return sysAlert("Solo el administrador puede usar esta función.");
+            document.getElementById('ajuste-tienda').value = db.tiendaActual;
+            const f = new Date();
+            document.getElementById('ajuste-fecha').value = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+            document.getElementById('ajuste-monto').value = '';
+            document.getElementById('modal-ajuste').classList.remove('hidden');
+            document.getElementById('modal-ajuste').classList.add('flex');
+        }
+
+        function ejecutarAjuste() {
+            const tiendaDestino = document.getElementById('ajuste-tienda').value;
+            const categoria = document.getElementById('ajuste-cat').value;
+            const fechaStr = document.getElementById('ajuste-fecha').value;
+            const monto = parseFloat(document.getElementById('ajuste-monto').value);
+
+            if (!fechaStr || isNaN(monto) || monto <= 0) return sysAlert("Por favor, ingrese un monto válido y una fecha.");
+
+            const parts = fechaStr.split('-');
+            const fakeDate = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0);
+
+            let isMaria = tiendaDestino === 'Variedades Maria';
+            let num = isMaria ? (db.cMaria || 1) : (db.cMarisol || 1);
+
+            const ventaFantasma = { 
+                ticket: "AJ-" + num, 
+                fecha: fakeDate.toLocaleString(), 
+                fecha_filtro: fechaStr, 
+                total: monto, 
+                pago: monto, 
+                tienda: tiendaDestino, 
+                estado: 'OK', 
+                jornada_abierta: false, 
+                is_ajuste: true,
+                det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: categoria }] 
+            }; 
+
+            db.ventas.unshift(ventaFantasma);
+            if (isMaria) db.cMaria = num + 1; else db.cMarisol = num + 1;
+
+            persistir();
+            render();
+            document.getElementById('modal-ajuste').classList.add('hidden');
+            sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${categoria}. El stock no fue modificado.`, "Éxito");
+        }
+
+        // --- LÓGICA DE AUTO-LLENADO EN PRODUCTO ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const pCod = document.getElementById('p-cod');
+            if(pCod) {
+                pCod.addEventListener('input', function(e) {
+                    const code = e.target.value.trim().toUpperCase();
+                    const prod = db.productos.find(p => p.codigo === code);
+                    if(prod) {
+                        document.getElementById('p-nom').value = prod.nombre;
+                        document.getElementById('p-costo').value = prod.costo || 0;
+                        document.getElementById('p-venta').value = prod.venta || 0;
+                        document.getElementById('p-cat').value = prod.categoria || 'OTROS';
+                        
+                        document.getElementById('p-farma-cant').value = prod.cant_blister || '';
+                        document.getElementById('p-farma-precio').value = prod.precio_blister || '';
+                        document.getElementById('p-oferta-precio').value = prod.precio_oferta || '';
+                        document.getElementById('p-oferta-inicio').value = prod.oferta_inicio || '';
+                        document.getElementById('p-oferta-fin').value = prod.oferta_fin || '';
+
+                        document.getElementById('div-farma-modal').classList.toggle('hidden', (prod.categoria || 'OTROS') !== 'FARMACIA');
+                    }
+                });
+            }
+
+            const pCat = document.getElementById('p-cat');
+            if (pCat) {
+                pCat.addEventListener('change', function(e) {
+                    document.getElementById('div-farma-modal').classList.toggle('hidden', e.target.value !== 'FARMACIA');
+                });
+            }
+
+            if (document.getElementById('modal')) {
+                document.getElementById('modal').addEventListener('keydown', function(e) { 
+                    if (e.key === 'Enter') { 
+                        if (e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') return; 
+                        e.preventDefault(); 
+                        if (e.target.id === 'p-cod') { document.getElementById('p-stock').focus(); return; }
+                        if (e.target.id === 'p-stock' && document.getElementById('p-stock').value === '') return;
+                        guardarProd(); 
+                    } 
+                });
+            }
+        });
+
+        // Guardar Producto (Suma solo a la tienda activa sin borrar la otra)
+        function guardarProd() { 
+            const c = document.getElementById('p-cod').value.toUpperCase().trim();
+            const n = document.getElementById('p-nom').value.toUpperCase().trim();
+            const cost = parseFloat(document.getElementById('p-costo').value) || 0;
+            const vent = parseFloat(document.getElementById('p-venta').value) || 0;
+            const st = parseInt(document.getElementById('p-stock').value) || 0;
+            const cat = document.getElementById('p-cat').value; 
+            
+            const ofPre = document.getElementById('p-oferta-precio').value; 
+            const ofIni = document.getElementById('p-oferta-inicio').value; 
+            const ofFin = document.getElementById('p-oferta-fin').value;
+            const farmaCant = parseInt(document.getElementById('p-farma-cant').value) || 0; 
+            const farmaPre = parseFloat(document.getElementById('p-farma-precio').value) || 0;
+            
+            if(!c || !n) return sysAlert("Código y Nombre son obligatorios");
+            
+            const i = db.productos.findIndex(p => p.codigo === c); 
+            
+            if(i > -1) {
+                db.productos[i].nombre = n;
+                db.productos[i].categoria = cat;
+                if(db.rol === 'ADMIN') db.productos[i].costo = cost;
+                db.productos[i].venta = vent;
+                
+                if(db.rol === 'ADMIN') { 
+                    db.productos[i].precio_oferta = ofPre; db.productos[i].oferta_inicio = ofIni; db.productos[i].oferta_fin = ofFin; 
+                    db.productos[i].cant_blister = farmaCant; db.productos[i].precio_blister = farmaPre; 
+                }
+
+                if(db.tiendaActual === 'Variedades Maria') db.productos[i].stock_maria = (db.productos[i].stock_maria || 0) + st;
+                else db.productos[i].stock_marisol = (db.productos[i].stock_marisol || 0) + st;
+            } else {
+                db.productos.push({
+                    codigo: c, nombre: n, costo: cost, venta: vent, categoria: cat,
+                    stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
+                    stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
+                    precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre
+                });
+            }
+            persistir(); 
+            render(); 
+            cerrarModal(); 
+        }
+
+        // Eliminar Inventario 
+        function eliminarProductoDefinitivo(codigo) {
+            const pIdx = db.productos.findIndex(x => x.codigo === codigo);
+            if(pIdx === -1) return;
+
+            sysConfirm("¿Eliminar stock de este producto en " + db.tiendaActual + "?", () => {
+                if(db.tiendaActual === 'Variedades Maria') db.productos[pIdx].stock_maria = 0;
+                else db.productos[pIdx].stock_marisol = 0;
+
+                if((db.productos[pIdx].stock_maria || 0) === 0 && (db.productos[pIdx].stock_marisol || 0) === 0) {
+                    sysConfirm("Stock en cero en ambas tiendas. ¿Borrar producto totalmente del catálogo?", () => {
+                        db.productos.splice(pIdx, 1);
+                        persistir(); render();
+                    });
+                } else {
+                    persistir(); render();
+                }
+            });
+        }
+
+        function editarProd(c) { 
+            const p = db.productos.find(x => x.codigo === c); 
+            document.getElementById('p-cod').value = p.codigo; 
+            document.getElementById('p-nom').value = p.nombre; 
+            document.getElementById('p-costo').value = p.costo || 0; 
+            document.getElementById('p-venta').value = p.venta; 
+            document.getElementById('p-stock').value = 0; 
+            document.getElementById('p-cat').value = p.categoria || 'OTROS';
+            document.getElementById('p-oferta-precio').value = p.precio_oferta || ''; 
+            document.getElementById('p-oferta-inicio').value = p.oferta_inicio || ''; 
+            document.getElementById('p-oferta-fin').value = p.oferta_fin || ''; 
+            document.getElementById('p-farma-cant').value = p.cant_blister || ''; 
+            document.getElementById('p-farma-precio').value = p.precio_blister || '';
+            document.getElementById('div-farma-modal').classList.toggle('hidden', (p.categoria || 'OTROS') !== 'FARMACIA'); 
+            abrirModal(); 
+        }
+
+        function limpiarCierresPasados() { sysConfirm(`¿BORRAR HISTORIAL?`, () => { database.ref('cierres_historial').once('value', snap => { const d = snap.val(); if(d) Object.keys(d).forEach(k => { if(d[k].tienda === db.tiendaActual) database.ref(`cierres_historial/${k}`).remove(); }); render(); }); }); }
+        
+        function imprimirInventarioA4() { 
+            const pa = document.getElementById('print-area'); pa.className = "a4-mode"; let filas = ""; 
+            db.productos.sort((a,b) => a.nombre.localeCompare(b.nombre)).forEach(p => { 
+                const s = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); 
+                if (s > 0) filas += `<tr><td>${p.codigo || '---'}</td><td>${p.nombre}</td><td align="center">${s}</td><td style="width:80px"></td><td></td></tr>`; 
+            }); 
+            if(filas === "") filas = "<tr><td colspan='5' align='center'>No hay productos con stock para imprimir</td></tr>";
+            pa.innerHTML = `<h1 style="text-align:center;">INVENTARIO: ${db.tiendaActual.toUpperCase()}</h1><p style="text-align:center">${new Date().toLocaleDateString()}</p><table><thead><tr><th>CÓDIGO</th><th>PRODUCTO</th><th>STOCK (SISTEMA)</th><th>CONTEO FÍSICO</th><th>NOTAS</th></tr></thead><tbody>${filas}</tbody></table>`; 
+            window.print(); 
+        }
+        
+        function imprimirTicketCierre(c) { const pa = document.getElementById('print-area'); pa.className = "ticket-mode"; pa.innerHTML = `<div style="text-align:center;"><b>CIERRE DE CAJA</b><br>${c.tienda.toUpperCase()}<br>${c.fecha}</div><hr style="border:1px dashed #000; margin:8px 0">LIB: Q${c.lib.toFixed(2)}<br>MAQ: Q${c.maq.toFixed(2)}<br>OTR: Q${c.otr.toFixed(2)}<hr style="border:1px dashed #000; margin:8px 0"><div style="text-align:center; font-size:16px"><b>TOTAL: Q${c.total.toFixed(2)}</b></div>`; window.print(); }
+
+        // --- MÓDULO DE REPORTES Y FINANZAS ---
+        function cargarReportePorFechas() {
+            const fIniStr = document.getElementById('rep-inicio').value; 
+            const fFinStr = document.getElementById('rep-fin').value;
+            if(!fIniStr || !fFinStr) return;
+
+            let vLib = 0, vMaq = 0, vOtr = 0; let gLib = 0, gMaq = 0, gOtr = 0;
+            const rb = document.getElementById('rep-ventas-body'); if (!rb) return; let htmlRepVentas = ''; 
+
+            db.ventas.forEach(v => {
+                if(v.tienda !== db.tiendaActual || v.estado === 'ANULADA') return; 
+                const fechaVenta = parseDateSafely(v.fecha, v.fecha_filtro);
+                
+                if(fechaVenta >= fIniStr && fechaVenta <= fFinStr) {
+                    let tLibTicket = 0, tMaqTicket = 0, tOtrTicket = 0; let tGananciaTicket = 0;
+                    v.det.forEach(d => {
+                        const sub = d.cant * d.pre; const costoU = d.costo_uni !== undefined ? d.costo_uni : 0; const gananciaTotalItem = sub - (costoU * d.cant);
+                        tGananciaTicket += gananciaTotalItem;
+                        if(d.cat === 'LIBRERIA' || d.cat === 'FARMACIA') { vLib += sub; tLibTicket += sub; gLib += gananciaTotalItem; } 
+                        else if(d.cat === 'MAQUILLAJE') { vMaq += sub; tMaqTicket += sub; gMaq += gananciaTotalItem; } 
+                        else { vOtr += sub; tOtrTicket += sub; gOtr += gananciaTotalItem; }
+                    });
+                    htmlRepVentas += `<tr><td class="p-3 border-b">${v.fecha.split(' ')[0]}</td><td class="p-3 border-b">#${v.ticket}</td><td class="p-3 border-b text-blue-800 font-bold">Q ${tLibTicket.toFixed(2)}</td><td class="p-3 border-b text-pink-800 font-bold">Q ${tMaqTicket.toFixed(2)}</td><td class="p-3 border-b text-gray-600 font-bold">Q ${tOtrTicket.toFixed(2)}</td><td class="p-3 border-b bg-gray-50 text-indigo-950 font-black">Q ${v.total.toFixed(2)}</td><td class="p-3 border-b bg-green-50 text-green-700 font-black">Q ${tGananciaTicket.toFixed(2)}</td></tr>`;
+                }
+            });
+
+            rb.innerHTML = htmlRepVentas; 
+            document.getElementById('ind-ventas-lib').innerText = `Q ${vLib.toFixed(2)}`; document.getElementById('ind-ventas-maq').innerText = `Q ${vMaq.toFixed(2)}`; document.getElementById('ind-ventas-otr').innerText = `Q ${vOtr.toFixed(2)}`; document.getElementById('ind-ganancia-otr').innerText = `Q ${gOtr.toFixed(2)}`;
+            const gOtrCompartida = gOtr / 2; const gananciaFinalLib = gLib + gOtrCompartida; const gananciaFinalMaq = gMaq + gOtrCompartida;
+            document.getElementById('ind-ganancia-lib').innerText = `Q ${gananciaFinalLib.toFixed(2)} (+Q ${gOtrCompartida.toFixed(2)} Otros)`; document.getElementById('ind-ganancia-maq').innerText = `Q ${gananciaFinalMaq.toFixed(2)} (+Q ${gOtrCompartida.toFixed(2)} Otros)`;
+
+            database.ref('gastos_historial').once('value', snap => {
+                let gastosDirectosLib = 0; let gastosDirectosMaq = 0; let gastosCompartidosTotal = 0; 
+                let depLib = 0; let depMaq = 0;
+                
+                const gb = document.getElementById('gastos-body');
+                const dbb = document.getElementById('depositos-body');
+                let htmlGastos = ''; let htmlDepositos = ''; 
+                
+                const datos = snap.val();
+                if(datos) {
+                    Object.keys(datos).forEach(key => {
+                        const item = datos[key];
+                        if(item.tienda === db.tiendaActual) {
+                            const fReg = parseDateSafely(item.fechaRegistro, item.fecha_filtro);
+                            if(fReg >= fIniStr && fReg <= fFinStr) {
+                                if(item.is_deposito) {
+                                    if(item.area === 'LIBRERIA') depLib += item.monto; else if(item.area === 'MAQUILLAJE') depMaq += item.monto;
+                                    let colorBadge = item.area === "LIBRERIA" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800";
+                                    htmlDepositos += `<tr><td class="p-2 text-gray-500">${item.fechaRegistro.split(',')[0]}</td><td class="p-2"><span class="px-2 py-0.5 rounded font-black text-[9px] ${colorBadge}">${item.area}</span></td><td class="p-2 uppercase font-semibold text-gray-700">${item.referencia}</td><td class="p-2 text-right text-green-600 font-bold">Q ${item.monto.toFixed(2)}</td><td class="p-2 text-center"><button onclick="eliminarDeposito('${key}')" class="text-red-500 hover:text-red-700 font-black">✕</button></td></tr>`;
+                                } else {
+                                    const asign = item.asignacion || 'COMPARTIDO'; if(asign === 'LIBRERIA') gastosDirectosLib += item.monto; else if(asign === 'MAQUILLAJE') gastosDirectosMaq += item.monto; else gastosCompartidosTotal += item.monto;
+                                    let colorBadge = "bg-gray-200 text-gray-800"; if(asign === "LIBRERIA") colorBadge = "bg-blue-100 text-blue-800"; if(asign === "MAQUILLAJE") colorBadge = "bg-pink-100 text-pink-800";
+                                    htmlGastos += `<tr><td class="p-2 text-gray-500">${item.fechaRegistro.split(',')[0]}</td><td class="p-2"><span class="px-2 py-0.5 rounded font-black text-[9px] ${colorBadge}">${asign}</span></td><td class="p-2 uppercase font-semibold text-gray-700">${item.descripcion}</td><td class="p-2 text-right text-red-600 font-bold">Q ${item.monto.toFixed(2)}</td><td class="p-2 text-center"><button type="button" onclick="eliminarGasto('${key}')" class="text-red-500 hover:text-red-700 font-black">✕</button></td></tr>`;
+                                }
+                            }
+                        }
+                    });
+                } 
+                if(gb) gb.innerHTML = htmlGastos; 
+                if(dbb) dbb.innerHTML = htmlDepositos;
+
+                const mitadGastoCompartido = gastosCompartidosTotal / 2;
+                
+                document.getElementById('ind-gastos-lib').innerText = `Q ${gastosDirectosLib.toFixed(2)}`; document.getElementById('ind-gastoscomp-lib').innerText = `Q ${mitadGastoCompartido.toFixed(2)}`;
+                document.getElementById('ind-gastos-maq').innerText = `Q ${gastosDirectosMaq.toFixed(2)}`; document.getElementById('ind-gastoscomp-maq').innerText = `Q ${mitadGastoCompartido.toFixed(2)}`;
+                document.getElementById('ind-utilidad-lib').innerText = `Q ${(gananciaFinalLib - gastosDirectosLib - mitadGastoCompartido).toFixed(2)}`; document.getElementById('ind-utilidad-maq').innerText = `Q ${(gananciaFinalMaq - gastosDirectosMaq - mitadGastoCompartido).toFixed(2)}`;
+
+                const efectivoLibGen = vLib + (vOtr/2) - gastosDirectosLib - mitadGastoCompartido;
+                const efectivoMaqGen = vMaq + (vOtr/2) - gastosDirectosMaq - mitadGastoCompartido;
+                
+                const pendienteLib = efectivoLibGen - depLib;
+                const pendienteMaq = efectivoMaqGen - depMaq;
+
+                document.getElementById('efectivo-gen-lib').innerText = `Q ${efectivoLibGen.toFixed(2)}`;
+                document.getElementById('efectivo-dep-lib').innerText = `Q ${depLib.toFixed(2)}`;
+                document.getElementById('efectivo-pen-lib').innerText = `Q ${pendienteLib.toFixed(2)}`;
+                document.getElementById('box-pen-lib').className = pendienteLib >= 0 ? "flex justify-between bg-blue-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors" : "flex justify-between bg-green-600 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors";
+
+                document.getElementById('efectivo-gen-maq').innerText = `Q ${efectivoMaqGen.toFixed(2)}`;
+                document.getElementById('efectivo-dep-maq').innerText = `Q ${depMaq.toFixed(2)}`;
+                document.getElementById('efectivo-pen-maq').innerText = `Q ${pendienteMaq.toFixed(2)}`;
+                document.getElementById('box-pen-maq').className = pendienteMaq >= 0 ? "flex justify-between bg-pink-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors" : "flex justify-between bg-green-600 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors";
+            });
+        }
+
+        function guardarGasto(btn) { 
+            const desc = document.getElementById('gasto-desc').value.trim().toUpperCase(); 
+            const monto = parseFloat(document.getElementById('gasto-monto').value) || 0; 
+            const asignacion = document.getElementById('gasto-asignacion').value; 
+            
+            if(!desc || monto <= 0) return sysAlert("Introduce una descripción y monto válido."); 
+            
+            const fIniStr = document.getElementById('rep-inicio').value;
+            const fFinStr = document.getElementById('rep-fin').value;
+            if(!fIniStr || !fFinStr) return sysAlert("Por favor selecciona un rango de fechas arriba primero.");
+
+            const f = new Date(); 
+            const fechaFiltroUniv = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+
+            const nuevoGasto = { descripcion: desc, monto: monto, asignacion: asignacion, tienda: db.tiendaActual, fechaRegistro: new Date().toLocaleString(), fecha_filtro: fechaFiltroUniv }; 
+            
+            if(btn) { btn.disabled = true; btn.innerText = "GUARDANDO..."; }
+            
+            database.ref('gastos_historial').push(nuevoGasto).then(() => { 
+                document.getElementById('gasto-desc').value = ''; 
+                document.getElementById('gasto-monto').value = ''; 
+                if(btn) { btn.disabled = false; btn.innerText = "GUARDAR GASTO"; }
+                cargarReportePorFechas(); 
+            }).catch(err => {
+                sysAlert("Error al guardar: " + err);
+                if(btn) { btn.disabled = false; btn.innerText = "GUARDAR GASTO"; }
+            });
+        }
+        
+        function eliminarGasto(key) { sysConfirm("¿Eliminar este registro de gasto?", () => database.ref(`gastos_historial/${key}`).remove().then(() => cargarReportePorFechas())); }
+
+        function guardarDeposito(btn) {
+            const area = document.getElementById('dep-area').value;
+            const ref = document.getElementById('dep-ref').value.trim().toUpperCase();
+            const monto = parseFloat(document.getElementById('dep-monto').value) || 0;
+            
+            if(monto <= 0) return sysAlert("Introduce un monto válido mayor a 0.");
+            if(!ref) return sysAlert("Introduce una referencia o número de boleta.");
+
+            const fIniStr = document.getElementById('rep-inicio').value;
+            const fFinStr = document.getElementById('rep-fin').value;
+            if(!fIniStr || !fFinStr) return sysAlert("Por favor selecciona un rango de fechas arriba primero.");
+
+            const f = new Date(); 
+            const fechaFiltroUniv = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+
+            const nuevoDeposito = { 
+                is_deposito: true,
+                area: area, 
+                referencia: ref, 
+                monto: monto, 
+                tienda: db.tiendaActual, 
+                fechaRegistro: new Date().toLocaleString(), 
+                fecha_filtro: fechaFiltroUniv 
+            };
+            
+            if(btn) { btn.disabled = true; btn.innerText = "GUARDANDO..."; }
+
+            database.ref('gastos_historial').push(nuevoDeposito).then(() => { 
+                document.getElementById('dep-ref').value = ''; 
+                document.getElementById('dep-monto').value = ''; 
+                if(btn) { btn.disabled = false; btn.innerText = "REGISTRAR DEPÓSITO"; }
+                cargarReportePorFechas(); 
+                sysAlert("✅ Depósito registrado correctamente."); 
+            }).catch(err => {
+                sysAlert("Error al guardar: " + err);
+                if(btn) { btn.disabled = false; btn.innerText = "REGISTRAR DEPÓSITO"; }
+            });
+        }
+        
+        function eliminarDeposito(key) { 
+            sysConfirm("⚠️ ¿Estás seguro de eliminar este registro de depósito?", () => {
+                database.ref(`gastos_historial/${key}`).remove().then(() => cargarReportePorFechas()); 
+            });
+        }
+
+        // --- FUNCIONES DE ADMINISTRADOR Y CONFIGURACION ---
+        function accesoAdmin() {
+            if(db.rol === 'ADMIN') {
+                db.rol = 'VENDEDOR';
+                render();
+            } else {
+                document.getElementById('input-pin-admin').value = '';
+                document.getElementById('modal-login-admin').classList.remove('hidden');
+                document.getElementById('modal-login-admin').classList.add('flex');
+                setTimeout(() => document.getElementById('input-pin-admin').focus(), 100);
+            }
+        }
+
+        function verifyAdminPin() {
+            const pinIntroducido = document.getElementById('input-pin-admin').value;
+            const pinSeguro = db.admin_pin || '1892';
+            if(pinIntroducido === pinSeguro) {
+                db.rol = 'ADMIN';
+                closeAdminLogin();
+                render();
+            } else {
+                sysAlert("PIN INCORRECTO", "Error de Acceso");
+                document.getElementById('input-pin-admin').value = '';
+            }
+        }
+
+        function closeAdminLogin() {
+            document.getElementById('modal-login-admin').classList.add('hidden');
+            document.getElementById('modal-login-admin').classList.remove('flex');
+        }
+
+        document.getElementById('input-pin-admin')?.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                verifyAdminPin();
+            }
+        });
+
+        function cambiarPinAdmin() {
+            sysPrompt("Introduce el NUEVO PIN numérico para el Administrador (mínimo 4 dígitos):", (nuevoPin) => {
+                if (nuevoPin && nuevoPin.trim().length >= 4) { 
+                    db.admin_pin = nuevoPin.trim(); 
+                    database.ref('tienda_datos/admin_pin').set(db.admin_pin).then(() => { sysAlert("✅ PIN de Administrador actualizado correctamente en la nube."); }); 
+                } else { 
+                    sysAlert("❌ Operación cancelada. El PIN debe tener al menos 4 números."); 
+                }
+            });
+        }
+
+      function finalizarJornada() { 
+            const tT = parseFloat(document.getElementById('c-total').innerText.replace('Q ','')); 
+            if(tT <= 0) return alert("NO HAY VENTAS PARA CERRAR JORNADA"); 
+            const tiendaLocal = db.tiendaActual;
+            const ventasHoy = db.ventas.filter(v => v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK'); 
+            
+            const cierre = { 
+                fecha: new Date().toLocaleString(), tienda: tiendaLocal, total: tT, 
+                lib: parseFloat(document.getElementById('c-lib').innerText.replace('Q ','')), 
+                maq: parseFloat(document.getElementById('c-maq').innerText.replace('Q ','')), 
+                otr: parseFloat(document.getElementById('c-otr').innerText.replace('Q ','')), 
+                movimientos: ventasHoy 
+            }; 
+            
+            if(!confirm(`¿ESTÁS SEGURO DE CERRAR LA JORNADA?\n\nTotal a entregar en caja: Q ${tT.toFixed(2)}`)) return;
+
+            // 1. Modificar localmente para que la pantalla pase a 0 al instante
+            db.ventas.forEach(v => {
+                if(v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK') {
+                    v.jornada_abierta = false;
+                }
+            });
+            
+            // 2. Guardar en disco local y preparar para Firebase (Offline Ready)
+            persistir();
+            render();
+            
+            // Push guarda en la cola local si estás offline y luego lo sube
+            database.ref('cierres_historial').push(cierre);
+
+            // 3. Confirmar al vendedor y ofrecer imprimir ticket de cierre
+            setTimeout(() => {
+                if(confirm(`✅ JORNADA CERRADA EXITOSAMENTE.\n\nTotal Entregado: Q ${cierre.total.toFixed(2)}\nLibrería: Q ${cierre.lib.toFixed(2)}\nMaquillaje: Q ${cierre.maq.toFixed(2)}\n\nEl sistema está en 0 para el nuevo turno.\n\n¿Deseas IMPRIMIR el comprobante de cierre?`)) {
+                    imprimirTicketCierre(cierre);
+                }
+            }, 300);
+        }
+            
+        function limpiarSoloVentasPrueba() { 
+            sysConfirm("¿Seguro que deseas eliminar ventas con productos de 'PRUEBA'?", () => {
+                const tiendaLocal = db.tiendaActual;
+                database.ref('tienda_datos').transaction(curr => {
+                    if(!curr || !curr.ventas) return curr;
+                    if(!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+                    curr.ventas = curr.ventas.filter(v => { 
+                        if (v.tienda !== tiendaLocal) return true; 
+                        if(v.det.some(d => d.nombre.includes("PRUEBA") || d.codigo.includes("PRUEBA"))) { 
+                            if(curr.productos) {
+                                v.det.forEach(i => { 
+                                    const pIdx = curr.productos.findIndex(x => x.codigo === i.codigo); 
+                                    if(pIdx > -1) { 
+                                        if(tiendaLocal === 'Variedades Maria') curr.productos[pIdx].stock_maria = (curr.productos[pIdx].stock_maria || 0) + i.cant; 
+                                        else curr.productos[pIdx].stock_marisol = (curr.productos[pIdx].stock_marisol || 0) + i.cant; 
+                                    } 
+                                }); 
+                            }
+                            return false; 
+                        } 
+                        return true; 
+                    }); 
+                    return curr;
+                }); 
+            });
+        }
+
+        function descargarExcel() {
+            if (db.productos.length === 0) return sysAlert("No hay productos para exportar.");
+            const productosDeEstaTienda = db.productos.filter(p => { if (db.tiendaActual === 'Variedades Maria') return (p.stock_maria || 0) > 0; else return (p.stock_marisol || 0) > 0; });
+            if (productosDeEstaTienda.length === 0) return sysAlert(`No hay productos con stock mayor a 0 en ${db.tiendaActual} para exportar.`);
+            const datosExcel = productosDeEstaTienda.map(p => { return { 'CODIGO': p.codigo, 'PRODUCTO': p.nombre, 'VENTA': p.venta, 'COMPRA': p.costo || 0, 'CATEGORIA': p.categoria || 'OTROS', 'STOCK': db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0) }; });
+            const worksheet = XLSX.utils.json_to_sheet(datosExcel); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
+            const nombreArchivo = `INVENTARIO_${db.tiendaActual.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
+        }
+
+        function cargarExcel(event) {
+            const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'}); const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {raw: false});
+                    if(json.length === 0) return sysAlert("Excel vacío."); 
+                    
+                    sysConfirm("¿Deseas SUMAR al stock actual?\n\n- Confirmar para SUMAR.\n- Cancelar para REEMPLAZAR (Útil para corregir errores).", () => {
+                        ejecutarCargaMasiva(json, true);
+                    }, "Modo de Carga");
+                } catch (error) { sysAlert("❌ Error. Columnas requeridas: CODIGO, PRODUCTO, VENTA, COMPRA, CATEGORIA, STOCK."); }
+            }; reader.readAsArrayBuffer(file);
+        }
+
+        function ejecutarCargaMasiva(json, modoSuma) {
+            let importados = 0; let actualizados = 0; let ignorados = 0;
+            const tiendaLocal = db.tiendaActual;
+            const rolLocal = db.rol;
+
+            database.ref('tienda_datos').transaction(curr => {
+                if(!curr) return curr;
+                if(!curr.productos) curr.productos = [];
+
+                json.forEach(row => {
+                    let stock = parseInt(row['STOCK']) || 0; if (stock <= 0) { ignorados++; return; } 
+                    let codigo = String(row['CODIGO'] || row['CÓDIGO'] || '').trim(); let nombre = String(row['PRODUCTO'] || '').trim().toUpperCase(); if (!codigo || !nombre) return; 
+                    let venta = parseFloat(String(row['VENTA'] || '0').replace(/[^0-9.]/g, '')) || 0; let costo = parseFloat(String(row['COMPRA'] || '0').replace(/[^0-9.]/g, '')) || 0;
+                    let rawCat = String(row['CATEGORIA'] || 'OTROS').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    let categoria = rawCat.includes('LIBRE') ? 'LIBRERIA' : (rawCat.includes('MAQUI') ? 'MAQUILLAJE' : (rawCat.includes('FARMA') || rawCat.includes('MEDI') ? 'FARMACIA' : 'OTROS'));
+                    
+                    const pIdx = curr.productos.findIndex(p => String(p.codigo) === codigo);
+                    if (pIdx > -1) {
+                        curr.productos[pIdx].nombre = nombre; curr.productos[pIdx].categoria = categoria; curr.productos[pIdx].venta = venta; 
+                        if(rolLocal === 'ADMIN') curr.productos[pIdx].costo = costo;
+                        if (tiendaLocal === 'Variedades Maria') curr.productos[pIdx].stock_maria = modoSuma ? (curr.productos[pIdx].stock_maria || 0) + stock : stock; 
+                        else curr.productos[pIdx].stock_marisol = modoSuma ? (curr.productos[pIdx].stock_marisol || 0) + stock : stock; 
+                        actualizados++;
+                    } else { 
+                        curr.productos.push({ codigo: codigo, nombre: nombre, categoria: categoria, venta: venta, costo: costo, stock_maria: tiendaLocal === 'Variedades Maria' ? stock : 0, stock_marisol: tiendaLocal === 'Marisol' ? stock : 0 }); 
+                        importados++; 
+                    }
+                });
+                return curr;
+            }, (err, comm) => {
+                if(!err && comm) {
+                    sysAlert(`✅ ¡Carga Exitosa!\nNuevos: ${importados}\nActualizados: ${actualizados}\nIgnorados (Stock 0): ${ignorados}`); 
+                    document.getElementById('input-excel').value = '';
+                }
+            });
+        }
+
+        function eliminarTodoElInventario() {
+            sysPrompt("⚠️ ATENCIÓN: ¿Quieres BORRAR TODOS LOS PRODUCTOS de la base de datos?\nEscribe la palabra BORRAR para confirmar:", (palabra) => {
+                if (palabra === "BORRAR") { 
+                    database.ref('tienda_datos').transaction(curr => {
+                        if(!curr) return curr;
+                        curr.productos = [];
+                        return curr;
+                    });
+                    sysAlert("✅ Catálogo eliminado por completo."); 
+                } else { sysAlert("Operación cancelada."); }
+            }, "Peligro");
+        }
+
+        function limpiarCierresAnosAnteriores() { 
+            sysPrompt("⚠️ Ingresa el AÑO a borrar (Ej. 2024):", (anioBorrar) => {
+                if (!anioBorrar || isNaN(anioBorrar)) return; 
+                sysPrompt(`Escribe ELIMINAR para borrar cierres y ventas del año ${anioBorrar}:`, (palabra) => {
+                    if (palabra !== "ELIMINAR") return; 
+                    database.ref('cierres_historial').once('value', snap => { 
+                        let cont = 0; 
+                        snap.forEach(child => { 
+                            const c = child.val(); 
+                            if (c.fecha && c.fecha.split('/')[2].split(',')[0].trim() === anioBorrar && c.tienda === db.tiendaActual) { 
+                                child.ref.remove(); cont++; 
+                            } 
+                        }); 
+                        database.ref('tienda_datos').transaction(curr => { 
+                            if(!curr || !curr.ventas) return curr; 
+                            if(!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas); 
+                            curr.ventas = curr.ventas.filter(v => { 
+                                if (v.tienda !== db.tiendaActual) return true; 
+                                return !(v.fecha && v.fecha.split('/')[2].split(',')[0].trim() === anioBorrar); 
+                            }); 
+                            return curr; 
+                        }); 
+                        sysAlert(`✅ Limpieza terminada.`); 
+                    }); 
+                });
+            });
+        }
+
+        let temporizadorBusqueda; 
+        function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
+        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => x.nombre.toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
+        function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
+        function addCart(p) { const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); if(sMax <= 0) return sysAlert("SIN STOCK"); const i = cart.findIndex(c => c.codigo === p.codigo); if(i > -1) { if(cart[i].cant < sMax) cart[i].cant++; else sysAlert("MÁXIMO ALCANZADO (" + sMax + ")"); } else { cart.push({...p, cant: 1, cat: (p.categoria || 'OTROS') }); } renderCart(); }
+
+        function renderCart() { 
+            const b = document.getElementById('cart-body'); let htmlCarrito = ''; let t = 0; 
+            cart.forEach((c, i) => { 
+                let subtotalItem = calcularSubtotal(c, c.cant); t += subtotalItem; const medIcon = c.cat === 'FARMACIA' ? '💊 ' : '';
+                htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3">${medIcon}${c.nombre}</td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right">Q${subtotalItem.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
+            }); 
+            b.innerHTML = htmlCarrito; document.getElementById('total-txt').innerText = t.toFixed(2); calcVuelto(); 
+        }
+
+        function actualizarCantidadCart(index, valor) { let cant = parseInt(valor) || 1; if(cant < 1) cant = 1; const p = db.productos.find(x => x.codigo === cart[index].codigo); if(p) { const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); if(cant > sMax) { sysAlert("Solo hay " + sMax + " en stock."); cant = sMax; } } cart[index].cant = cant; renderCart(); }
+        function imprimirTicket(v) { const pa = document.getElementById('print-area'); pa.className = "ticket-mode"; pa.innerHTML = `<div style="text-align:center;"><b style="font-size:16px">VARIEDADES M&M</b><br>${v.tienda.toUpperCase()}<br>TEL: 38301196<br>#${v.ticket} | ${v.fecha.split(',')[0]}</div><hr style="border:1px dashed #000; margin:8px 0">${v.det.map(d => `<div style="margin-bottom:4px"><div style="display:flex; justify-content:space-between"><span>${d.nombre.substring(0,22)}</span><span>Q${(d.cant*d.pre).toFixed(2)}</span></div><div style="font-size:9px; color:#555">${d.cant} x Q${d.pre.toFixed(2)}</div></div>`).join('')}<hr style="border:1px dashed #000; margin:8px 0"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px"><span>TOTAL:</span><span>Q${v.total.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px; margin-top:4px"><span>Efectivo:</span><span>Q${v.pago.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px"><span>Cambio:</span><span>Q${(v.pago - v.total).toFixed(2)}</span></div><br><center>¡GRACIAS POR SU COMPRA!</center>`; window.print(); }
+
+        function setTab(t) { ['ventas','inventario','historial','cierre','reportes'].forEach(s => { const element = document.getElementById(`section-${s}`); if (element) element.classList.add('hidden'); }); const currentSection = document.getElementById(`section-${t}`); if (currentSection) currentSection.classList.remove('hidden'); ['tab-ventas','tab-inventario','tab-historial','tab-cierre','tab-reportes'].forEach(s => { const tabElement = document.getElementById(s); if (tabElement) tabElement.classList.remove('tab-active'); }); const activeTab = document.getElementById(`tab-${t}`); if (activeTab) activeTab.classList.add('tab-active'); }
+        function cambiarTienda() { db.tiendaActual = db.tiendaActual === 'Variedades Maria' ? 'Marisol' : 'Variedades Maria'; cart = []; renderCart(); render(); }
+        function seleccionarTienda(nombreTienda, boton) { document.querySelectorAll('#modal-tienda button').forEach(b => { b.classList.remove('ring-4', 'ring-yellow-400', 'scale-110'); }); if(boton) boton.classList.add('ring-4', 'ring-yellow-400', 'scale-110'); db.tiendaActual = nombreTienda; cart = []; renderCart(); render(); setTimeout(() => { document.getElementById('modal-tienda').classList.add('hidden'); }, 350); }
+        function calcVuelto() { const t = parseFloat(document.getElementById('total-txt').innerText); const p = parseFloat(document.getElementById('pago-txt').value) || 0; document.getElementById('vuelto-txt').innerText = Math.max(0, p - t).toFixed(2); }
+
+        function cargarCierres() { database.ref('cierres_historial').on('value', snap => { const div = document.getElementById('lista-cierres'); if(!div) return; let htmlCierres = ''; const data = snap.val(); if(data) { Object.entries(data).reverse().forEach(([key, c]) => { if(c.tienda === db.tiendaActual) { htmlCierres += `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center font-black italic"><div><p class="text-gray-400 text-[10px]">${c.fecha}</p><p class="text-indigo-900 text-lg">Q${c.total.toFixed(2)}</p></div><div class="flex gap-2"><button onclick='verMovimiento(${JSON.stringify(c)})' class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] px-3">👁️ MOVIMIENTO</button><button onclick='imprimirTicketCierre(${JSON.stringify(c)})' class="bg-gray-100 p-2 rounded-lg">🖨️</button>${db.rol === 'ADMIN' ? `<button onclick="eliminarCierreIndividual('${key}')" class="bg-red-100 text-red-600 p-2 rounded-lg text-lg">🗑️</button>` : ''}</div></div>`; } }); } div.innerHTML = htmlCierres; }); }
+        function eliminarCierreIndividual(key) { sysConfirm("⚠️ ¿Estás seguro de ELIMINAR SÓLO ESTE CIERRE?", () => database.ref(`cierres_historial/${key}`).remove()); }
+        function verMovimiento(c) { document.getElementById('mov-fecha').innerText = c.fecha; document.getElementById('mov-total').innerText = `Q ${c.total.toFixed(2)}`; const body = document.getElementById('mov-body'); let htmlMovimiento = ''; let consolidado = {}; c.movimientos.forEach(v => v.det.forEach(i => { if(!consolidado[i.nombre]) consolidado[i.nombre] = { cant: 0, sub: 0 }; consolidado[i.nombre].cant += i.cant; consolidado[i.nombre].sub += (i.cant * i.pre); })); for(let p in consolidado) htmlMovimiento += `<tr class="uppercase text-[11px]"><td class="py-2">${p}</td><td class="text-center">x${consolidado[p].cant}</td><td class="text-right">Q${consolidado[p].sub.toFixed(2)}</td></tr>`; body.innerHTML = htmlMovimiento; document.getElementById('modal-movimiento').classList.remove('hidden'); }
+        function cerrarMovimiento() { document.getElementById('modal-movimiento').classList.add('hidden'); }
+        
+        function cerrarModal() { 
+            document.getElementById('modal').classList.add('hidden'); document.getElementById('p-cod').value = ''; document.getElementById('p-nom').value = ''; 
+            document.getElementById('p-costo').value = ''; document.getElementById('p-venta').value = ''; document.getElementById('p-stock').value = ''; document.getElementById('p-cat').value = 'LIBRERIA'; 
+            document.getElementById('p-oferta-precio').value = ''; document.getElementById('p-oferta-inicio').value = ''; document.getElementById('p-oferta-fin').value = '';
+            document.getElementById('p-farma-cant').value = ''; document.getElementById('p-farma-precio').value = ''; document.getElementById('div-farma-modal').classList.add('hidden');
+        }
+        function abrirModal() { document.getElementById('modal').classList.remove('hidden'); setTimeout(() => document.getElementById('p-cod').focus(), 50); }
+        
+        function imprimirReporteMaestro() {
+            const fIniStr = document.getElementById('rep-inicio').value; 
+            const fFinStr = document.getElementById('rep-fin').value; 
+            const tienda = db.tiendaActual.toUpperCase();
+            const pa = document.getElementById('print-area'); 
+            pa.className = "a4-mode"; 
+            
+            pa.innerHTML = `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <div style="text-align:center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+                    <h1 style="margin:0; font-size: 24px;">REPORTE MAESTRO DE LIQUIDACIÓN Y GANANCIAS</h1>
+                    <h2 style="margin:5px 0; color:#555; font-size: 16px;">TIENDA: ${tienda} | DEL: ${fIniStr} AL: ${fFinStr}</h2>
+                </div>
+                
+                <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">1. SALUD FINANCIERA (UTILIDAD NETA)</h3>
+                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width:48%; vertical-align:top; padding: 10px; border: 1px solid #1e3a8a; border-radius: 8px;">
+                            <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 LIBRERÍA Y FARMACIA</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Ventas Totales:</span> <b>${document.getElementById('ind-ventas-lib').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(+) Ganancia en Ventas:</span> <b>${document.getElementById('ind-ganancia-lib').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos Propios:</span> <b>${document.getElementById('ind-gastos-lib').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) 50% Gastos Comp.:</span> <b>${document.getElementById('ind-gastoscomp-lib').innerText}</b></div>
+                            <hr style="border:1px solid #ccc; margin: 8px 0;">
+                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:#1e3a8a;"><span>UTILIDAD NETA:</span> <span>${document.getElementById('ind-utilidad-lib').innerText}</span></div>
+                        </td>
+                        <td style="width:4%;"></td>
+                        <td style="width:48%; vertical-align:top; padding: 10px; border: 1px solid #831843; border-radius: 8px;">
+                            <h4 style="color:#831843; text-align:center; margin-top:0;">💄 MAQUILLAJE</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Ventas Totales:</span> <b>${document.getElementById('ind-ventas-maq').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(+) Ganancia en Ventas:</span> <b>${document.getElementById('ind-ganancia-maq').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos Propios:</span> <b>${document.getElementById('ind-gastos-maq').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) 50% Gastos Comp.:</span> <b>${document.getElementById('ind-gastoscomp-maq').innerText}</b></div>
+                            <hr style="border:1px solid #ccc; margin: 8px 0;">
+                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:#831843;"><span>UTILIDAD NETA:</span> <span>${document.getElementById('ind-utilidad-maq').innerText}</span></div>
+                        </td>
+                    </tr>
+                </table>
+
+                <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">2. LIQUIDACIÓN DE EFECTIVO (DINERO DEL VENDEDOR)</h3>
+                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #1e3a8a; border-radius: 8px;">
+                            <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 LIBRERÍA Y FARMACIA</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Total Generado:</span> <b>${document.getElementById('efectivo-gen-lib').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('efectivo-dep-lib').innerText}</b></div>
+                            <hr style="border:1px solid #1e3a8a; margin: 8px 0;">
+                            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight: bold; background-color: #eff6ff; padding: 5px;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('efectivo-pen-lib').innerText}</span></div>
+                        </td>
+                        <td style="width:4%;"></td>
+                        <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #831843; border-radius: 8px;">
+                            <h4 style="color:#831843; text-align:center; margin-top:0;">💄 MAQUILLAJE</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Total Generado:</span> <b>${document.getElementById('efectivo-gen-maq').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('efectivo-dep-maq').innerText}</b></div>
+                            <hr style="border:1px solid #831843; margin: 8px 0;">
+                            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight: bold; background-color: #fdf2f8; padding: 5px;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('efectivo-pen-maq').innerText}</span></div>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="text-align:center; font-size: 10px; color: #777; margin-top: 30px;">
+                    <p>Categoría "Otros": Ventas ${document.getElementById('ind-ventas-otr').innerText} | Ganancias ${document.getElementById('ind-ganancia-otr').innerText} (Ya distribuidos 50/50 en el reporte)</p>
+                    <p>Reporte generado el: ${new Date().toLocaleString()}</p>
+                </div>
+            </div>`; 
+            window.print();
+        }
+    </script>
+</body>
+</html>
