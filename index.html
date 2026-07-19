@@ -514,7 +514,7 @@
             } return pBase * cantidad;
         }
 
-        window.onload = () => {
+       window.onload = () => {
             const f = new Date(); 
             const primerDia = new Date(f.getFullYear(), f.getMonth(), 1);
             if(document.getElementById('rep-inicio')) document.getElementById('rep-inicio').value = `${primerDia.getFullYear()}-${String(primerDia.getMonth() + 1).padStart(2, '0')}-${String(primerDia.getDate()).padStart(2, '0')}`;
@@ -525,26 +525,6 @@
             if (backupLocal) { try { db = JSON.parse(backupLocal); db.rol = 'VENDEDOR'; render(); } catch(e) {} }
 
             document.getElementById('login-modal').style.display = 'flex';
-
-            database.ref('tienda_datos').on('value', snap => { 
-                if(snap.val()) { 
-                    const rolPrevio = db.rol; 
-                    const tiendaCongelada = db.tiendaActual; 
-
-                    db = snap.val(); 
-                    
-                    db.rol = rolPrevio; 
-                    db.tiendaActual = tiendaCongelada; 
-
-                    if(!db.productos) db.productos = []; 
-                    if(!db.ventas) db.ventas = []; 
-                    else if(!Array.isArray(db.ventas)) db.ventas = Object.values(db.ventas); 
-                    if(!db.admin_pin) db.admin_pin = '1892'; 
-                    
-                    localStorage.setItem('backup_pos', JSON.stringify(db)); 
-                    render(); 
-                } 
-            });
 
             window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
             window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); });
@@ -557,7 +537,28 @@
             firebase.auth().signInWithEmailAndPassword(u, p)
                 .then(() => { 
                     document.getElementById('login-modal').style.display = 'none';
-                    sysAlert("¡Inicio de sesión correcto! Base de datos asegurada.", "Bienvenido"); 
+                    sysAlert("¡Inicio de sesión correcto! Conectando a la base de datos...", "Bienvenido"); 
+                    
+                    // AHORA SÍ: El inventario se descarga DESPUÉS de que la contraseña fue correcta
+                    database.ref('tienda_datos').on('value', snap => { 
+                        if(snap.val()) { 
+                            const rolPrevio = db.rol; 
+                            const tiendaCongelada = db.tiendaActual; 
+
+                            db = snap.val(); 
+                            
+                            db.rol = rolPrevio; 
+                            db.tiendaActual = tiendaCongelada; 
+
+                            if(!db.productos) db.productos = []; 
+                            if(!db.ventas) db.ventas = []; 
+                            else if(!Array.isArray(db.ventas)) db.ventas = Object.values(db.ventas); 
+                            if(!db.admin_pin) db.admin_pin = '1892'; 
+                            
+                            localStorage.setItem('backup_pos', JSON.stringify(db)); 
+                            render(); 
+                        } 
+                    });
                 })
                 .catch(() => {
                     if (!navigator.onLine && localStorage.getItem('backup_pos')) {
