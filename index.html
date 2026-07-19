@@ -1322,20 +1322,37 @@
             });
         }
 
-        // VACIAR INVENTARIO - Función Original
         function eliminarTodoElInventario() {
-            sysPrompt("⚠️ ATENCIÓN: ¿Quieres BORRAR TODOS LOS PRODUCTOS de la base de datos?\\nEscribe la palabra BORRAR para confirmar:", (palabra) => {
+            sysPrompt("⚠️ ATENCIÓN: ¿Quieres VACIAR EL INVENTARIO DE " + db.tiendaActual.toUpperCase() + "?\nEscribe la palabra BORRAR para confirmar:", (palabra) => {
                 if (palabra === "BORRAR") { 
+                    const tiendaLocal = db.tiendaActual;
+                    
                     database.ref('tienda_datos').transaction(curr => {
-                        if(!curr) return curr;
-                        curr.productos = [];
+                        if(!curr || !curr.productos) return curr;
+                        
+                        let productosRestantes = [];
+                        curr.productos.forEach(p => {
+                            if (tiendaLocal === 'Variedades Maria') {
+                                p.stock_maria = 0;
+                            } else {
+                                p.stock_marisol = 0;
+                            }
+                            
+                            if ((p.stock_maria || 0) > 0 || (p.stock_marisol || 0) > 0) {
+                                productosRestantes.push(p);
+                            }
+                        });
+                        
+                        curr.productos = productosRestantes;
                         return curr;
+                    }, (err, comm) => {
+                        if(comm) sysAlert("✅ Inventario de " + tiendaLocal + " eliminado por completo."); 
                     });
-                    sysAlert("✅ Catálogo eliminado por completo."); 
-                } else { sysAlert("Operación cancelada."); }
-            }, "Peligro");
+                } else { 
+                    sysAlert("Operación cancelada."); 
+                }
+            }, "Vaciar Inventario");
         }
-
         function limpiarCierresAnosAnteriores() { 
             sysPrompt("⚠️ Ingresa el AÑO a borrar (Ej. 2024):", (anioBorrar) => {
                 if (!anioBorrar || isNaN(anioBorrar)) return; 
