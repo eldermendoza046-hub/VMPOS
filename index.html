@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA VARIEDADES M&M - V9.40 (FULL LOCAL Y RÁPIDO)</title>
+    <title>SISTEMA VARIEDADES M&M - V9.45 (INVENTARIO LIMPIO Y RÁPIDO)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
@@ -273,7 +273,7 @@
                                 </select>
                                 <input type="text" id="dep-ref" placeholder="No. Boleta o Referencia..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
                                 <input type="number" id="dep-monto" placeholder="Monto Depositado Q" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none">
-                                <button onclick="guardarDeposito(this)" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Registrar Depósito</button>
+                                <button type="button" onclick="guardarDeposito(this)" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Registrar Depósito</button>
                             </div>
                         </div>
                         <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px] md:col-span-2">
@@ -318,7 +318,7 @@
                     <h2 class="text-lg font-black mb-2 text-center uppercase italic text-red-800">🚨 Análisis de Inventario Muerto</h2>
                     <div class="flex flex-col sm:flex-row gap-2 items-center mb-4 max-w-md mx-auto">
                         <select id="dias-estancado" class="w-full sm:flex-1 p-3 border-2 rounded-xl font-bold bg-gray-50 outline-none"><option value="30">Últimos 30 días</option><option value="60">Últimos 60 días</option><option value="90">Últimos 90 días</option></select>
-                        <button onclick="analizarEstancados()" class="w-full sm:w-auto bg-red-600 text-white px-4 py-3 rounded-xl font-black uppercase text-xs shadow-md hover:bg-red-700 transition-colors">Analizar</button>
+                        <button type="button" onclick="analizarEstancados()" class="w-full sm:w-auto bg-red-600 text-white px-4 py-3 rounded-xl font-black uppercase text-xs shadow-md hover:bg-red-700 transition-colors">Analizar</button>
                     </div>
                     <div id="res-estancados" class="hidden bg-gray-50 rounded-2xl shadow-inner border p-4"><p class="text-center font-bold text-red-600 mb-2">Capital Retenido: <span id="cap-estancado" class="text-2xl font-black">Q 0.00</span></p><div class="overflow-y-auto max-h-[300px] text-xs"><table class="w-full text-left font-bold"><thead class="bg-red-100 text-red-900 uppercase border-b sticky top-0"><tr><th class="p-2">Producto</th><th class="p-2 text-center">Stock</th><th class="p-2 text-right">Dinero</th></tr></thead><tbody id="estancados-body" class="divide-y"></tbody></table></div></div>
                 </div>
@@ -331,7 +331,7 @@
                             <select id="gasto-asignacion" class="w-full p-3 border-2 rounded-xl bg-white font-black uppercase outline-none"><option value="COMPARTIDO">MITAD Y MITAD (Luz, Alquiler...)</option><option value="LIBRERIA">SOLO LIBRERÍA</option><option value="MAQUILLAJE">SOLO MAQUILLAJE</option></select>
                             <input type="text" id="gasto-desc" placeholder="Ej. Recibo de Luz..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
                             <input type="number" id="gasto-monto" placeholder="Monto (Q) 0.00" class="w-full p-3 border-2 rounded-xl text-red-600 text-lg font-black outline-none">
-                            <button onclick="guardarGasto(this)" class="w-full bg-red-600 hover:bg-red-800 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Guardar Gasto</button>
+                            <button type="button" onclick="guardarGasto(this)" class="w-full bg-red-600 hover:bg-red-800 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Guardar Gasto</button>
                         </div>
                     </div>
                     <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px] md:col-span-2">
@@ -624,7 +624,8 @@
                 }
                 if (filtroInv !== '' && !p.nombre.toLowerCase().includes(filtroInv) && !p.codigo.toLowerCase().includes(filtroInv)) return;
 
-                if(stockActualTienda > 0 || isA) {
+                // MOSTRAR: Si tiene stock en esta tienda. Si es ADMIN y lo está buscando activamente, también lo mostramos aunque tenga 0.
+                if(stockActualTienda > 0 || (isA && filtroInv !== '')) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
                     htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black">${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
@@ -904,9 +905,9 @@
             cerrarModal(); 
         }
 
-        // Eliminar Inventario 
+        // Eliminar Inventario (Una sola vez, definitivo)
         function eliminarProductoDefinitivo(codigo) {
-            if(confirm("¿Estás seguro de ELIMINAR completamente este producto de TODO el sistema?")) {
+            sysConfirm("⚠️ ¿Estás seguro de ELIMINAR completamente este producto de TODO el sistema?", () => {
                 const pIdx = db.productos.findIndex(x => x.codigo === codigo);
                 if(pIdx > -1) {
                     db.productos.splice(pIdx, 1);
@@ -914,7 +915,7 @@
                     render();
                     sysAlert("Producto eliminado.", "Éxito");
                 }
-            }
+            });
         }
 
         function editarProd(c) { 
@@ -1188,7 +1189,6 @@
                     database.ref('cierres_historial').push(cierre);
                 } else {
                     console.log("Cierre guardado localmente por falta de internet.");
-                    // Si usáramos un array local de cierres, se haría push ahí.
                 }
 
                 setTimeout(() => {
@@ -1256,11 +1256,7 @@
                 let rawStock = row['STOCK'] || row['CANTIDAD'] || row['CANT'] || row['EXISTENCIA'] || 0;
                 let stock = parseInt(rawStock) || 0; 
                 
-                // REGLA: Si el stock es 0 o menor, lo ignoramos COMPLETAMENTE para no ensuciar el inventario.
-                if (stock <= 0) { 
-                    ignorados++; 
-                    return; 
-                } 
+                if (stock <= 0) { ignorados++; return; } 
                 
                 let rawCod = row['CODIGO'] || row['CÓDIGO'] || row['SKU'] || row['BARCODE'] || '';
                 let codigo = String(rawCod).trim(); 
@@ -1324,13 +1320,11 @@
                 sysPrompt(`Escribe ELIMINAR para borrar cierres y ventas del año ${anioBorrar}:`, (palabra) => {
                     if (palabra !== "ELIMINAR") return; 
                     
-                    // Borrado local
                     db.ventas = db.ventas.filter(v => { 
                         if (v.tienda !== db.tiendaActual) return true; 
                         return !(v.fecha && v.fecha.split('/')[2].split(',')[0].trim() === anioBorrar); 
                     });
                     
-                    // Si está conectado a Firebase, borrar en la nube también
                     if(navigator.onLine && database) {
                         database.ref('cierres_historial').once('value', snap => { 
                             snap.forEach(child => { 
@@ -1372,7 +1366,7 @@
         function seleccionarTienda(nombreTienda, boton) { document.querySelectorAll('#modal-tienda button').forEach(b => { b.classList.remove('ring-4', 'ring-yellow-400', 'scale-110'); }); if(boton) boton.classList.add('ring-4', 'ring-yellow-400', 'scale-110'); db.tiendaActual = nombreTienda; cart = []; renderCart(); render(); setTimeout(() => { document.getElementById('modal-tienda').classList.add('hidden'); }, 350); }
         function calcVuelto() { const t = parseFloat(document.getElementById('total-txt').innerText); const p = parseFloat(document.getElementById('pago-txt').value) || 0; document.getElementById('vuelto-txt').innerText = Math.max(0, p - t).toFixed(2); }
 
-        function cargarCierres() { database.ref('cierres_historial').on('value', snap => { const div = document.getElementById('lista-cierres'); if(!div) return; let htmlCierres = ''; const data = snap.val(); if(data) { Object.entries(data).reverse().forEach(([key, c]) => { if(c.tienda === db.tiendaActual) { htmlCierres += `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center font-black italic"><div><p class="text-gray-400 text-[10px]">${c.fecha}</p><p class="text-indigo-900 text-lg">Q${c.total.toFixed(2)}</p></div><div class="flex gap-2"><button onclick='verMovimiento(${JSON.stringify(c)})' class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] px-3">👁️ MOVIMIENTO</button><button onclick='imprimirTicketCierre(${JSON.stringify(c)})' class="bg-gray-100 p-2 rounded-lg">🖨️</button>${db.rol === 'ADMIN' ? `<button onclick="eliminarCierreIndividual('${key}')" class="bg-red-100 text-red-600 p-2 rounded-lg text-lg">🗑️</button>` : ''}</div></div>`; } }); } div.innerHTML = htmlCierres; }); }
+        function cargarCierres() { database.ref('cierres_historial').on('value', snap => { const div = document.getElementById('lista-cierres'); if(!div) return; let htmlCierres = ''; const data = snap.val(); if(data) { Object.entries(data).reverse().forEach(([key, c]) => { if(c.tienda === db.tiendaActual) { htmlCierres += `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center font-black italic"><div><p class="text-gray-400 text-[10px]">${c.fecha}</p><p class="text-indigo-900 text-lg">Q${c.total.toFixed(2)}</p></div><div class="flex gap-2"><button type="button" onclick='verMovimiento(${JSON.stringify(c)})' class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] px-3">👁️ MOVIMIENTO</button><button type="button" onclick='imprimirTicketCierre(${JSON.stringify(c)})' class="bg-gray-100 p-2 rounded-lg">🖨️</button>${db.rol === 'ADMIN' ? `<button type="button" onclick="eliminarCierreIndividual('${key}')" class="bg-red-100 text-red-600 p-2 rounded-lg text-lg">🗑️</button>` : ''}</div></div>`; } }); } div.innerHTML = htmlCierres; }); }
         function eliminarCierreIndividual(key) { sysConfirm("⚠️ ¿Estás seguro de ELIMINAR SÓLO ESTE CIERRE?", () => database.ref(`cierres_historial/${key}`).remove()); }
         function verMovimiento(c) { document.getElementById('mov-fecha').innerText = c.fecha; document.getElementById('mov-total').innerText = `Q ${c.total.toFixed(2)}`; const body = document.getElementById('mov-body'); let htmlMovimiento = ''; let consolidado = {}; c.movimientos.forEach(v => v.det.forEach(i => { if(!consolidado[i.nombre]) consolidado[i.nombre] = { cant: 0, sub: 0 }; consolidado[i.nombre].cant += i.cant; consolidado[i.nombre].sub += (i.cant * i.pre); })); for(let p in consolidado) htmlMovimiento += `<tr class="uppercase text-[11px]"><td class="py-2">${p}</td><td class="text-center">x${consolidado[p].cant}</td><td class="text-right">Q${consolidado[p].sub.toFixed(2)}</td></tr>`; body.innerHTML = htmlMovimiento; document.getElementById('modal-movimiento').classList.remove('hidden'); }
         function cerrarMovimiento() { document.getElementById('modal-movimiento').classList.add('hidden'); }
