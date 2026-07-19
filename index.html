@@ -569,7 +569,6 @@
                 });
         }
 
-        // --- SISTEMA OFFLINE MEJORADO ---
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
             if(navigator.onLine) {
@@ -614,7 +613,6 @@
             
             let acumuladoCapitalGlobal = 0; let acumuladoGananciaGlobal = 0;
 
-            // PARCHE APLICADO: Evita que productos sin nombre congelen la pantalla.
             db.productos.sort((a,b) => String(a.nombre || "").localeCompare(String(b.nombre || ""))).forEach((p) => {
                 const stockActualTienda = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0);
                 const precioAct = getPrecioActual(p); const estaEnOferta = (precioAct !== parseFloat(p.venta));
@@ -625,7 +623,7 @@
                 }
                 if (filtroInv !== '' && !String(p.nombre || "").toLowerCase().includes(filtroInv) && !String(p.codigo || "").toLowerCase().includes(filtroInv)) return;
 
-                // SOLUCIÓN AL INVENTARIO ADMINISTRADOR: AHORA SOLO MUESTRA SI HAY STOCK (> 0)
+                // FIX: El administrador también solo ve los que tienen stock > 0
                 if(stockActualTienda > 0) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
@@ -661,7 +659,6 @@
             cargarCierres(); if(isA) cargarReportePorFechas();
         }
 
-        // --- LÓGICA ESTRICTA DE ANULACIÓN Y ELIMINACIÓN ---
         function anularVenta(idx) { 
             sysConfirm("¿ANULAR ESTA VENTA Y DEVOLVER STOCK?", () => {
                 const v = db.ventas[idx];
@@ -702,7 +699,6 @@
             });
         }
 
-        // --- PROCESAMIENTO DE VENTA FLUIDO ---
         function procesarVenta() { 
             const t = parseFloat(document.getElementById('total-txt').innerText); 
             if(!cart.length || t <= 0) return; 
@@ -741,7 +737,6 @@
                 det: detallesVenta
             };
 
-            // Modificación local instantánea
             db.ventas.unshift(nuevaVenta);
             if(isMaria) db.cMaria = num + 1; else db.cMarisol = num + 1;
 
@@ -753,14 +748,12 @@
                 } 
             });
 
-            // Persistencia en segundo plano
             persistir(); 
             cart = []; 
             document.getElementById('pago-txt').value = ''; 
             renderCart(); 
             render(); 
 
-            // Preguntar si imprime
             setTimeout(() => {
                 sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
                     imprimirTicket(nuevaVenta);
@@ -768,7 +761,6 @@
             }, 100);
         }
 
-        // --- FUNCIONES DE AJUSTE FINANCIERO ---
         function abrirModalAjuste() {
             if(db.rol !== 'ADMIN') return sysAlert("Solo el administrador puede usar esta función.");
             document.getElementById('ajuste-tienda').value = db.tiendaActual;
@@ -815,7 +807,6 @@
             sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${categoria}. El stock no fue modificado.`, "Éxito");
         }
 
-        // --- LÓGICA DE AUTO-LLENADO EN PRODUCTO ---
         document.addEventListener('DOMContentLoaded', () => {
             const pCod = document.getElementById('p-cod');
             if(pCod) {
@@ -859,7 +850,6 @@
             }
         });
 
-        // Guardar Producto (Suma solo a la tienda activa sin borrar la otra)
         function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
@@ -904,7 +894,6 @@
             cerrarModal(); 
         }
 
-        // Eliminar Inventario 
         function eliminarProductoDefinitivo(codigo) {
             const pIdx = db.productos.findIndex(x => x.codigo === codigo);
             if(pIdx === -1) return;
@@ -956,7 +945,6 @@
         
         function imprimirTicketCierre(c) { const pa = document.getElementById('print-area'); pa.className = "ticket-mode"; pa.innerHTML = `<div style="text-align:center;"><b>CIERRE DE CAJA</b><br>${c.tienda.toUpperCase()}<br>${c.fecha}</div><hr style="border:1px dashed #000; margin:8px 0">LIB: Q${c.lib.toFixed(2)}<br>MAQ: Q${c.maq.toFixed(2)}<br>OTR: Q${c.otr.toFixed(2)}<hr style="border:1px dashed #000; margin:8px 0"><div style="text-align:center; font-size:16px"><b>TOTAL: Q${c.total.toFixed(2)}</b></div>`; window.print(); }
 
-        // --- MÓDULO DE REPORTES Y FINANZAS ---
         function cargarReportePorFechas() {
             const fIniStr = document.getElementById('rep-inicio').value; 
             const fFinStr = document.getElementById('rep-fin').value;
@@ -1118,7 +1106,6 @@
             });
         }
 
-        // --- FUNCIONES DE ADMINISTRADOR Y CONFIGURACION ---
         function accesoAdmin() {
             if(db.rol === 'ADMIN') {
                 db.rol = 'VENDEDOR';
@@ -1205,6 +1192,7 @@
             }, 300);
         }
             
+        // ELIMINAR PRUEBAS - Función Original
         function limpiarSoloVentasPrueba() { 
             sysConfirm("¿Seguro que deseas eliminar ventas con productos de 'PRUEBA'?", () => {
                 const tiendaLocal = db.tiendaActual;
@@ -1232,20 +1220,20 @@
             });
         }
 
-        // SOLUCIÓN 2: Descarga estricta (no baja nada que esté en 0)
+        // DESCARGAR EXCEL - Modificado para omitir ceros
         function descargarExcel() {
             if (db.productos.length === 0) return sysAlert("No hay productos para exportar.");
             const productosDeEstaTienda = db.productos.filter(p => { 
-                let stock = db.tiendaActual === 'Variedades Maria' ? p.stock_maria : p.stock_marisol;
-                return parseInt(stock || 0) > 0; 
+                let stockActual = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0);
+                return parseInt(stockActual) > 0; 
             });
-            if (productosDeEstaTienda.length === 0) return sysAlert(`No hay productos con stock en ${db.tiendaActual} para exportar.`);
-            const datosExcel = productosDeEstaTienda.map(p => { return { 'CODIGO': p.codigo, 'PRODUCTO': p.nombre, 'VENTA': p.venta, 'COMPRA': p.costo || 0, 'CATEGORIA': p.categoria || 'OTROS', 'STOCK': db.tiendaActual === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0) }; });
+            if (productosDeEstaTienda.length === 0) return sysAlert(`No hay productos con stock mayor a 0 en ${db.tiendaActual} para exportar.`);
+            const datosExcel = productosDeEstaTienda.map(p => { return { 'CODIGO': p.codigo, 'PRODUCTO': p.nombre, 'VENTA': p.venta, 'COMPRA': p.costo || 0, 'CATEGORIA': p.categoria || 'OTROS', 'STOCK': db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0) }; });
             const worksheet = XLSX.utils.json_to_sheet(datosExcel); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
             const nombreArchivo = `INVENTARIO_${db.tiendaActual.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
         }
 
-        // SOLUCIÓN 3: Menú de carga de Excel con candado anti-ceros
+        // CARGAR EXCEL - Modificado con menú
         function cargarExcel(event) {
             const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
             reader.onload = function(e) {
@@ -1253,9 +1241,33 @@
                     const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'}); const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {raw: false});
                     if(json.length === 0) return sysAlert("Excel vacío."); 
                     
-                    const sumar = confirm("¿Deseas SUMAR las cantidades del Excel al stock que ya tienes en el sistema?\n\n[Aceptar] = SUMAR al stock actual\n[Cancelar] = BORRAR y REEMPLAZAR con el Excel");
-                    ejecutarCargaMasiva(json, sumar);
-                } catch (error) { sysAlert("❌ Error leyendo archivo Excel."); }
+                    document.getElementById('sys-msg-title').innerText = "Cargar Excel";
+                    document.getElementById('sys-msg-text').innerText = "¿Deseas SUMAR las cantidades al inventario actual o REEMPLAZARLO completamente?";
+                    const btnContainer = document.getElementById('sys-msg-buttons');
+                    btnContainer.innerHTML = '';
+
+                    const btnSumar = document.createElement('button');
+                    btnSumar.className = "bg-green-600 hover:bg-green-700 text-white px-2 py-3 rounded-xl font-black flex-1 shadow-lg uppercase text-[10px]";
+                    btnSumar.innerText = "➕ Sumar";
+                    btnSumar.onclick = () => { document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden'); ejecutarCargaMasiva(json, true); };
+
+                    const btnReemplazar = document.createElement('button');
+                    btnReemplazar.className = "bg-red-600 hover:bg-red-700 text-white px-2 py-3 rounded-xl font-black flex-1 shadow-lg uppercase text-[10px]";
+                    btnReemplazar.innerText = "🔄 Reemplazar";
+                    btnReemplazar.onclick = () => { document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden'); ejecutarCargaMasiva(json, false); };
+
+                    const btnCancelar = document.createElement('button');
+                    btnCancelar.className = "bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-3 rounded-xl font-black flex-1 uppercase text-[10px]";
+                    btnCancelar.innerText = "❌ Cancelar";
+                    btnCancelar.onclick = () => { document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden'); };
+
+                    btnContainer.appendChild(btnCancelar);
+                    btnContainer.appendChild(btnReemplazar);
+                    btnContainer.appendChild(btnSumar);
+                    
+                    document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+
+                } catch (error) { sysAlert("❌ Error. Columnas requeridas: CODIGO, PRODUCTO, VENTA, COMPRA, CATEGORIA, STOCK."); }
             }; reader.readAsArrayBuffer(file);
             event.target.value = '';
         }
@@ -1266,7 +1278,7 @@
             const rolLocal = db.rol;
 
             database.ref('tienda_datos').transaction(curr => {
-                if(!curr) curr = { productos: [], ventas: [], tiendaActual: tiendaLocal };
+                if(!curr) return curr;
                 if(!curr.productos) curr.productos = [];
 
                 if (!modoSuma) {
@@ -1279,16 +1291,14 @@
                 json.forEach(row => {
                     let rawStock = row['STOCK'] || row['CANTIDAD'] || row['CANT'] || row['EXISTENCIA'] || 0;
                     let stock = parseInt(rawStock) || 0; 
-                    if (stock <= 0) { ignorados++; return; } // ESTE ES EL CANDADO: Ignora todo lo que sea 0 o esté vacío
+                    if (stock <= 0) { ignorados++; return; } 
                     
-                    let rawCod = row['CODIGO'] || row['CÓDIGO'] || row['SKU'] || '';
-                    let codigo = String(rawCod).trim(); 
-                    let rawNom = row['PRODUCTO'] || row['NOMBRE'] || '';
-                    let nombre = String(rawNom).trim().toUpperCase(); 
+                    let codigo = String(row['CODIGO'] || row['CÓDIGO'] || '').trim(); 
+                    let nombre = String(row['PRODUCTO'] || row['NOMBRE'] || '').trim().toUpperCase(); 
                     if (!codigo || !nombre) return; 
                     
-                    let venta = parseFloat(String(row['VENTA'] || row['PRECIO VENTA'] || '0').replace(/[^0-9.]/g, '')) || 0; 
-                    let costo = parseFloat(String(row['COMPRA'] || row['COSTO'] || '0').replace(/[^0-9.]/g, '')) || 0;
+                    let venta = parseFloat(String(row['VENTA'] || '0').replace(/[^0-9.]/g, '')) || 0; 
+                    let costo = parseFloat(String(row['COMPRA'] || '0').replace(/[^0-9.]/g, '')) || 0;
                     let rawCat = String(row['CATEGORIA'] || 'OTROS').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                     let categoria = rawCat.includes('LIBRE') ? 'LIBRERIA' : (rawCat.includes('MAQUI') ? 'MAQUILLAJE' : (rawCat.includes('FARMA') || rawCat.includes('MEDI') ? 'FARMACIA' : 'OTROS'));
                     
@@ -1306,16 +1316,15 @@
                 });
                 return curr;
             }, (err, comm) => {
-                if(err) {
-                    sysAlert("Error subiendo datos: " + err.message);
-                } else if(comm) {
-                    sysAlert(`✅ ¡Carga Exitosa en ${tiendaLocal}!\nNuevos: ${importados}\nActualizados: ${actualizados}\nIgnorados (Vacíos/Ceros): ${ignorados}`); 
+                if(!err && comm) {
+                    sysAlert(`✅ ¡Carga Exitosa!\nNuevos: ${importados}\nActualizados: ${actualizados}\nIgnorados (Stock 0): ${ignorados}`); 
                 }
             });
         }
 
+        // VACIAR INVENTARIO - Función Original
         function eliminarTodoElInventario() {
-            sysPrompt("⚠️ ATENCIÓN: ¿Quieres BORRAR TODOS LOS PRODUCTOS de la base de datos?\nEscribe la palabra BORRAR para confirmar:", (palabra) => {
+            sysPrompt("⚠️ ATENCIÓN: ¿Quieres BORRAR TODOS LOS PRODUCTOS de la base de datos?\\nEscribe la palabra BORRAR para confirmar:", (palabra) => {
                 if (palabra === "BORRAR") { 
                     database.ref('tienda_datos').transaction(curr => {
                         if(!curr) return curr;
@@ -1357,7 +1366,7 @@
 
         let temporizadorBusqueda; 
         function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
-        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => x.nombre.toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
+        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
         function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
         function addCart(p) { const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); if(sMax <= 0) return sysAlert("SIN STOCK"); const i = cart.findIndex(c => c.codigo === p.codigo); if(i > -1) { if(cart[i].cant < sMax) cart[i].cant++; else sysAlert("MÁXIMO ALCANZADO (" + sMax + ")"); } else { cart.push({...p, cant: 1, cat: (p.categoria || 'OTROS') }); } renderCart(); }
 
@@ -1375,22 +1384,10 @@
 
         function setTab(t) { ['ventas','inventario','historial','cierre','reportes'].forEach(s => { const element = document.getElementById(`section-${s}`); if (element) element.classList.add('hidden'); }); const currentSection = document.getElementById(`section-${t}`); if (currentSection) currentSection.classList.remove('hidden'); ['tab-ventas','tab-inventario','tab-historial','tab-cierre','tab-reportes'].forEach(s => { const tabElement = document.getElementById(s); if (tabElement) tabElement.classList.remove('tab-active'); }); const activeTab = document.getElementById(`tab-${t}`); if (activeTab) activeTab.classList.add('tab-active'); }
         
-        // SOLUCIÓN 5: El botón Tienda ahora abre la ventana emergente gigante correctamente
-        function cambiarTienda() { 
-            document.getElementById('modal-tienda').classList.remove('hidden'); 
-            document.getElementById('modal-tienda').classList.add('flex');
-        }
+        function cambiarTienda() { document.getElementById('modal-tienda').classList.replace('hidden', 'flex'); }
         
-        function seleccionarTienda(nombreTienda, boton) { 
-            document.querySelectorAll('#modal-tienda button').forEach(b => { b.classList.remove('ring-4', 'ring-yellow-400', 'scale-110'); }); 
-            if(boton) boton.classList.add('ring-4', 'ring-yellow-400', 'scale-110'); 
-            db.tiendaActual = nombreTienda; cart = []; renderCart(); render(); 
-            setTimeout(() => { 
-                document.getElementById('modal-tienda').classList.add('hidden'); 
-                document.getElementById('modal-tienda').classList.remove('flex');
-            }, 350); 
-        }
-
+        function seleccionarTienda(nombreTienda, boton) { document.querySelectorAll('#modal-tienda button').forEach(b => { b.classList.remove('ring-4', 'ring-yellow-400', 'scale-110'); }); if(boton) boton.classList.add('ring-4', 'ring-yellow-400', 'scale-110'); db.tiendaActual = nombreTienda; cart = []; renderCart(); render(); setTimeout(() => { document.getElementById('modal-tienda').classList.replace('flex', 'hidden'); }, 350); }
+        
         function calcVuelto() { const t = parseFloat(document.getElementById('total-txt').innerText); const p = parseFloat(document.getElementById('pago-txt').value) || 0; document.getElementById('vuelto-txt').innerText = Math.max(0, p - t).toFixed(2); }
 
         function cargarCierres() { database.ref('cierres_historial').on('value', snap => { const div = document.getElementById('lista-cierres'); if(!div) return; let htmlCierres = ''; const data = snap.val(); if(data) { Object.entries(data).reverse().forEach(([key, c]) => { if(c.tienda === db.tiendaActual) { htmlCierres += `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center font-black italic"><div><p class="text-gray-400 text-[10px]">${c.fecha}</p><p class="text-indigo-900 text-lg">Q${c.total.toFixed(2)}</p></div><div class="flex gap-2"><button onclick='verMovimiento(${JSON.stringify(c)})' class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] px-3">👁️ MOVIMIENTO</button><button onclick='imprimirTicketCierre(${JSON.stringify(c)})' class="bg-gray-100 p-2 rounded-lg">🖨️</button>${db.rol === 'ADMIN' ? `<button onclick="eliminarCierreIndividual('${key}')" class="bg-red-100 text-red-600 p-2 rounded-lg text-lg">🗑️</button>` : ''}</div></div>`; } }); } div.innerHTML = htmlCierres; }); }
@@ -1476,3 +1473,5 @@
     </script>
 </body>
 </html>
+
+               
