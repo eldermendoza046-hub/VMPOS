@@ -660,7 +660,7 @@
             cargarCierres(); if(isA) cargarReportePorFechas();
         }
 
-        function anularVenta(idx) { 
+       function anularVenta(idx) { 
             sysConfirm("¿ANULAR ESTA VENTA Y DEVOLVER STOCK?", () => {
                 const v = db.ventas[idx];
                 if(v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada anteriormente.");
@@ -673,6 +673,11 @@
                     } 
                 }); 
                 v.estado = 'ANULADA'; 
+
+                // Disparo rápido a la nube para sincronización instantánea
+                database.ref('tienda_datos/ventas').set(db.ventas);
+                database.ref('tienda_datos/productos').set(db.productos);
+
                 persistir(); 
                 render(); 
                 sysAlert("Venta anulada. El stock ha regresado al inventario.", "Éxito");
@@ -694,6 +699,11 @@
                 } 
                 
                 db.ventas.splice(idx, 1); 
+
+                // Disparo rápido a la nube para sincronización instantánea
+                database.ref('tienda_datos/ventas').set(db.ventas);
+                database.ref('tienda_datos/productos').set(db.productos);
+
                 persistir(); 
                 render(); 
                 sysAlert("Registro eliminado de la base de datos.", "Éxito");
@@ -748,6 +758,12 @@
                     else db.productos[pIdx].stock_marisol -= item.cant; 
                 } 
             });
+
+            // Disparo rápido a la nube para sincronización instantánea
+            database.ref('tienda_datos/ventas').set(db.ventas);
+            database.ref('tienda_datos/productos').set(db.productos);
+            if(isMaria) database.ref('tienda_datos/cMaria').set(db.cMaria);
+            else database.ref('tienda_datos/cMarisol').set(db.cMarisol);
 
             persistir(); 
             cart = []; 
