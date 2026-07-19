@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA VARIEDADES M&M - V9.50 (INVENTARIO INDEPENDIENTE Y LIMPIO)</title>
+    <title>SISTEMA VARIEDADES M&M - V9.51 (SINC. SEGURA)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
@@ -498,22 +498,7 @@
             document.getElementById('sys-prompt-modal').classList.replace('flex', 'hidden');
         }
 
-        function getPrecioActual(p) {
-            if (p.precio_oferta && p.oferta_inicio && p.oferta_fin) {
-                const hoy = new Date(); hoy.setHours(0,0,0,0);
-                const [iY, iM, iD] = p.oferta_inicio.split('-'); const [fY, fM, fD] = p.oferta_fin.split('-');
-                if (hoy >= new Date(iY, iM-1, iD) && hoy <= new Date(fY, fM-1, fD, 23, 59, 59)) return parseFloat(p.precio_oferta);
-            } return parseFloat(p.venta);
-        }
-
-        function calcularSubtotal(c, cantidad) {
-            let pBase = getPrecioActual(c);
-            if(c.cat === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
-                let blisters = Math.floor(cantidad / c.cant_blister); let sueltas = cantidad % c.cant_blister;
-                return (blisters * c.precio_blister) + (sueltas * pBase);
-            } return pBase * cantidad;
-        }
-
+        // --- SISTEMA DE ARRANQUE Y AUTENTICACIÓN ---
         window.onload = () => {
             const f = new Date(); 
             const primerDia = new Date(f.getFullYear(), f.getMonth(), 1);
@@ -524,8 +509,41 @@
             const backupLocal = localStorage.getItem('backup_pos'); 
             if (backupLocal) { try { db = JSON.parse(backupLocal); db.rol = 'VENDEDOR'; render(); } catch(e) {} }
 
-            document.getElementById('login-modal').style.display = 'flex';
+            // Observador de estado de Firebase
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) {
+                    document.getElementById('login-modal').style.display = 'none';
+                    conectarBaseDeDatos();
+                } else {
+                    document.getElementById('login-modal').style.display = 'flex';
+                }
+            });
 
+            window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
+            window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); });
+            if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
+        };
+
+        function ejecutarLogin() {
+            const u = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pass').value;
+            firebase.auth().signInWithEmailAndPassword(u, p)
+                .then(() => { 
+                    sysAlert("¡Inicio de sesión correcto! Conectando a la base de datos...", "Bienvenido"); 
+                })
+                .catch(() => {
+                    if (!navigator.onLine && localStorage.getItem('backup_pos')) {
+                        document.getElementById('login-modal').style.display = 'none';
+                        sysAlert("⚠️ ESTÁS SIN INTERNET. Se cargará la copia de seguridad local.");
+                        render(); // Forzar render si está offline
+                    } else {
+                        sysAlert("Usuario/contraseña incorrectos o error de red. Intenta de nuevo.", "Error");
+                    }
+                });
+        }
+
+        // --- CONEXIÓN DE DATOS ---
+        function conectarBaseDeDatos() {
             database.ref('tienda_datos').on('value', snap => { 
                 if(snap.val()) { 
                     const rolPrevio = db.rol; 
@@ -545,38 +563,51 @@
                     render(); 
                 } 
             });
+            cargarCierres();
+        }
 
-            window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
-            window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); });
-            if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
-        };
-
-        function ejecutarLogin() {
-            const u = document.getElementById('login-user').value;
-            const p = document.getElementById('login-pass').value;
-            firebase.auth().signInWithEmailAndPassword(u, p)
-                .then(() => { 
-                    document.getElementById('login-modal').style.display = 'none';
-                    sysAlert("¡Inicio de sesión correcto! Base de datos asegurada.", "Bienvenido"); 
-                })
-                .catch(() => {
-                    if (!navigator.onLine && localStorage.getItem('backup_pos')) {
-                        document.getElementById('login-modal').style.display = 'none';
-                        sysAlert("⚠️ ESTÁS SIN INTERNET. Se cargará la copia de seguridad local.");
-                    } else {
-                        sysAlert("Usuario/contraseña incorrectos o error de red. Intenta de nuevo.", "Error");
-                    }
-                });
+        function cargarCierres() { 
+            database.ref('cierres_historial').off(); 
+            database.ref('cierres_historial').on('value', snap => { 
+                const div = document.getElementById('lista-cierres'); 
+                if(!div) return; 
+                let htmlCierres = ''; 
+                const data = snap.val(); 
+                if(data) { 
+                    Object.entries(data).reverse().forEach(([key, c]) => { 
+                        if(c.tienda === db.tiendaActual) { 
+                            htmlCierres += `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center font-black italic"><div><p class="text-gray-400 text-[10px]">${c.fecha}</p><p class="text-indigo-900 text-lg">Q${c.total.toFixed(2)}</p></div><div class="flex gap-2"><button type="button" onclick='verMovimiento(${JSON.stringify(c)})' class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] px-3">👁️ MOVIMIENTO</button><button type="button" onclick='imprimirTicketCierre(${JSON.stringify(c)})' class="bg-gray-100 p-2 rounded-lg">🖨️</button>${db.rol === 'ADMIN' ? `<button type="button" onclick="eliminarCierreIndividual('${key}')" class="bg-red-100 text-red-600 p-2 rounded-lg text-lg">🗑️</button>` : ''}</div></div>`; 
+                        } 
+                    }); 
+                } 
+                div.innerHTML = htmlCierres; 
+            }); 
         }
 
         // --- SISTEMA OFFLINE MEJORADO ---
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
-            if(navigator.onLine) {
+            if(navigator.onLine && firebase.auth().currentUser) {
                 database.ref('tienda_datos').set(db).catch(err => console.log("Se subirá automáticamente cuando haya conexión."));
             } else {
                 console.log("Modo Offline: Datos guardados solo localmente. Sincronizará al volver la red.");
             }
+        }
+        
+        function getPrecioActual(p) {
+            if (p.precio_oferta && p.oferta_inicio && p.oferta_fin) {
+                const hoy = new Date(); hoy.setHours(0,0,0,0);
+                const [iY, iM, iD] = p.oferta_inicio.split('-'); const [fY, fM, fD] = p.oferta_fin.split('-');
+                if (hoy >= new Date(iY, iM-1, iD) && hoy <= new Date(fY, fM-1, fD, 23, 59, 59)) return parseFloat(p.precio_oferta);
+            } return parseFloat(p.venta);
+        }
+
+        function calcularSubtotal(c, cantidad) {
+            let pBase = getPrecioActual(c);
+            if(c.cat === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
+                let blisters = Math.floor(cantidad / c.cant_blister); let sueltas = cantidad % c.cant_blister;
+                return (blisters * c.precio_blister) + (sueltas * pBase);
+            } return pBase * cantidad;
         }
         
         function parseDateSafely(locStr, filtroStr) {
@@ -624,8 +655,7 @@
                 }
                 if (filtroInv !== '' && !p.nombre.toLowerCase().includes(filtroInv) && !p.codigo.toLowerCase().includes(filtroInv)) return;
 
-                // SOLUCIÓN A REVOLTIJO VISUAL: Mostrar si hay stock OR si se está buscando algo.
-                if(stockActualTienda > 0 || filtroInv !== '') {
+                if(stockActualTienda > 0 || (isA && filtroInv !== '')) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
                     htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black">${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
@@ -642,7 +672,6 @@
             const fechaFiltro = document.getElementById('filtro-fecha-ticket') ? document.getElementById('filtro-fecha-ticket').value : '';
 
             db.ventas.forEach((v, idx) => {
-                // FILTRO ESTRICTO DE TIENDA
                 if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
                 
                 if(v.estado !== 'ANULADA' && v.jornada_abierta) {
@@ -650,7 +679,6 @@
                     v.det.forEach(d => { let sub = d.cant * d.pre; if(d.cat==='LIBRERIA' || d.cat==='FARMACIA') tL += sub; else if(d.cat==='MAQUILLAJE') tM += sub; else tO += sub; });
                 }
                 
-                // FILTRO ESTRICTO DE FECHA
                 let mostrarEnHistorial = true;
                 const fechaVentaStr = parseDateSafely(v.fecha, v.fecha_filtro);
                 if (fechaFiltro && fechaVentaStr !== fechaFiltro) mostrarEnHistorial = false;
@@ -659,7 +687,10 @@
             });
 
             hb.innerHTML = htmlHistorial; document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`; document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`; document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`; document.getElementById('c-total').innerText = `Q ${tT.toFixed(2)}`;
-            cargarCierres(); if(isA) cargarReportePorFechas();
+            
+            // Renderiza cierres solo si estás online o si tienes cierres locales, pero no sobrescribe el listener activo sin cuidado.
+            // Para evitar fugas de memoria, cargarCierres se llama una vez en conectarBaseDeDatos.
+            // Aquí podemos dejarlo por seguridad si la UI necesita refresco, pero ya nos encargamos en conectarBaseDeDatos.
         }
 
         // --- LÓGICA ESTRICTA DE ANULACIÓN Y ELIMINACIÓN ---
@@ -742,7 +773,6 @@
                 det: detallesVenta
             };
 
-            // Modificación local instantánea
             db.ventas.unshift(nuevaVenta);
             if(isMaria) db.cMaria = num + 1; else db.cMarisol = num + 1;
 
@@ -754,14 +784,12 @@
                 } 
             });
 
-            // Persistencia en segundo plano
             persistir(); 
             cart = []; 
             document.getElementById('pago-txt').value = ''; 
             renderCart(); 
             render(); 
 
-            // Preguntar si imprime
             setTimeout(() => {
                 sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
                     imprimirTicket(nuevaVenta);
@@ -893,7 +921,7 @@
                 else db.productos[i].stock_marisol = (db.productos[i].stock_marisol || 0) + st;
             } else {
                 db.productos.push({
-                    codigo: c, nombre: n, costo: cost, venta: vent, categoria: cat,
+                    codigo: c, nombre: n, categoria: cat, venta: vent, costo: cost,
                     stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
                     stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
                     precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre
@@ -904,19 +932,16 @@
             cerrarModal(); 
         }
 
-        // SOLUCIÓN: Eliminación 1 a 1 inteligente y local
         function eliminarProductoDefinitivo(codigo) {
-            sysConfirm("¿Eliminar este producto de " + db.tiendaActual + "?", () => {
+            sysConfirm("¿Eliminar stock de este producto en " + db.tiendaActual + "?", () => {
                 const pIdx = db.productos.findIndex(x => x.codigo === codigo);
                 if(pIdx > -1) {
-                    // Borrar el stock solo de la tienda en la que estoy
                     if(db.tiendaActual === 'Variedades Maria') {
                         db.productos[pIdx].stock_maria = 0;
                     } else {
                         db.productos[pIdx].stock_marisol = 0;
                     }
 
-                    // Si el producto ya quedó en 0 en ambas tiendas, sacarlo por completo del catálogo
                     if((db.productos[pIdx].stock_maria || 0) === 0 && (db.productos[pIdx].stock_marisol || 0) === 0) {
                         db.productos.splice(pIdx, 1);
                     }
@@ -1122,7 +1147,6 @@
             });
         }
 
-        // --- FUNCIONES DE ADMINISTRADOR Y CONFIGURACION ---
         function accesoAdmin() {
             if(db.rol === 'ADMIN') {
                 db.rol = 'VENDEDOR';
@@ -1239,31 +1263,25 @@
             const nombreArchivo = `INVENTARIO_${db.tiendaActual.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
         }
 
-        // SOLUCIÓN: VACIAR INVENTARIO 100% LOCAL SIN BLOQUEOS
+        // SOLUCIÓN: VACIAR INVENTARIO LOCALMENTE AL INSTANTE
         function eliminarTodoElInventario() {
             sysPrompt("⚠️ ATENCIÓN: ¿Deseas VACIAR EL INVENTARIO DE " + db.tiendaActual.toUpperCase() + "?\nEscribe BORRAR para confirmar:", (palabra) => {
                 if (palabra === "BORRAR") { 
                     let nuevosProductos = [];
                     
                     db.productos.forEach(p => {
-                        // Ponemos a 0 el stock solo de la tienda actual
                         if (db.tiendaActual === 'Variedades Maria') {
                             p.stock_maria = 0;
                         } else {
                             p.stock_marisol = 0;
                         }
                         
-                        // Si la otra tienda aún tiene stock, conservamos el producto en la lista.
-                        // Si ambas tiendas tienen 0, no lo empujamos a la nueva lista (se borra).
                         if (p.stock_maria > 0 || p.stock_marisol > 0) {
                             nuevosProductos.push(p);
                         }
                     });
                     
-                    // Actualizamos el array local
                     db.productos = nuevosProductos;
-                    
-                    // Guardamos y actualizamos pantalla
                     persistir();
                     render();
                     sysAlert("✅ Inventario de " + db.tiendaActual + " vaciado con éxito.", "Vaciado Completo"); 
@@ -1287,6 +1305,7 @@
             }; reader.readAsArrayBuffer(file);
         }
 
+        // SOLUCIÓN: LECTURA INTELIGENTE DEL EXCEL (LOCAL)
         function ejecutarCargaMasiva(json, modoSuma) {
             let importados = 0; let actualizados = 0; let ignorados = 0;
             const tiendaLocal = db.tiendaActual;
@@ -1298,6 +1317,7 @@
                 let rawStock = row['STOCK'] || row['CANTIDAD'] || row['CANT'] || row['EXISTENCIA'] || 0;
                 let stock = parseInt(rawStock) || 0; 
                 
+                // Si el stock es 0, lo ignoramos para no llenar la base de datos de ceros
                 if (stock <= 0) { ignorados++; return; } 
                 
                 let rawCod = row['CODIGO'] || row['CÓDIGO'] || row['SKU'] || row['BARCODE'] || '';
