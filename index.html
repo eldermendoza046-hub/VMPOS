@@ -1233,7 +1233,7 @@
             const nombreArchivo = `INVENTARIO_${db.tiendaActual.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
         }
 
-        // CARGAR EXCEL - Modificado con menú
+       // CARGAR EXCEL - Modificado con menú funcional
         function cargarExcel(event) {
             const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
             reader.onload = function(e) {
