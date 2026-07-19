@@ -1277,49 +1277,71 @@
             const tiendaLocal = db.tiendaActual;
             const rolLocal = db.rol;
 
-            database.ref('tienda_datos').transaction(curr => {
-                if(!curr) return curr;
-                if(!curr.productos) curr.productos = [];
+            if(!db.productos) db.productos = [];
 
-                if (!modoSuma) {
-                    curr.productos.forEach(p => {
-                        if (tiendaLocal === 'Variedades Maria') p.stock_maria = 0;
-                        else p.stock_marisol = 0;
-                    });
-                }
-
-                json.forEach(row => {
-                    let rawStock = row['STOCK'] || row['CANTIDAD'] || row['CANT'] || row['EXISTENCIA'] || 0;
-                    let stock = parseInt(rawStock) || 0; 
-                    if (stock <= 0) { ignorados++; return; } 
-                    
-                    let codigo = String(row['CODIGO'] || row['CÓDIGO'] || '').trim(); 
-                    let nombre = String(row['PRODUCTO'] || row['NOMBRE'] || '').trim().toUpperCase(); 
-                    if (!codigo || !nombre) return; 
-                    
-                    let venta = parseFloat(String(row['VENTA'] || '0').replace(/[^0-9.]/g, '')) || 0; 
-                    let costo = parseFloat(String(row['COMPRA'] || '0').replace(/[^0-9.]/g, '')) || 0;
-                    let rawCat = String(row['CATEGORIA'] || 'OTROS').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                    let categoria = rawCat.includes('LIBRE') ? 'LIBRERIA' : (rawCat.includes('MAQUI') ? 'MAQUILLAJE' : (rawCat.includes('FARMA') || rawCat.includes('MEDI') ? 'FARMACIA' : 'OTROS'));
-                    
-                    const pIdx = curr.productos.findIndex(p => String(p.codigo) === codigo);
-                    if (pIdx > -1) {
-                        curr.productos[pIdx].nombre = nombre; curr.productos[pIdx].categoria = categoria; curr.productos[pIdx].venta = venta; 
-                        if(rolLocal === 'ADMIN') curr.productos[pIdx].costo = costo;
-                        if (tiendaLocal === 'Variedades Maria') curr.productos[pIdx].stock_maria = modoSuma ? (parseInt(curr.productos[pIdx].stock_maria || 0) + stock) : stock; 
-                        else curr.productos[pIdx].stock_marisol = modoSuma ? (parseInt(curr.productos[pIdx].stock_marisol || 0) + stock) : stock; 
-                        actualizados++;
-                    } else { 
-                        curr.productos.push({ codigo: codigo, nombre: nombre, categoria: categoria, venta: venta, costo: costo, stock_maria: tiendaLocal === 'Variedades Maria' ? stock : 0, stock_marisol: tiendaLocal === 'Marisol' ? stock : 0 }); 
-                        importados++; 
-                    }
+            // 1. Si eligió REEMPLAZAR, vaciamos el stock actual de esa tienda primero
+            if (!modoSuma) {
+                db.productos.forEach(p => {
+                    if (tiendaLocal === 'Variedades Maria') p.stock_maria = 0;
+                    else p.stock_marisol = 0;
                 });
-                return curr;
-            }, (err, comm) => {
-                if(!err && comm) {
-                    sysAlert(`✅ ¡Carga Exitosa!\nNuevos: ${importados}\nActualizados: ${actualizados}\nIgnorados (Stock 0): ${ignorados}`); 
+            }
+
+            // 2. Leemos el Excel fila por fila
+            json.forEach(row => {
+                let rawStock = row['STOCK'] || row['CANTIDAD'] || row['CANT'] || row['EXISTENCIA'] || 0;
+                let stock = parseInt(rawStock) || 0; 
+                
+                // Candado anti-basura
+                if (stock <= 0) { ignorados++; return; } 
+                
+                let rawCod = row['CODIGO'] || row['CÓDIGO'] || row['SKU'] || '';
+                let codigo = String(rawCod).trim(); 
+                let rawNom = row['PRODUCTO'] || row['NOMBRE'] || '';
+                let nombre = String(rawNom).trim().toUpperCase(); 
+                
+                if (!codigo || !nombre) return; 
+                
+                let venta = parseFloat(String(row['VENTA'] || row['PRECIO VENTA'] || '0').replace(/[^0-9.]/g, '')) || 0; 
+                let costo = parseFloat(String(row['COMPRA'] || row['COSTO'] || '0').replace(/[^0-9.]/g, '')) || 0;
+                let rawCat = String(row['CATEGORIA'] || 'OTROS').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                let categoria = rawCat.includes('LIBRE') ? 'LIBRERIA' : (rawCat.includes('MAQUI') ? 'MAQUILLAJE' : (rawCat.includes('FARMA') || rawCat.includes('MEDI') ? 'FARMACIA' : 'OTROS'));
+                
+                const pIdx = db.productos.findIndex(p => String(p.codigo) === codigo);
+                if (pIdx > -1) {
+                    db.productos[pIdx].nombre = nombre; 
+                    db.productos[pIdx].categoria = categoria; 
+                    db.productos[pIdx].venta = venta; 
+                    if(rolLocal === 'ADMIN') db.productos[pIdx].costo = costo;
+                    
+                    if (tiendaLocal === 'Variedades Maria') {
+                        db.productos[pIdx].stock_maria = modoSuma ? (parseInt(db.productos[pIdx].stock_maria || 0) + stock) : stock; 
+                    } else {
+                        db.productos[pIdx].stock_marisol = modoSuma ? (parseInt(db.productos[pIdx].stock_marisol || 0) + stock) : stock; 
+                    }
+                    actualizados++;
+                } else { 
+                    db.productos.push({ 
+                        codigo: codigo, 
+                        nombre: nombre, 
+                        categoria: categoria, 
+                        venta: venta, 
+                        costo: costo, 
+                        stock_maria: tiendaLocal === 'Variedades Maria' ? stock : 0, 
+                        stock_marisol: tiendaLocal === 'Marisol' ? stock : 0 
+                    }); 
+                    importados++; 
                 }
             });
+
+            // 3. GUARDADO INSTANTÁNEO 
+            database.ref('tienda_datos/productos').set(db.productos);
+            persistir();
+            render();
+            
+            // 4. Aviso de éxito en pantalla
+            sysAlert(`✅ ¡Carga Exitosa en ${tiendaLocal}!\nNuevos: ${importados}\nActualizados: ${actualizados}\nIgnorados (Vacíos/Ceros): ${ignorados}`); 
+            document.getElementById('input-excel').value = '';
         }
 
        function eliminarTodoElInventario() {
