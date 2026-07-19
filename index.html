@@ -624,8 +624,7 @@
                 }
                 if (filtroInv !== '' && !p.nombre.toLowerCase().includes(filtroInv) && !p.codigo.toLowerCase().includes(filtroInv)) return;
 
-                // SOLUCIÓN 1: Eliminado el "|| isA" para que no revuelva inventarios. 
-                // Ahora SOLO muestra en la tabla lo que realmente tiene stock > 0 en la tienda actual.
+                // SOLUCIÓN AL INVENTARIO ADMINISTRADOR: AHORA SOLO MUESTRA SI HAY STOCK (> 0)
                 if(stockActualTienda > 0) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
@@ -1234,35 +1233,36 @@
             });
         }
 
-        // --- SOLUCIÓN 2: DESCARGA DE EXCEL ESTRICTA ---
+        // SOLUCIÓN 2: Descarga exacta (Ceros excluidos)
         function descargarExcel() {
             if (db.productos.length === 0) return sysAlert("No hay productos para exportar.");
             const productosDeEstaTienda = db.productos.filter(p => { 
-                let s = db.tiendaActual === 'Variedades Maria' ? p.stock_maria : p.stock_marisol;
-                return Number(s) > 0; // Obliga a que sean mayores a 0
+                let stock = db.tiendaActual === 'Variedades Maria' ? p.stock_maria : p.stock_marisol;
+                return parseInt(stock || 0) > 0; 
             });
-            if (productosDeEstaTienda.length === 0) return sysAlert(`No hay productos con stock en ${db.tiendaActual} para exportar.`);
-            
-            const datosExcel = productosDeEstaTienda.map(p => { 
-                return { 'CODIGO': p.codigo, 'PRODUCTO': p.nombre, 'VENTA': p.venta, 'COMPRA': p.costo || 0, 'CATEGORIA': p.categoria || 'OTROS', 'STOCK': db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0) }; 
-            });
+            if (productosDeEstaTienda.length === 0) return sysAlert(`No hay productos con stock mayor a 0 en ${db.tiendaActual} para exportar.`);
+            const datosExcel = productosDeEstaTienda.map(p => { return { 'CODIGO': p.codigo, 'PRODUCTO': p.nombre, 'VENTA': p.venta, 'COMPRA': p.costo || 0, 'CATEGORIA': p.categoria || 'OTROS', 'STOCK': db.tiendaActual === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0) }; });
             const worksheet = XLSX.utils.json_to_sheet(datosExcel); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
             const nombreArchivo = `INVENTARIO_${db.tiendaActual.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
         }
 
-        // --- SOLUCIÓN 3: CARGA DE EXCEL MEJORADA Y MENÚ FUNCIONAL ---
+        // SOLUCIÓN 3: Subida con menú funcionando y candado anti-ceros
         function cargarExcel(event) {
-            const file = event.target.files[0]; 
-            if (!file) return; 
+            const file = event.target.files[0];
+            if (!file) return;
             const reader = new FileReader();
-            
+
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result); 
-                    const workbook = XLSX.read(data, {type: 'array'}); 
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
                     const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {raw: false});
-                    if(json.length === 0) return sysAlert("Excel vacío."); 
-                    
+
+                    if(json.length === 0) {
+                        document.getElementById('input-excel').value = '';
+                        return sysAlert("El Excel está vacío.");
+                    }
+
                     document.getElementById('sys-msg-title').innerText = "Cargar Excel";
                     document.getElementById('sys-msg-text').innerText = "¿Deseas SUMAR las cantidades al inventario actual o REEMPLAZARLO completamente?";
                     const btnContainer = document.getElementById('sys-msg-buttons');
@@ -1289,10 +1289,10 @@
                     
                     document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
 
-                } catch (error) { sysAlert("❌ Error leyendo archivo. Revisa que el formato sea correcto."); }
-            }; 
+                } catch (error) { sysAlert("❌ Error leyendo archivo. Revisa el formato."); }
+            };
             reader.readAsArrayBuffer(file);
-            event.target.value = ''; // Permite subir el mismo archivo otra vez si es necesario
+            event.target.value = ''; 
         }
 
         function ejecutarCargaMasiva(json, modoSuma) {
@@ -1300,62 +1300,66 @@
             const tiendaLocal = db.tiendaActual;
             const rolLocal = db.rol;
 
-            if(!db.productos) db.productos = [];
+            database.ref('tienda_datos').transaction(curr => {
+                if(!curr) { curr = { productos: [], ventas: [], tiendaActual: tiendaLocal }; }
+                if(!curr.productos) curr.productos = [];
 
-            // Si eligen REEMPLAZAR, el stock actual de ESA TIENDA se pone en 0 primero
-            if (!modoSuma) {
-                db.productos.forEach(p => {
-                    if (tiendaLocal === 'Variedades Maria') p.stock_maria = 0;
-                    else p.stock_marisol = 0;
-                });
-            }
+                if (!modoSuma) {
+                    curr.productos.forEach(p => {
+                        if (tiendaLocal === 'Variedades Maria') p.stock_maria = 0;
+                        else p.stock_marisol = 0;
+                    });
+                }
 
-            json.forEach(row => {
-                let stock = parseInt(row['STOCK']) || 0; 
-                
-                // SEGURO ESTRICTO: Si el stock es 0, menor a 0 o está vacío, se ignora por completo.
-                if (stock <= 0) { ignorados++; return; } 
-                
-                let codigo = String(row['CODIGO'] || row['CÓDIGO'] || '').trim(); 
-                let nombre = String(row['PRODUCTO'] || '').trim().toUpperCase(); 
-                if (!codigo || !nombre) return; 
-                
-                let venta = parseFloat(String(row['VENTA'] || '0').replace(/[^0-9.]/g, '')) || 0; 
-                let costo = parseFloat(String(row['COMPRA'] || '0').replace(/[^0-9.]/g, '')) || 0;
-                let rawCat = String(row['CATEGORIA'] || 'OTROS').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                let categoria = rawCat.includes('LIBRE') ? 'LIBRERIA' : (rawCat.includes('MAQUI') ? 'MAQUILLAJE' : (rawCat.includes('FARMA') || rawCat.includes('MEDI') ? 'FARMACIA' : 'OTROS'));
-                
-                const pIdx = db.productos.findIndex(p => String(p.codigo) === codigo);
-                if (pIdx > -1) {
-                    db.productos[pIdx].nombre = nombre; 
-                    db.productos[pIdx].categoria = categoria; 
-                    db.productos[pIdx].venta = venta; 
-                    if(rolLocal === 'ADMIN') db.productos[pIdx].costo = costo;
+                json.forEach(row => {
+                    let rawStock = row['STOCK'] || row['CANTIDAD'] || row['CANT'] || row['EXISTENCIA'] || 0;
+                    let stock = parseInt(rawStock) || 0; 
+                    if (stock <= 0) { ignorados++; return; } 
                     
-                    if (tiendaLocal === 'Variedades Maria') {
-                        db.productos[pIdx].stock_maria = modoSuma ? (Number(db.productos[pIdx].stock_maria) || 0) + stock : stock; 
-                    } else {
-                        db.productos[pIdx].stock_marisol = modoSuma ? (Number(db.productos[pIdx].stock_marisol) || 0) + stock : stock; 
+                    let codigo = String(row['CODIGO'] || row['CÓDIGO'] || row['SKU'] || '').trim(); 
+                    let nombre = String(row['PRODUCTO'] || row['NOMBRE'] || '').trim().toUpperCase(); 
+                    if (!codigo || !nombre) return; 
+                    
+                    let venta = parseFloat(String(row['VENTA'] || row['PRECIO VENTA'] || '0').replace(/[^0-9.]/g, '')) || 0; 
+                    let costo = parseFloat(String(row['COMPRA'] || row['COSTO'] || '0').replace(/[^0-9.]/g, '')) || 0;
+                    let rawCat = String(row['CATEGORIA'] || 'OTROS').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    let categoria = rawCat.includes('LIBRE') ? 'LIBRERIA' : (rawCat.includes('MAQUI') ? 'MAQUILLAJE' : (rawCat.includes('FARMA') || rawCat.includes('MEDI') ? 'FARMACIA' : 'OTROS'));
+                    
+                    const pIdx = curr.productos.findIndex(p => String(p.codigo) === codigo);
+                    if (pIdx > -1) {
+                        curr.productos[pIdx].nombre = nombre; 
+                        curr.productos[pIdx].categoria = categoria; 
+                        curr.productos[pIdx].venta = venta; 
+                        if(rolLocal === 'ADMIN') curr.productos[pIdx].costo = costo;
+                        
+                        if (tiendaLocal === 'Variedades Maria') {
+                            curr.productos[pIdx].stock_maria = modoSuma ? (parseInt(curr.productos[pIdx].stock_maria || 0) + stock) : stock; 
+                        } else {
+                            curr.productos[pIdx].stock_marisol = modoSuma ? (parseInt(curr.productos[pIdx].stock_marisol || 0) + stock) : stock; 
+                        }
+                        actualizados++;
+                    } else { 
+                        curr.productos.push({ 
+                            codigo: codigo, 
+                            nombre: nombre, 
+                            categoria: categoria, 
+                            venta: venta, 
+                            costo: costo, 
+                            stock_maria: tiendaLocal === 'Variedades Maria' ? stock : 0, 
+                            stock_marisol: tiendaLocal === 'Marisol' ? stock : 0 
+                        }); 
+                        importados++; 
                     }
-                    actualizados++;
-                } else { 
-                    db.productos.push({ 
-                        codigo: codigo, 
-                        nombre: nombre, 
-                        categoria: categoria, 
-                        venta: venta, 
-                        costo: costo, 
-                        stock_maria: tiendaLocal === 'Variedades Maria' ? stock : 0, 
-                        stock_marisol: tiendaLocal === 'Marisol' ? stock : 0 
-                    }); 
-                    importados++; 
+                });
+                return curr;
+            }, (err, comm) => {
+                if(err) {
+                    sysAlert("Error subiendo datos: " + err.message);
+                } else if(comm) {
+                    sysAlert(`✅ ¡Carga Exitosa en ${tiendaLocal}!\nNuevos: ${importados}\nActualizados: ${actualizados}\nIgnorados (Vacíos/Ceros): ${ignorados}`); 
+                    document.getElementById('input-excel').value = '';
                 }
             });
-
-            // Guardado seguro local y sincronización
-            persistir();
-            render();
-            sysAlert(`✅ Carga finalizada en ${tiendaLocal}.\nNuevos: ${importados}\nActualizados: ${actualizados}\nOmitidos (Stock 0): ${ignorados}`); 
         }
 
         function eliminarTodoElInventario() {
