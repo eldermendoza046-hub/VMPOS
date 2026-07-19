@@ -1322,34 +1322,31 @@
             });
         }
 
-        function eliminarTodoElInventario() {
+       function eliminarTodoElInventario() {
             sysPrompt("⚠️ ATENCIÓN: ¿Quieres VACIAR EL INVENTARIO DE " + db.tiendaActual.toUpperCase() + "?\nEscribe la palabra BORRAR para confirmar:", (palabra) => {
-                if (palabra === "BORRAR") { 
+                if (palabra && palabra.trim().toUpperCase() === "BORRAR") { 
                     const tiendaLocal = db.tiendaActual;
+                    let productosRestantes = [];
                     
-                    database.ref('tienda_datos').transaction(curr => {
-                        if(!curr || !curr.productos) return curr;
+                    db.productos.forEach(p => {
+                        if (tiendaLocal === 'Variedades Maria') {
+                            p.stock_maria = 0;
+                        } else {
+                            p.stock_marisol = 0;
+                        }
                         
-                        let productosRestantes = [];
-                        curr.productos.forEach(p => {
-                            if (tiendaLocal === 'Variedades Maria') {
-                                p.stock_maria = 0;
-                            } else {
-                                p.stock_marisol = 0;
-                            }
-                            
-                            if ((p.stock_maria || 0) > 0 || (p.stock_marisol || 0) > 0) {
-                                productosRestantes.push(p);
-                            }
-                        });
-                        
-                        curr.productos = productosRestantes;
-                        return curr;
-                    }, (err, comm) => {
-                        if(comm) sysAlert("✅ Inventario de " + tiendaLocal + " eliminado por completo."); 
+                        if ((p.stock_maria || 0) > 0 || (p.stock_marisol || 0) > 0) {
+                            productosRestantes.push(p);
+                        }
                     });
+                    
+                    db.productos = productosRestantes;
+                    persistir(); 
+                    render();    
+                    
+                    sysAlert("✅ Inventario de " + tiendaLocal + " vaciado con éxito."); 
                 } else { 
-                    sysAlert("Operación cancelada."); 
+                    sysAlert("Operación cancelada. (Escribiste mal la palabra BORRAR)."); 
                 }
             }, "Vaciar Inventario");
         }
