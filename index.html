@@ -533,10 +533,11 @@
 
             document.getElementById('login-modal').style.display = 'flex';
 
-            window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
-            window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); });
+                        window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
+            window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); });
             if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
         };
+
 
         function ejecutarLogin() {
             const u = document.getElementById('login-user').value;
