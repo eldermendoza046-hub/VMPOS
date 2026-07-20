@@ -399,6 +399,10 @@
                 </select>
                 <input type="text" id="p-cod" placeholder="Código" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
                 <input type="text" id="p-nom" placeholder="Nombre" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
+                
+                <!-- CAMPO AGREGADO PARA LA IMAGEN -->
+                <input type="text" id="p-imagen" placeholder="URL de la Imagen (Opcional)" class="w-full p-3 border-2 rounded-xl outline-none focus:border-indigo-500 text-xs">
+                
                 <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
                 <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
                 
@@ -624,11 +628,14 @@
                 }
                 if (filtroInv !== '' && !String(p.nombre || "").toLowerCase().includes(filtroInv) && !String(p.codigo || "").toLowerCase().includes(filtroInv)) return;
 
-                // FIX: El administrador también solo ve los que tienen stock > 0
                 if(stockActualTienda > 0) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
-                    htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black">${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
+                    
+                    // LÓGICA DE IMAGEN AÑADIDA
+                    const imgThumb = p.imagen ? `<img src="${p.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
+
+                    htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black"><div class="flex items-center gap-2">${imgThumb}<div>${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span></div></div></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
                 }
             });
 
@@ -832,6 +839,7 @@
                     const prod = db.productos.find(p => p.codigo === code);
                     if(prod) {
                         document.getElementById('p-nom').value = prod.nombre;
+                        document.getElementById('p-imagen').value = prod.imagen || ''; // LÓGICA DE IMAGEN
                         document.getElementById('p-costo').value = prod.costo || 0;
                         document.getElementById('p-venta').value = prod.venta || 0;
                         document.getElementById('p-cat').value = prod.categoria || 'OTROS';
@@ -870,6 +878,7 @@
         function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
+            const img = document.getElementById('p-imagen').value.trim(); // LÓGICA DE IMAGEN
             const cost = parseFloat(document.getElementById('p-costo').value) || 0;
             const vent = parseFloat(document.getElementById('p-venta').value) || 0;
             const st = parseInt(document.getElementById('p-stock').value) || 0;
@@ -887,6 +896,7 @@
             
             if(i > -1) {
                 db.productos[i].nombre = n;
+                db.productos[i].imagen = img; // LÓGICA DE IMAGEN
                 db.productos[i].categoria = cat;
                 if(db.rol === 'ADMIN') db.productos[i].costo = cost;
                 db.productos[i].venta = vent;
@@ -900,7 +910,7 @@
                 else db.productos[i].stock_marisol = (parseInt(db.productos[i].stock_marisol) || 0) + st;
             } else {
                 db.productos.push({
-                    codigo: c, nombre: n, costo: cost, venta: vent, categoria: cat,
+                    codigo: c, nombre: n, imagen: img, costo: cost, venta: vent, categoria: cat, // LÓGICA DE IMAGEN
                     stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
                     stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
                     precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre
@@ -934,6 +944,7 @@
             const p = db.productos.find(x => x.codigo === c); 
             document.getElementById('p-cod').value = p.codigo; 
             document.getElementById('p-nom').value = p.nombre; 
+            document.getElementById('p-imagen').value = p.imagen || ''; // LÓGICA DE IMAGEN
             document.getElementById('p-costo').value = p.costo || 0; 
             document.getElementById('p-venta').value = p.venta; 
             document.getElementById('p-stock').value = 0; 
@@ -1381,7 +1392,7 @@
                     
                     db.productos = productosRestantes;
                     persistir(); 
-                    render();    
+                    render();   
                     
                     sysAlert("✅ Inventario de " + tiendaLocal + " vaciado con éxito."); 
                 } else { 
@@ -1419,7 +1430,7 @@
 
         let temporizadorBusqueda; 
         function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
-        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
+        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q) || String(x.codigo || "").toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); const miniImg = x.imagen ? `<img src="${x.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-[10px]">📷</span>`; htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><div class="flex items-center gap-2">${miniImg} <span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span></div><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
         function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
         function addCart(p) { const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); if(sMax <= 0) return sysAlert("SIN STOCK"); const i = cart.findIndex(c => c.codigo === p.codigo); if(i > -1) { if(cart[i].cant < sMax) cart[i].cant++; else sysAlert("MÁXIMO ALCANZADO (" + sMax + ")"); } else { cart.push({...p, cant: 1, cat: (p.categoria || 'OTROS') }); } renderCart(); }
 
@@ -1427,7 +1438,8 @@
             const b = document.getElementById('cart-body'); let htmlCarrito = ''; let t = 0; 
             cart.forEach((c, i) => { 
                 let subtotalItem = calcularSubtotal(c, c.cant); t += subtotalItem; const medIcon = c.cat === 'FARMACIA' ? '💊 ' : '';
-                htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3">${medIcon}${c.nombre}</td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right">Q${subtotalItem.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
+                const miniImgCart = c.imagen ? `<img src="${c.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
+                htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3 flex items-center gap-2">${miniImgCart} <span>${medIcon}${c.nombre}</span></td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right">Q${subtotalItem.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
             }); 
             b.innerHTML = htmlCarrito; document.getElementById('total-txt').innerText = t.toFixed(2); calcVuelto(); 
         }
@@ -1450,6 +1462,7 @@
         
         function cerrarModal() { 
             document.getElementById('modal').classList.add('hidden'); document.getElementById('p-cod').value = ''; document.getElementById('p-nom').value = ''; 
+            document.getElementById('p-imagen').value = ''; // LÓGICA DE IMAGEN
             document.getElementById('p-costo').value = ''; document.getElementById('p-venta').value = ''; document.getElementById('p-stock').value = ''; document.getElementById('p-cat').value = 'LIBRERIA'; 
             document.getElementById('p-oferta-precio').value = ''; document.getElementById('p-oferta-inicio').value = ''; document.getElementById('p-oferta-fin').value = '';
             document.getElementById('p-farma-cant').value = ''; document.getElementById('p-farma-precio').value = ''; document.getElementById('div-farma-modal').classList.add('hidden');
@@ -1526,5 +1539,3 @@
     </script>
 </body>
 </html>
-
-               
