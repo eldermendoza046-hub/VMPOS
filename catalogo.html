@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Virtual - Variedades M&M</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+
+    <script>
+        // Conexión a tu base de datos existente
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbO2-MazSUKp-sXo9Xh7f7dg4NFpSkH70",
+            authDomain: "variedadesmm-38061.firebaseapp.com",
+            databaseURL: "https://variedadesmm-38061-default-rtdb.firebaseio.com", 
+            projectId: "variedadesmm-38061",
+            storageBucket: "variedadesmm-38061.firebasestorage.app",
+            messagingSenderId: "670155683804",
+            appId: "1:670155683804:web:96b1c633a2da387cb5c119"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+    <!-- Encabezado de la tienda -->
+    <header class="bg-pink-600 text-white p-6 shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-black italic tracking-tighter">VARIEDADES M&M</h1>
+                <p class="text-sm font-medium text-pink-200 mb-3">Catálogo de Productos y Ofertas</p>
+                
+                <!-- REDES SOCIALES -->
+                <div class="flex justify-center md:justify-start gap-3">
+                    <a href="https://www.facebook.com/share/1KAyvuxa62/?mibextid=wwXIfr" target="_blank" class="bg-white/20 hover:bg-white/40 p-2.5 rounded-full transition-all flex items-center justify-center shadow-sm hover:scale-110" title="Síguenos en Facebook">
+                        <!-- Icono SVG de Facebook -->
+                        <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    </a>
+                    <a href="https://www.tiktok.com/@variedadesmaria1" target="_blank" class="bg-white/20 hover:bg-white/40 p-2.5 rounded-full transition-all flex items-center justify-center shadow-sm hover:scale-110" title="Síguenos en TikTok">
+                        <!-- Icono SVG de TikTok -->
+                        <svg class="w-4 h-4 fill-white" viewBox="0 0 448 512"><path d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z"/></svg>
+                    </a>
+                </div>
+            </div>
+            <div class="w-full md:w-96 relative mt-2 md:mt-0">
+                <input type="text" id="buscador" onkeyup="renderizarCatalogo()" placeholder="🔍 Buscar producto..." 
+                       class="w-full py-3 px-5 rounded-full text-gray-800 font-bold outline-none shadow-inner focus:ring-2 focus:ring-pink-300">
+            </div>
+        </div>
+    </header>
+
+    <!-- Filtros de Categoría -->
+    <div class="bg-white border-b shadow-sm overflow-x-auto whitespace-nowrap px-4 py-3 text-center sticky top-[130px] md:top-[96px] z-40">
+        <button onclick="filtrarCat('TODOS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-pink-600 text-white rounded-full font-bold text-xs uppercase shadow">Todos</button>
+        <button onclick="filtrarCat('MAQUILLAJE')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Maquillaje</button>
+        <button onclick="filtrarCat('LIBRERIA')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Librería</button>
+        <button onclick="filtrarCat('FARMACIA')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Farmacia</button>
+        <button onclick="filtrarCat('OTROS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Otros</button>
+    </div>
+
+    <!-- Pantalla de Carga y Errores -->
+    <div id="loader" class="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div id="spinner" class="animate-spin rounded-full h-12 w-12 border-b-4 border-pink-600 mb-4"></div>
+        <p id="loader-text" class="text-gray-500 font-bold animate-pulse">Conectado. Obteniendo productos...</p>
+    </div>
+
+    <!-- Cuadrícula de Productos -->
+    <main class="max-w-6xl mx-auto p-4 sm:p-6">
+        <div id="catalogo-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            <!-- Productos inyectados por JS -->
+        </div>
+    </main>
+
+    <script>
+        let productosGlobales = [];
+        let categoriaActiva = 'TODOS';
+        
+        // Número de WhatsApp
+        const NUMERO_WHATSAPP = "50238301196"; 
+
+        // 1. Iniciar sesión de forma invisible
+        auth.signInAnonymously().then(() => {
+            console.log("Conectado como cliente anónimo");
+            cargarDatos();
+        }).catch((error) => {
+            console.error("Error conectando:", error);
+            document.getElementById('spinner').classList.add('hidden');
+            document.getElementById('loader-text').innerHTML = `
+                <span class="text-red-500 font-black">Error de conexión</span><br><br>
+                <span class="text-xs text-gray-400">Por favor, revisa tu conexión a internet.</span>
+            `;
+            document.getElementById('loader-text').classList.remove('animate-pulse');
+        });
+
+        // 2. Descargar los productos
+        function cargarDatos() {
+            database.ref('tienda_datos/productos').on('value', (snap) => {
+                const data = snap.val();
+                if (data) {
+                    productosGlobales = Array.isArray(data) ? data : Object.values(data);
+                    document.getElementById('loader').classList.add('hidden');
+                    renderizarCatalogo();
+                } else {
+                    document.getElementById('spinner').classList.add('hidden');
+                    document.getElementById('loader-text').innerText = "El catálogo está vacío. Agrega productos desde el sistema POS.";
+                    document.getElementById('loader-text').classList.remove('animate-pulse');
+                }
+            });
+        }
+
+        function filtrarCat(cat) {
+            categoriaActiva = cat;
+            document.querySelectorAll('.filtro-btn').forEach(btn => {
+                btn.className = "filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition";
+            });
+            event.target.className = "filtro-btn inline-block mx-1 px-4 py-2 bg-pink-600 text-white rounded-full font-bold text-xs uppercase shadow";
+            renderizarCatalogo();
+        }
+
+        // 3. Revisar si hay oferta activa
+        function obtenerPrecioOferta(p) {
+            if (p.precio_oferta && p.oferta_inicio && p.oferta_fin) {
+                const hoy = new Date(); 
+                hoy.setHours(0,0,0,0);
+                const [iY, iM, iD] = p.oferta_inicio.split('-'); 
+                const [fY, fM, fD] = p.oferta_fin.split('-');
+                
+                const inicio = new Date(iY, iM-1, iD);
+                const fin = new Date(fY, fM-1, fD, 23, 59, 59);
+                
+                if (hoy >= inicio && hoy <= fin) {
+                    return parseFloat(p.precio_oferta);
+                }
+            }
+            return null;
+        }
+
+        function pedirPorWhatsApp(nombre, precio) {
+            const mensaje = encodeURIComponent(`¡Hola Variedades M&M! Me interesa comprar el producto: *${nombre}* que vi en el catálogo a Q${precio}.`);
+            window.open(`https://wa.me/${NUMERO_WHATSAPP}?text=${mensaje}`, '_blank');
+        }
+
+        // 4. Dibujar los productos (OPTIMIZADO PARA NO CONGELAR)
+        function renderizarCatalogo() {
+            const contenedor = document.getElementById('catalogo-grid');
+            const busqueda = document.getElementById('buscador').value.toLowerCase();
+            
+            let htmlHTML = ''; // Almacena el HTML temporalmente
+            let mostrados = 0;
+
+            productosGlobales.forEach(p => {
+                if (!p) return; // Por si hay espacios vacíos en la base de datos
+
+                // Filtrar solo los que tienen stock global mayor a 0
+                const stockTotal = (p.stock_maria || 0) + (p.stock_marisol || 0);
+                if (stockTotal <= 0) return; // Si no hay en ninguna tienda, no se muestra al cliente
+
+                // Filtro de categoría
+                if (categoriaActiva !== 'TODOS' && p.categoria !== categoriaActiva) return;
+
+                // Filtro de búsqueda
+                if (busqueda && !p.nombre.toLowerCase().includes(busqueda)) return;
+
+                mostrados++;
+
+                // Cálculos de oferta
+                const precioOferta = obtenerPrecioOferta(p);
+                const hayOferta = precioOferta !== null;
+                const precioFinal = hayOferta ? precioOferta : p.venta;
+
+                // Si no tiene imagen, se pone un cuadrado bonito con la inicial
+                const urlImagen = p.imagen ? p.imagen : `https://placehold.co/400x400/fbcfe8/db2777?text=${p.nombre.charAt(0)}`;
+
+                // Agregamos al "bloque maestro"
+                htmlHTML += `
+                    <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all border border-gray-100 overflow-hidden flex flex-col group">
+                        <div class="relative h-40 sm:h-48 w-full bg-gray-50 flex items-center justify-center p-2">
+                            <img src="${urlImagen}" alt="${p.nombre}" class="max-h-full max-w-full object-cover mix-blend-multiply transition-transform group-hover:scale-105 rounded-t-xl" onerror="this.src='https://placehold.co/400x400/fbcfe8/db2777?text=M&M'">
+                            ${hayOferta ? `<span class="absolute top-2 right-2 bg-red-500 text-white font-black text-[10px] px-2 py-1 rounded-full shadow-md animate-bounce">¡OFERTA!</span>` : ''}
+                        </div>
+                        
+                        <div class="p-4 flex flex-col flex-1">
+                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">${p.categoria || 'OTROS'}</p>
+                            <h3 class="font-bold text-gray-800 text-sm leading-tight flex-1 mb-2">${p.nombre}</h3>
+                            
+                            <div class="mt-auto">
+                                ${hayOferta ? `
+                                    <p class="text-xs text-gray-400 line-through font-semibold">Q${(p.venta || 0).toFixed(2)}</p>
+                                    <p class="text-xl font-black text-red-600">Q${precioFinal.toFixed(2)}</p>
+                                ` : `
+                                    <p class="text-xl font-black text-indigo-700">Q${(precioFinal || 0).toFixed(2)}</p>
+                                `}
+                            </div>
+                            
+                            <button onclick="pedirPorWhatsApp('${p.nombre.replace(/'/g, "\\'")}', '${precioFinal.toFixed(2)}')" class="w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.323-.297-.124-1.758-.867-2.03-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.099-.297-.124-1.254-.462-2.39-1.45-1.121-.976-1.879-2.181-2.052-2.479-.173-.298-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.496-.075-.124-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+                                Pedir esto
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (mostrados === 0) {
+                htmlHTML = '<div class="col-span-full text-center py-20 text-gray-400 font-bold">No hay productos en esta categoría o búsqueda.</div>';
+            }
+
+            // Estampar todo el HTML de un solo golpe
+            contenedor.innerHTML = htmlHTML;
+        }
+    </script>
+</body>
+</html>
