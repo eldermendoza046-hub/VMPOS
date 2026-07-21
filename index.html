@@ -1247,10 +1247,12 @@
             });
         }
 
-      function finalizarJornada() { 
+              function finalizarJornada() { 
             const tT = parseFloat(document.getElementById('c-total').innerText.replace('Q ','')); 
             if(tT <= 0) return alert("NO HAY VENTAS PARA CERRAR JORNADA"); 
             const tiendaLocal = db.tiendaActual;
+            
+            // Congelamos las ventas locales que se van a guardar en el historial
             const ventasHoy = db.ventas.filter(v => v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK'); 
             
             const cierre = { 
@@ -1263,23 +1265,33 @@
             
             if(!confirm(`¿ESTÁS SEGURO DE CERRAR LA JORNADA?\n\nTotal a entregar en caja: Q ${tT.toFixed(2)}`)) return;
 
-            db.ventas.forEach(v => {
-                if(v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK') {
-                    v.jornada_abierta = false;
+            // TRANSACCIÓN SEGURA
+            database.ref('tienda_datos').transaction(curr => {
+                if (!curr) return curr;
+                if (!curr.ventas) curr.ventas = [];
+                else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+
+                curr.ventas.forEach(v => {
+                    if(v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK') {
+                        v.jornada_abierta = false; // Cerramos la jornada en la nube sin borrar nada
+                    }
+                });
+                return curr;
+            }, (error, committed) => {
+                if (error || !committed) {
+                    alert("❌ Error al cerrar la caja. Revisa tu internet.");
+                } else {
+                    // Solo si la nube dice OK, guardamos el ticket del cierre
+                    database.ref('cierres_historial').push(cierre);
+                    setTimeout(() => {
+                        if(confirm(`✅ JORNADA CERRADA EXITOSAMENTE.\n\nTotal Entregado: Q ${cierre.total.toFixed(2)}\nLibrería: Q ${cierre.lib.toFixed(2)}\nMaquillaje: Q ${cierre.maq.toFixed(2)}\n\nEl sistema está en 0 para el nuevo turno.\n\n¿Deseas IMPRIMIR el comprobante de cierre?`)) {
+                            imprimirTicketCierre(cierre);
+                        }
+                    }, 300);
                 }
             });
-            
-            persistir();
-            render();
-            
-            database.ref('cierres_historial').push(cierre);
-
-            setTimeout(() => {
-                if(confirm(`✅ JORNADA CERRADA EXITOSAMENTE.\n\nTotal Entregado: Q ${cierre.total.toFixed(2)}\nLibrería: Q ${cierre.lib.toFixed(2)}\nMaquillaje: Q ${cierre.maq.toFixed(2)}\n\nEl sistema está en 0 para el nuevo turno.\n\n¿Deseas IMPRIMIR el comprobante de cierre?`)) {
-                    imprimirTicketCierre(cierre);
-                }
-            }, 300);
         }
+
             
         function limpiarSoloVentasPrueba() { 
             sysConfirm("¿Seguro que deseas eliminar ventas con productos de 'PRUEBA'?", () => {
