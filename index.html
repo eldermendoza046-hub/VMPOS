@@ -680,26 +680,41 @@
             cargarCierres(); if(isA) cargarReportePorFechas();
         }
 
-       function anularVenta(idx) { 
-            sysConfirm("¿ANULAR ESTA VENTA Y DEVOLVER STOCK?", () => {
-                const v = db.ventas[idx];
-                if(v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada anteriormente.");
+               function anularVenta(idx) { 
+            const vLocal = db.ventas[idx]; // Tomamos los datos locales para saber qué ticket anular
+            sysConfirm(`¿ANULAR LA VENTA #${vLocal.ticket} Y DEVOLVER STOCK?`, () => {
+                if(vLocal.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada anteriormente.");
                 
-                v.det.forEach(i => { 
-                    const p = db.productos.find(x => x.codigo === i.codigo); 
-                    if(p){ 
-                        // FIX: Garantizar que la suma se hace como número y no como texto
-                        if(v.tienda === 'Variedades Maria') p.stock_maria = parseInt(p.stock_maria || 0) + parseInt(i.cant || 0); 
-                        else p.stock_marisol = parseInt(p.stock_marisol || 0) + parseInt(i.cant || 0); 
-                    } 
-                }); 
-                v.estado = 'ANULADA'; 
+                // TRANSACCIÓN SEGURA
+                database.ref('tienda_datos').transaction(curr => {
+                    if (!curr) return curr;
+                    if (!curr.productos) curr.productos = [];
+                    else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                    if (!curr.ventas) curr.ventas = [];
+                    else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
 
-                persistir(); // FIX: Persistir envía TODO el paquete seguro
-                render(); 
-                sysAlert("Venta anulada. El stock ha regresado al inventario.", "Éxito");
+                    // Buscar la venta en la nube usando el ticket para no equivocarse
+                    const realIdx = curr.ventas.findIndex(x => x.ticket === vLocal.ticket && x.tienda === vLocal.tienda);
+                    if (realIdx > -1 && curr.ventas[realIdx].estado !== 'ANULADA') {
+                        curr.ventas[realIdx].estado = 'ANULADA';
+                        
+                        // Devolver stock en la nube
+                        curr.ventas[realIdx].det.forEach(i => { 
+                            const p = curr.productos.find(x => x.codigo === i.codigo); 
+                            if(p){ 
+                                if(curr.ventas[realIdx].tienda === 'Variedades Maria') p.stock_maria = parseInt(p.stock_maria || 0) + parseInt(i.cant || 0); 
+                                else p.stock_marisol = parseInt(p.stock_marisol || 0) + parseInt(i.cant || 0); 
+                            } 
+                        });
+                    }
+                    return curr;
+                }, (error, committed) => {
+                    if (error || !committed) sysAlert("❌ Error de red al anular. Intenta de nuevo.");
+                    else sysAlert("✅ Venta anulada. El stock ha regresado al inventario.", "Éxito");
+                });
             });
         }
+
 
         function eliminarVentaRegistroUnico(idx) { 
             sysConfirm("⚠️ ¿Deseas ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
