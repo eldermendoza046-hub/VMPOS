@@ -723,7 +723,7 @@
             });
         }
 
-        function procesarVenta() { 
+                function procesarVenta() { 
             const t = parseFloat(document.getElementById('total-txt').innerText); 
             if(!cart.length || t <= 0) return; 
             const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
@@ -731,6 +731,7 @@
 
             const tiendaLocal = db.tiendaActual;
             
+            // Validación local inicial
             for (let item of cart) { 
                 const p = db.productos.find(x => x.codigo === item.codigo); 
                 if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
@@ -738,53 +739,88 @@
                 if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
             }
 
-            const f = new Date(); 
-            const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+            // Cambiar el botón para evitar doble clic
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.innerText = "COBRANDO...";
+            btnCobrar.disabled = true;
 
-            const detallesVenta = cart.map(c => { 
-                let sub = calcularSubtotal(c, c.cant); 
-                return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
+            // TRANSACCIÓN SEGURA: Cobro en tiempo real sin sobreescribir ventas de otra caja
+            database.ref('tienda_datos').transaction(curr => {
+                if (!curr) return curr;
+                if (!curr.productos) curr.productos = [];
+                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                if (!curr.ventas) curr.ventas = [];
+                else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+
+                // Verificación estricta de stock en la nube
+                for (let item of cart) {
+                    const p = curr.productos.find(x => x.codigo === item.codigo);
+                    if (!p) return; // aborta si no existe
+                    const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
+                    if (item.cant > stockDisp) return; // aborta si alguien más ya vendió el stock
+                }
+
+                const f = new Date(); 
+                const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+
+                const detallesVenta = cart.map(c => { 
+                    let sub = calcularSubtotal(c, c.cant); 
+                    return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
+                });
+
+                let isMaria = tiendaLocal === 'Variedades Maria';
+                let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+                
+                const nuevaVenta = {
+                    ticket: num,
+                    fecha: new Date().toLocaleString(),
+                    fecha_filtro: fechaFiltro,
+                    total: t,
+                    pago: pago,
+                    tienda: tiendaLocal,
+                    estado: 'OK',
+                    jornada_abierta: true,
+                    det: detallesVenta
+                };
+
+                // Guardar ticket de forma segura
+                curr.ventas.unshift(nuevaVenta);
+                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
+                // Descontar inventario de forma segura
+                cart.forEach(item => { 
+                    const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
+                    if(pIdx > -1) { 
+                        if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
+                        else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
+                    } 
+                });
+
+                return curr;
+            }, (error, committed, snapshot) => {
+                btnCobrar.innerText = "COBRAR";
+                btnCobrar.disabled = false;
+
+                if (error || !committed) {
+                    sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
+                } else {
+                    const datosNuevos = snapshot.val();
+                    let num = tiendaLocal === 'Variedades Maria' ? (datosNuevos.cMaria - 1) : (datosNuevos.cMarisol - 1);
+                    const ventaReciente = datosNuevos.ventas[0];
+
+                    cart = []; 
+                    document.getElementById('pago-txt').value = ''; 
+                    renderCart(); 
+
+                    setTimeout(() => {
+                        sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                            imprimirTicket(ventaReciente);
+                        }, "Venta Exitosa");
+                    }, 100);
+                }
             });
-
-            let isMaria = tiendaLocal === 'Variedades Maria';
-            let num = isMaria ? parseInt(db.cMaria || 1) : parseInt(db.cMarisol || 1);
-            
-            const nuevaVenta = {
-                ticket: num,
-                fecha: new Date().toLocaleString(),
-                fecha_filtro: fechaFiltro,
-                total: t,
-                pago: pago,
-                tienda: tiendaLocal,
-                estado: 'OK',
-                jornada_abierta: true,
-                det: detallesVenta
-            };
-
-            db.ventas.unshift(nuevaVenta);
-            if(isMaria) db.cMaria = num + 1; else db.cMarisol = num + 1;
-
-            cart.forEach(item => { 
-                const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
-                if(pIdx > -1) { 
-                    // FIX: Garantizar que la resta matemática es perfecta
-                    if(isMaria) db.productos[pIdx].stock_maria = parseInt(db.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
-                    else db.productos[pIdx].stock_marisol = parseInt(db.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
-                } 
-            });
-
-            persistir(); // FIX: Envía TODO de golpe sin interrupciones
-            cart = []; 
-            document.getElementById('pago-txt').value = ''; 
-            renderCart(); 
-            render(); 
-
-            setTimeout(() => {
-                sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                    imprimirTicket(nuevaVenta);
-                }, "Venta Exitosa");
-            }, 100);
         }
+
 
         function abrirModalAjuste() {
             if(db.rol !== 'ADMIN') return sysAlert("Solo el administrador puede usar esta función.");
@@ -876,7 +912,7 @@
             }
         });
 
-        function guardarProd() { 
+                function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
             const img = document.getElementById('p-imagen').value.trim(); 
@@ -893,34 +929,47 @@
             
             if(!c || !n) return sysAlert("Código y Nombre son obligatorios");
             
-            const i = db.productos.findIndex(p => p.codigo === c); 
-            
-            if(i > -1) {
-                db.productos[i].nombre = n;
-                db.productos[i].imagen = img; 
-                db.productos[i].categoria = cat;
-                if(db.rol === 'ADMIN') db.productos[i].costo = cost;
-                db.productos[i].venta = vent;
-                
-                if(db.rol === 'ADMIN') { 
-                    db.productos[i].precio_oferta = ofPre; db.productos[i].oferta_inicio = ofIni; db.productos[i].oferta_fin = ofFin; 
-                    db.productos[i].cant_blister = farmaCant; db.productos[i].precio_blister = farmaPre; 
-                }
+            // TRANSACCIÓN SEGURA: Lee la nube y actualiza sin borrar datos de otros dispositivos
+            database.ref('tienda_datos').transaction(curr => {
+                if (!curr) return curr;
+                if (!curr.productos) curr.productos = [];
+                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
 
-                if(db.tiendaActual === 'Variedades Maria') db.productos[i].stock_maria = (parseInt(db.productos[i].stock_maria) || 0) + st;
-                else db.productos[i].stock_marisol = (parseInt(db.productos[i].stock_marisol) || 0) + st;
-            } else {
-                db.productos.push({
-                    codigo: c, nombre: n, imagen: img, costo: cost, venta: vent, categoria: cat, 
-                    stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
-                    stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
-                    precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre
-                });
-            }
-            persistir(); 
-            render(); 
-            cerrarModal(); 
+                const i = curr.productos.findIndex(p => p.codigo === c); 
+                
+                if(i > -1) {
+                    curr.productos[i].nombre = n;
+                    curr.productos[i].imagen = img; 
+                    curr.productos[i].categoria = cat;
+                    if(db.rol === 'ADMIN') curr.productos[i].costo = cost;
+                    curr.productos[i].venta = vent;
+                    
+                    if(db.rol === 'ADMIN') { 
+                        curr.productos[i].precio_oferta = ofPre; curr.productos[i].oferta_inicio = ofIni; curr.productos[i].oferta_fin = ofFin; 
+                        curr.productos[i].cant_blister = farmaCant; curr.productos[i].precio_blister = farmaPre; 
+                    }
+
+                    if(db.tiendaActual === 'Variedades Maria') curr.productos[i].stock_maria = (parseInt(curr.productos[i].stock_maria) || 0) + st;
+                    else curr.productos[i].stock_marisol = (parseInt(curr.productos[i].stock_marisol) || 0) + st;
+                } else {
+                    curr.productos.push({
+                        codigo: c, nombre: n, imagen: img, costo: cost, venta: vent, categoria: cat, 
+                        stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
+                        stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
+                        precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre
+                    });
+                }
+                return curr;
+            }, (error, committed) => {
+                if (error || !committed) {
+                    sysAlert("❌ Error de red al guardar. Intenta de nuevo.");
+                } else {
+                    cerrarModal(); 
+                    sysAlert("✅ Producto guardado correctamente.");
+                }
+            });
         }
+
 
         function eliminarProductoDefinitivo(codigo) {
             const pIdx = db.productos.findIndex(x => x.codigo === codigo);
