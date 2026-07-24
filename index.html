@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA VARIEDADES M&M - V9.40 (VERSIÓN DEFINITIVA MAYORISTA)</title>
+    <title>SISTEMA VARIEDADES M&M - V9.45 (MAYORISTA Y CATÁLOGO)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
@@ -422,9 +422,9 @@
                     </div>
                 </div>
                 
-                <!-- NUEVO MODAL DE PRECIOS MAYORISTAS (Aplica a todo) -->
+                <!-- PRECIOS MAYORISTAS -->
                 <div id="div-mayorista-modal" class="border-2 border-blue-400 p-3 rounded-xl bg-blue-50 mt-3">
-                    <label class="text-[10px] text-blue-800 uppercase font-black">📦 Precios Mayorista (Por Unidad)</label>
+                    <label class="text-[10px] text-blue-800 uppercase font-black">📦 Precios Mayorista (Precio c/u)</label>
                     <div class="flex gap-2 mt-2">
                         <div class="w-1/2">
                             <label class="text-[9px] text-gray-500 uppercase">1/2 Docena (Precio c/u) Q:</label>
@@ -437,7 +437,7 @@
                     </div>
                 </div>
 
-                <div id="div-oferta-modal" class="hidden border-2 border-yellow-400 p-3 rounded-xl bg-yellow-50">
+                <div id="div-oferta-modal" class="hidden border-2 border-yellow-400 p-3 rounded-xl bg-yellow-50 mt-3">
                     <label class="text-[10px] text-yellow-800 uppercase font-black">🏷️ Configurar Oferta Automática (Opcional)</label>
                     <input type="number" id="p-oferta-precio" placeholder="Precio Rebajado Unidad Q" class="w-full p-2 border-2 border-yellow-200 rounded-lg mt-2 text-yellow-700 font-black outline-none">
                     <div class="flex gap-2 mt-2">
@@ -446,7 +446,7 @@
                     </div>
                 </div>
 
-                <input type="number" id="p-stock" placeholder="Añadir Stock Físico (EN UNIDADES)" class="w-full p-3 border-2 rounded-xl outline-none focus:border-indigo-500">
+                <input type="number" id="p-stock" placeholder="Añadir Stock Físico (EN UNIDADES)" class="w-full p-3 border-2 rounded-xl outline-none focus:border-indigo-500 mt-3">
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="guardarProd()" class="flex-1 bg-indigo-700 text-white py-3 rounded-xl font-black uppercase hover:bg-indigo-800 transition-colors">Guardar</button>
                     <button type="button" onclick="cerrarModal()" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-gray-500 hover:bg-gray-300 transition-colors">Cerrar</button>
@@ -527,10 +527,10 @@
             } return parseFloat(p.venta);
         }
 
-        // --- LÓGICA DE MAYORISTA (UNIDADES SUELTAS, MEDIA DOCENA, DOCENA) ---
         function calcularSubtotal(c, cantidad) {
             let pBase = getPrecioActual(c);
-            
+            let total = 0;
+
             // Lógica Farmacia (Blister + unidades sueltas)
             if(c.cat === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
                 let blisters = Math.floor(cantidad / c.cant_blister); 
@@ -538,11 +538,30 @@
                 return (blisters * c.precio_blister) + (sueltas * pBase);
             } 
             
-            // Lógica Mayorista (Unitario por volumen) - Aplica a todas las categorías que lo tengan configurado
-            if (c.precio_docena > 0 && cantidad >= 12) {
-                pBase = c.precio_docena;
-            } else if (c.precio_media_docena > 0 && cantidad >= 6) {
-                pBase = c.precio_media_docena;
+            // Lógica Mayorista Exacta (Unidad por volumen)
+            let pDocenaUnitario = parseFloat(c.precio_docena) || 0;
+            let pMediaDocenaUnitario = parseFloat(c.precio_media_docena) || 0;
+
+            if (pDocenaUnitario > 0 || pMediaDocenaUnitario > 0) {
+                let cantRestante = cantidad;
+                let docenas = 0;
+                let mediasDocenas = 0;
+
+                if (pDocenaUnitario > 0) {
+                    docenas = Math.floor(cantRestante / 12);
+                    cantRestante = cantRestante % 12;
+                }
+
+                if (pMediaDocenaUnitario > 0) {
+                    mediasDocenas = Math.floor(cantRestante / 6);
+                    cantRestante = cantRestante % 6;
+                }
+
+                total += docenas * (pDocenaUnitario * 12);
+                total += mediasDocenas * (pMediaDocenaUnitario * 6);
+                total += cantRestante * pBase;
+
+                return total;
             }
 
             return pBase * cantidad;
@@ -736,7 +755,6 @@
             });
         }
 
-
         function eliminarVentaRegistroUnico(idx) { 
             sysConfirm("⚠️ ¿Deseas ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
                 const v = db.ventas[idx]; 
@@ -916,7 +934,6 @@
                         document.getElementById('p-oferta-inicio').value = prod.oferta_inicio || '';
                         document.getElementById('p-oferta-fin').value = prod.oferta_fin || '';
                         
-                        // Llenar mayorista
                         document.getElementById('p-media-docena').value = prod.precio_media_docena || '';
                         document.getElementById('p-docena').value = prod.precio_docena || '';
 
@@ -959,7 +976,7 @@
             const ofFin = document.getElementById('p-oferta-fin').value;
             const farmaCant = parseInt(document.getElementById('p-farma-cant').value) || 0; 
             const farmaPre = parseFloat(document.getElementById('p-farma-precio').value) || 0;
-
+            
             const mediaDocena = parseFloat(document.getElementById('p-media-docena').value) || 0;
             const docena = parseFloat(document.getElementById('p-docena').value) || 0;
             
@@ -1272,7 +1289,7 @@
 
       function finalizarJornada() { 
             const tT = parseFloat(document.getElementById('c-total').innerText.replace('Q ','')); 
-            if(tT <= 0) return alert("NO HAY VENTAS PARA CERRAR JORNADA"); 
+            if(tT <= 0) return sysAlert("NO HAY VENTAS PARA CERRAR JORNADA"); 
             const tiendaLocal = db.tiendaActual;
             const ventasHoy = db.ventas.filter(v => v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK'); 
             
@@ -1284,31 +1301,28 @@
                 movimientos: ventasHoy 
             }; 
             
-            if(!confirm(`¿ESTÁS SEGURO DE CERRAR LA JORNADA?\n\nTotal a entregar en caja: Q ${tT.toFixed(2)}`)) return;
+            sysConfirm(`¿ESTÁS SEGURO DE CERRAR LA JORNADA?\n\nTotal a entregar en caja: Q ${tT.toFixed(2)}`, () => {
+                // Modificar localmente para que la pantalla pase a 0 al instante
+                db.ventas.forEach(v => {
+                    if(v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK') {
+                        v.jornada_abierta = false;
+                    }
+                });
+                
+                // Guardar en disco local y preparar para Firebase
+                persistir();
+                render();
+                
+                database.ref('cierres_historial').push(cierre);
 
-            // 1. Modificar localmente para que la pantalla pase a 0 al instante
-            db.ventas.forEach(v => {
-                if(v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK') {
-                    v.jornada_abierta = false;
-                }
+                setTimeout(() => {
+                    sysConfirm(`✅ JORNADA CERRADA EXITOSAMENTE.\n\nTotal Entregado: Q ${cierre.total.toFixed(2)}\nLibrería: Q ${cierre.lib.toFixed(2)}\nMaquillaje: Q ${cierre.maq.toFixed(2)}\n\nEl sistema está en 0 para el nuevo turno.\n\n¿Deseas IMPRIMIR el comprobante de cierre?`, () => {
+                        imprimirTicketCierre(cierre);
+                    }, "Venta Exitosa");
+                }, 300);
             });
-            
-            // 2. Guardar en disco local y preparar para Firebase (Offline Ready)
-            persistir();
-            render();
-            
-            // Push guarda en la cola local si estás offline y luego lo sube
-            database.ref('cierres_historial').push(cierre);
-
-            // 3. Confirmar al vendedor y ofrecer imprimir ticket de cierre
-            setTimeout(() => {
-                if(confirm(`✅ JORNADA CERRADA EXITOSAMENTE.\n\nTotal Entregado: Q ${cierre.total.toFixed(2)}\nLibrería: Q ${cierre.lib.toFixed(2)}\nMaquillaje: Q ${cierre.maq.toFixed(2)}\n\nEl sistema está en 0 para el nuevo turno.\n\n¿Deseas IMPRIMIR el comprobante de cierre?`)) {
-                    imprimirTicketCierre(cierre);
-                }
-            }, 300);
         }
             
-        // ELIMINAR PRUEBAS - Función Original
         function limpiarSoloVentasPrueba() { 
             sysConfirm("¿Seguro que deseas eliminar ventas con productos de 'PRUEBA'?", () => {
                 const tiendaLocal = db.tiendaActual;
@@ -1336,7 +1350,6 @@
             });
         }
 
-        // DESCARGAR EXCEL - Modificado para omitir ceros
         function descargarExcel() {
             if (db.productos.length === 0) return sysAlert("No hay productos para exportar.");
             const productosDeEstaTienda = db.productos.filter(p => { 
@@ -1349,7 +1362,6 @@
             const nombreArchivo = `INVENTARIO_${db.tiendaActual.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
         }
 
-       // CARGAR EXCEL - Modificado con menú funcional
         function cargarExcel(event) {
             const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
             reader.onload = function(e) {
@@ -1395,7 +1407,6 @@
 
             if(!db.productos) db.productos = [];
 
-            // 1. Si eligió REEMPLAZAR, vaciamos el stock actual de esa tienda primero
             if (!modoSuma) {
                 db.productos.forEach(p => {
                     if (tiendaLocal === 'Variedades Maria') p.stock_maria = 0;
@@ -1403,12 +1414,10 @@
                 });
             }
 
-            // 2. Leemos el Excel fila por fila
             json.forEach(row => {
                 let rawStock = row['STOCK'] || row['CANTIDAD'] || row['CANT'] || row['EXISTENCIA'] || 0;
                 let stock = parseInt(rawStock) || 0; 
                 
-                // Candado anti-basura
                 if (stock <= 0) { ignorados++; return; } 
                 
                 let rawCod = row['CODIGO'] || row['CÓDIGO'] || row['SKU'] || '';
@@ -1450,12 +1459,10 @@
                 }
             });
 
-            // 3. GUARDADO INSTANTÁNEO 
             database.ref('tienda_datos/productos').set(db.productos);
             persistir();
             render();
             
-            // 4. Aviso de éxito en pantalla
             sysAlert(`✅ ¡Carga Exitosa en ${tiendaLocal}!\nNuevos: ${importados}\nActualizados: ${actualizados}\nIgnorados (Vacíos/Ceros): ${ignorados}`); 
             document.getElementById('input-excel').value = '';
         }
@@ -1518,7 +1525,7 @@
 
         let temporizadorBusqueda; 
         function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
-        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
+        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q) || String(x.codigo || "").toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); const miniImg = x.imagen ? `<img src="${x.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-[10px]">📷</span>`; htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><div class="flex items-center gap-2">${miniImg} <span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span></div><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
         function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
         function addCart(p) { const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); if(sMax <= 0) return sysAlert("SIN STOCK"); const i = cart.findIndex(c => c.codigo === p.codigo); if(i > -1) { if(cart[i].cant < sMax) cart[i].cant++; else sysAlert("MÁXIMO ALCANZADO (" + sMax + ")"); } else { cart.push({...p, cant: 1, cat: (p.categoria || 'OTROS') }); } renderCart(); }
 
@@ -1526,10 +1533,7 @@
             const b = document.getElementById('cart-body'); let htmlCarrito = ''; let t = 0; 
             cart.forEach((c, i) => { 
                 let subtotalItem = calcularSubtotal(c, c.cant); t += subtotalItem; const medIcon = c.cat === 'FARMACIA' ? '💊 ' : '';
-                
-                // Mostrar el precio unitario correcto (si aplicó descuento mayorista lo verá el cliente)
                 let precioUnitarioMostrado = (subtotalItem / c.cant).toFixed(2);
-                
                 const miniImgCart = c.imagen ? `<img src="${c.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
                 htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3 flex items-center gap-2">${miniImgCart} <span>${medIcon}${c.nombre}</span></td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right text-gray-500">Q${precioUnitarioMostrado} c/u</td><td class="text-right">Q${subtotalItem.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
             }); 
@@ -1556,9 +1560,9 @@
             document.getElementById('modal').classList.add('hidden'); document.getElementById('p-cod').value = ''; document.getElementById('p-nom').value = ''; 
             document.getElementById('p-imagen').value = ''; 
             document.getElementById('p-costo').value = ''; document.getElementById('p-venta').value = ''; document.getElementById('p-stock').value = ''; document.getElementById('p-cat').value = 'LIBRERIA'; 
-            document.getElementById('p-media-docena').value = ''; document.getElementById('p-docena').value = '';
             document.getElementById('p-oferta-precio').value = ''; document.getElementById('p-oferta-inicio').value = ''; document.getElementById('p-oferta-fin').value = '';
             document.getElementById('p-farma-cant').value = ''; document.getElementById('p-farma-precio').value = ''; document.getElementById('div-farma-modal').classList.add('hidden');
+            document.getElementById('p-media-docena').value = ''; document.getElementById('p-docena').value = '';
         }
         function abrirModal() { document.getElementById('modal').classList.remove('hidden'); setTimeout(() => document.getElementById('p-cod').focus(), 50); }
         
