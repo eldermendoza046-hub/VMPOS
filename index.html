@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA VARIEDADES M&M - V9.35 (IMÁGENES Y MAYORISTA)</title>
+    <title>SISTEMA VARIEDADES M&M - V9.40 (VERSIÓN DEFINITIVA MAYORISTA)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
@@ -408,21 +408,6 @@
                 <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
                 <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
                 
-                <!-- BLOQUE MAYORISTA -->
-                <div class="p-3 bg-blue-50 border-2 border-blue-300 rounded-xl shadow-sm mt-2">
-                    <label class="text-[10px] text-blue-800 uppercase font-black mb-1 block">📦 Precios Mayorista (Opcional)</label>
-                    <div class="flex gap-2 mt-1">
-                        <div class="w-1/2">
-                            <label class="text-[9px] text-gray-500 uppercase">1/2 Docena Q:</label>
-                            <input type="number" id="p-media" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none focus:border-blue-500" placeholder="Ej. 50">
-                        </div>
-                        <div class="w-1/2">
-                            <label class="text-[9px] text-gray-500 uppercase">Docena Q:</label>
-                            <input type="number" id="p-docena" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none focus:border-blue-500" placeholder="Ej. 90">
-                        </div>
-                    </div>
-                </div>
-                
                 <div id="div-farma-modal" class="hidden border-2 border-green-400 p-3 rounded-xl bg-green-50">
                     <label class="text-[10px] text-green-800 uppercase font-black">💊 Precio Especial por Blister / Caja</label>
                     <div class="flex gap-2 mt-2">
@@ -437,6 +422,21 @@
                     </div>
                 </div>
                 
+                <!-- NUEVO MODAL DE PRECIOS MAYORISTAS (Aplica a todo) -->
+                <div id="div-mayorista-modal" class="border-2 border-blue-400 p-3 rounded-xl bg-blue-50 mt-3">
+                    <label class="text-[10px] text-blue-800 uppercase font-black">📦 Precios Mayorista (Por Unidad)</label>
+                    <div class="flex gap-2 mt-2">
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">1/2 Docena (Precio c/u) Q:</label>
+                            <input type="number" id="p-media-docena" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 7.00">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Docena (Precio c/u) Q:</label>
+                            <input type="number" id="p-docena" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 6.00">
+                        </div>
+                    </div>
+                </div>
+
                 <div id="div-oferta-modal" class="hidden border-2 border-yellow-400 p-3 rounded-xl bg-yellow-50">
                     <label class="text-[10px] text-yellow-800 uppercase font-black">🏷️ Configurar Oferta Automática (Opcional)</label>
                     <input type="number" id="p-oferta-precio" placeholder="Precio Rebajado Unidad Q" class="w-full p-2 border-2 border-yellow-200 rounded-lg mt-2 text-yellow-700 font-black outline-none">
@@ -446,7 +446,7 @@
                     </div>
                 </div>
 
-                <input type="number" id="p-stock" placeholder="Añadir Stock Físico (EN UNIDADES/PASTILLAS)" class="w-full p-3 border-2 rounded-xl outline-none focus:border-indigo-500">
+                <input type="number" id="p-stock" placeholder="Añadir Stock Físico (EN UNIDADES)" class="w-full p-3 border-2 rounded-xl outline-none focus:border-indigo-500">
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="guardarProd()" class="flex-1 bg-indigo-700 text-white py-3 rounded-xl font-black uppercase hover:bg-indigo-800 transition-colors">Guardar</button>
                     <button type="button" onclick="cerrarModal()" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-gray-500 hover:bg-gray-300 transition-colors">Cerrar</button>
@@ -527,43 +527,28 @@
             } return parseFloat(p.venta);
         }
 
+        // --- LÓGICA DE MAYORISTA (UNIDADES SUELTAS, MEDIA DOCENA, DOCENA) ---
         function calcularSubtotal(c, cantidad) {
             let pBase = getPrecioActual(c);
             
-            // Lógica Farmacia
+            // Lógica Farmacia (Blister + unidades sueltas)
             if(c.cat === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
-                let blisters = Math.floor(cantidad / c.cant_blister); let sueltas = cantidad % c.cant_blister;
+                let blisters = Math.floor(cantidad / c.cant_blister); 
+                let sueltas = cantidad % c.cant_blister;
                 return (blisters * c.precio_blister) + (sueltas * pBase);
             } 
             
-            // Lógica Mayorista (Aplica a todas las demás categorías si tienen precio mayorista)
-            let pDocena = parseFloat(c.precio_docena || 0);
-            let pMedia = parseFloat(c.precio_media_docena || 0);
-            
-            if (pDocena > 0 || pMedia > 0) {
-                let total = 0;
-                let restante = cantidad;
-                
-                if (pDocena > 0) {
-                    let docenas = Math.floor(restante / 12);
-                    total += docenas * pDocena;
-                    restante = restante % 12;
-                }
-                
-                if (pMedia > 0) {
-                    let medias = Math.floor(restante / 6);
-                    total += medias * pMedia;
-                    restante = restante % 6;
-                }
-                
-                total += restante * pBase;
-                return total;
+            // Lógica Mayorista (Unitario por volumen) - Aplica a todas las categorías que lo tengan configurado
+            if (c.precio_docena > 0 && cantidad >= 12) {
+                pBase = c.precio_docena;
+            } else if (c.precio_media_docena > 0 && cantidad >= 6) {
+                pBase = c.precio_media_docena;
             }
-            
+
             return pBase * cantidad;
         }
 
-       window.onload = () => {
+        window.onload = () => {
             const f = new Date(); 
             const primerDia = new Date(f.getFullYear(), f.getMonth(), 1);
             if(document.getElementById('rep-inicio')) document.getElementById('rep-inicio').value = `${primerDia.getFullYear()}-${String(primerDia.getMonth() + 1).padStart(2, '0')}-${String(primerDia.getDate()).padStart(2, '0')}`;
@@ -588,7 +573,6 @@
                     document.getElementById('login-modal').style.display = 'none';
                     sysAlert("¡Inicio de sesión correcto! Conectando a la base de datos...", "Bienvenido"); 
                     
-                    // AHORA SÍ: El inventario se descarga DESPUÉS de que la contraseña fue correcta
                     database.ref('tienda_datos').on('value', snap => { 
                         if(snap.val()) { 
                             const rolPrevio = db.rol; 
@@ -600,8 +584,11 @@
                             db.tiendaActual = tiendaCongelada; 
 
                             if(!db.productos) db.productos = []; 
+                            else if(!Array.isArray(db.productos)) db.productos = Object.values(db.productos);
+
                             if(!db.ventas) db.ventas = []; 
                             else if(!Array.isArray(db.ventas)) db.ventas = Object.values(db.ventas); 
+                            
                             if(!db.admin_pin) db.admin_pin = '1892'; 
                             
                             localStorage.setItem('backup_pos', JSON.stringify(db)); 
@@ -622,7 +609,13 @@
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
             if(navigator.onLine) {
-                database.ref('tienda_datos').set(db).catch(err => console.log("Se subirá automáticamente cuando haya conexión."));
+                database.ref('tienda_datos').update({
+                    productos: db.productos || [],
+                    ventas: db.ventas || [],
+                    cMaria: db.cMaria || 1,
+                    cMarisol: db.cMarisol || 1,
+                    admin_pin: db.admin_pin || '1892'
+                }).catch(err => console.log("Se subirá automáticamente cuando haya conexión."));
             } else {
                 console.log("Modo Offline: Datos guardados solo localmente. Sincronizará al volver la red.");
             }
@@ -673,7 +666,6 @@
                 }
                 if (filtroInv !== '' && !String(p.nombre || "").toLowerCase().includes(filtroInv) && !String(p.codigo || "").toLowerCase().includes(filtroInv)) return;
 
-                // FIX: El administrador también solo ve los que tienen stock > 0
                 if(stockActualTienda > 0) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
@@ -713,28 +705,37 @@
         }
 
        function anularVenta(idx) { 
-            sysConfirm("¿ANULAR ESTA VENTA Y DEVOLVER STOCK?", () => {
-                const v = db.ventas[idx];
-                if(v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada anteriormente.");
+            const vLocal = db.ventas[idx];
+            sysConfirm(`¿ANULAR LA VENTA #${vLocal.ticket} Y DEVOLVER STOCK?`, () => {
+                if(vLocal.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada anteriormente.");
                 
-                v.det.forEach(i => { 
-                    const p = db.productos.find(x => x.codigo === i.codigo); 
-                    if(p){ 
-                        if(v.tienda === 'Variedades Maria') p.stock_maria = parseInt(p.stock_maria || 0) + parseInt(i.cant || 0); 
-                        else p.stock_marisol = parseInt(p.stock_marisol || 0) + parseInt(i.cant || 0); 
-                    } 
-                }); 
-                v.estado = 'ANULADA'; 
+                database.ref('tienda_datos').transaction(curr => {
+                    if (!curr) return curr;
+                    if (!curr.productos) curr.productos = [];
+                    else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                    if (!curr.ventas) curr.ventas = [];
+                    else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
 
-                // Disparo rápido a la nube para sincronización instantánea
-                database.ref('tienda_datos/ventas').set(db.ventas);
-                database.ref('tienda_datos/productos').set(db.productos);
-
-                persistir(); 
-                render(); 
-                sysAlert("Venta anulada. El stock ha regresado al inventario.", "Éxito");
+                    const realIdx = curr.ventas.findIndex(x => x.ticket === vLocal.ticket && x.tienda === vLocal.tienda);
+                    if (realIdx > -1 && curr.ventas[realIdx].estado !== 'ANULADA') {
+                        curr.ventas[realIdx].estado = 'ANULADA';
+                        
+                        curr.ventas[realIdx].det.forEach(i => { 
+                            const p = curr.productos.find(x => x.codigo === i.codigo); 
+                            if(p){ 
+                                if(curr.ventas[realIdx].tienda === 'Variedades Maria') p.stock_maria = parseInt(p.stock_maria || 0) + parseInt(i.cant || 0); 
+                                else p.stock_marisol = parseInt(p.stock_marisol || 0) + parseInt(i.cant || 0); 
+                            } 
+                        });
+                    }
+                    return curr;
+                }, (error, committed) => {
+                    if (error || !committed) sysAlert("❌ Error de red al anular. Intenta de nuevo.");
+                    else sysAlert("✅ Venta anulada. El stock ha regresado al inventario.", "Éxito");
+                });
             });
         }
+
 
         function eliminarVentaRegistroUnico(idx) { 
             sysConfirm("⚠️ ¿Deseas ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
@@ -751,10 +752,6 @@
                 } 
                 
                 db.ventas.splice(idx, 1); 
-
-                // Disparo rápido a la nube para sincronización instantánea
-                database.ref('tienda_datos/ventas').set(db.ventas);
-                database.ref('tienda_datos/productos').set(db.productos);
 
                 persistir(); 
                 render(); 
@@ -777,57 +774,81 @@
                 if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
             }
 
-            const f = new Date(); 
-            const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.innerText = "COBRANDO...";
+            btnCobrar.disabled = true;
 
-            const detallesVenta = cart.map(c => { 
-                let sub = calcularSubtotal(c, c.cant); 
-                return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
+            database.ref('tienda_datos').transaction(curr => {
+                if (!curr) return curr;
+                if (!curr.productos) curr.productos = [];
+                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                if (!curr.ventas) curr.ventas = [];
+                else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+
+                for (let item of cart) {
+                    const p = curr.productos.find(x => x.codigo === item.codigo);
+                    if (!p) return; 
+                    const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
+                    if (item.cant > stockDisp) return; 
+                }
+
+                const f = new Date(); 
+                const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+
+                const detallesVenta = cart.map(c => { 
+                    let sub = calcularSubtotal(c, c.cant); 
+                    return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
+                });
+
+                let isMaria = tiendaLocal === 'Variedades Maria';
+                let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+                
+                const nuevaVenta = {
+                    ticket: num,
+                    fecha: new Date().toLocaleString(),
+                    fecha_filtro: fechaFiltro,
+                    total: t,
+                    pago: pago,
+                    tienda: tiendaLocal,
+                    estado: 'OK',
+                    jornada_abierta: true,
+                    det: detallesVenta
+                };
+
+                curr.ventas.unshift(nuevaVenta);
+                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
+                cart.forEach(item => { 
+                    const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
+                    if(pIdx > -1) { 
+                        if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
+                        else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
+                    } 
+                });
+
+                return curr;
+            }, (error, committed, snapshot) => {
+                btnCobrar.innerText = "COBRAR";
+                btnCobrar.disabled = false;
+
+                if (error || !committed) {
+                    sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
+                } else {
+                    const datosNuevos = snapshot.val();
+                    let num = tiendaLocal === 'Variedades Maria' ? (datosNuevos.cMaria - 1) : (datosNuevos.cMarisol - 1);
+                    const ventaReciente = datosNuevos.ventas[0];
+
+                    cart = []; 
+                    document.getElementById('pago-txt').value = ''; 
+                    renderCart(); 
+
+                    setTimeout(() => {
+                        sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                            imprimirTicket(ventaReciente);
+                        }, "Venta Exitosa");
+                    }, 100);
+                }
             });
-
-            let isMaria = tiendaLocal === 'Variedades Maria';
-            let num = isMaria ? (db.cMaria || 1) : (db.cMarisol || 1);
-            
-            const nuevaVenta = {
-                ticket: num,
-                fecha: new Date().toLocaleString(),
-                fecha_filtro: fechaFiltro,
-                total: t,
-                pago: pago,
-                tienda: tiendaLocal,
-                estado: 'OK',
-                jornada_abierta: true,
-                det: detallesVenta
-            };
-
-            db.ventas.unshift(nuevaVenta);
-            if(isMaria) db.cMaria = num + 1; else db.cMarisol = num + 1;
-
-            cart.forEach(item => { 
-                const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
-                if(pIdx > -1) { 
-                    if(isMaria) db.productos[pIdx].stock_maria -= item.cant; 
-                    else db.productos[pIdx].stock_marisol -= item.cant; 
-                } 
-            });
-
-            // Disparo rápido a la nube para sincronización instantánea
-            database.ref('tienda_datos/ventas').set(db.ventas);
-            database.ref('tienda_datos/productos').set(db.productos);
-            if(isMaria) database.ref('tienda_datos/cMaria').set(db.cMaria);
-            else database.ref('tienda_datos/cMarisol').set(db.cMarisol);
-
-            persistir(); 
-            cart = []; 
-            document.getElementById('pago-txt').value = ''; 
-            renderCart(); 
-            render(); 
-
-            setTimeout(() => {
-                sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                    imprimirTicket(nuevaVenta);
-                }, "Venta Exitosa");
-            }, 100);
         }
 
         function abrirModalAjuste() {
@@ -887,8 +908,6 @@
                         document.getElementById('p-imagen').value = prod.imagen || ''; 
                         document.getElementById('p-costo').value = prod.costo || 0;
                         document.getElementById('p-venta').value = prod.venta || 0;
-                        document.getElementById('p-media').value = prod.precio_media_docena || '';
-                        document.getElementById('p-docena').value = prod.precio_docena || '';
                         document.getElementById('p-cat').value = prod.categoria || 'OTROS';
                         
                         document.getElementById('p-farma-cant').value = prod.cant_blister || '';
@@ -896,6 +915,10 @@
                         document.getElementById('p-oferta-precio').value = prod.precio_oferta || '';
                         document.getElementById('p-oferta-inicio').value = prod.oferta_inicio || '';
                         document.getElementById('p-oferta-fin').value = prod.oferta_fin || '';
+                        
+                        // Llenar mayorista
+                        document.getElementById('p-media-docena').value = prod.precio_media_docena || '';
+                        document.getElementById('p-docena').value = prod.precio_docena || '';
 
                         document.getElementById('div-farma-modal').classList.toggle('hidden', (prod.categoria || 'OTROS') !== 'FARMACIA');
                     }
@@ -936,12 +959,12 @@
             const ofFin = document.getElementById('p-oferta-fin').value;
             const farmaCant = parseInt(document.getElementById('p-farma-cant').value) || 0; 
             const farmaPre = parseFloat(document.getElementById('p-farma-precio').value) || 0;
-            const pMedia = parseFloat(document.getElementById('p-media').value) || 0;
-            const pDocena = parseFloat(document.getElementById('p-docena').value) || 0;
+
+            const mediaDocena = parseFloat(document.getElementById('p-media-docena').value) || 0;
+            const docena = parseFloat(document.getElementById('p-docena').value) || 0;
             
             if(!c || !n) return sysAlert("Código y Nombre son obligatorios");
             
-            // TRANSACCIÓN SEGURA: Lee la nube y actualiza sin borrar datos de otros dispositivos
             database.ref('tienda_datos').transaction(curr => {
                 if (!curr) return curr;
                 if (!curr.productos) curr.productos = [];
@@ -959,7 +982,7 @@
                     if(db.rol === 'ADMIN') { 
                         curr.productos[i].precio_oferta = ofPre; curr.productos[i].oferta_inicio = ofIni; curr.productos[i].oferta_fin = ofFin; 
                         curr.productos[i].cant_blister = farmaCant; curr.productos[i].precio_blister = farmaPre; 
-                        curr.productos[i].precio_media_docena = pMedia; curr.productos[i].precio_docena = pDocena;
+                        curr.productos[i].precio_media_docena = mediaDocena; curr.productos[i].precio_docena = docena;
                     }
 
                     if(db.tiendaActual === 'Variedades Maria') curr.productos[i].stock_maria = (parseInt(curr.productos[i].stock_maria) || 0) + st;
@@ -970,7 +993,7 @@
                         stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
                         stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
                         precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre,
-                        precio_media_docena: pMedia, precio_docena: pDocena
+                        precio_media_docena: mediaDocena, precio_docena: docena
                     });
                 }
                 return curr;
@@ -983,7 +1006,6 @@
                 }
             });
         }
-
 
         function eliminarProductoDefinitivo(codigo) {
             const pIdx = db.productos.findIndex(x => x.codigo === codigo);
@@ -1011,8 +1033,6 @@
             document.getElementById('p-imagen').value = p.imagen || ''; 
             document.getElementById('p-costo').value = p.costo || 0; 
             document.getElementById('p-venta').value = p.venta; 
-            document.getElementById('p-media').value = p.precio_media_docena || ''; 
-            document.getElementById('p-docena').value = p.precio_docena || ''; 
             document.getElementById('p-stock').value = 0; 
             document.getElementById('p-cat').value = p.categoria || 'OTROS';
             document.getElementById('p-oferta-precio').value = p.precio_oferta || ''; 
@@ -1020,6 +1040,8 @@
             document.getElementById('p-oferta-fin').value = p.oferta_fin || ''; 
             document.getElementById('p-farma-cant').value = p.cant_blister || ''; 
             document.getElementById('p-farma-precio').value = p.precio_blister || '';
+            document.getElementById('p-media-docena').value = p.precio_media_docena || '';
+            document.getElementById('p-docena').value = p.precio_docena || '';
             document.getElementById('div-farma-modal').classList.toggle('hidden', (p.categoria || 'OTROS') !== 'FARMACIA'); 
             abrirModal(); 
         }
@@ -1458,7 +1480,7 @@
                     
                     db.productos = productosRestantes;
                     persistir(); 
-                    render();    
+                    render();   
                     
                     sysAlert("✅ Inventario de " + tiendaLocal + " vaciado con éxito."); 
                 } else { 
@@ -1504,7 +1526,12 @@
             const b = document.getElementById('cart-body'); let htmlCarrito = ''; let t = 0; 
             cart.forEach((c, i) => { 
                 let subtotalItem = calcularSubtotal(c, c.cant); t += subtotalItem; const medIcon = c.cat === 'FARMACIA' ? '💊 ' : '';
-                htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3">${medIcon}${c.nombre}</td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right">Q${subtotalItem.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
+                
+                // Mostrar el precio unitario correcto (si aplicó descuento mayorista lo verá el cliente)
+                let precioUnitarioMostrado = (subtotalItem / c.cant).toFixed(2);
+                
+                const miniImgCart = c.imagen ? `<img src="${c.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
+                htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3 flex items-center gap-2">${miniImgCart} <span>${medIcon}${c.nombre}</span></td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right text-gray-500">Q${precioUnitarioMostrado} c/u</td><td class="text-right">Q${subtotalItem.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
             }); 
             b.innerHTML = htmlCarrito; document.getElementById('total-txt').innerText = t.toFixed(2); calcVuelto(); 
         }
@@ -1528,8 +1555,8 @@
         function cerrarModal() { 
             document.getElementById('modal').classList.add('hidden'); document.getElementById('p-cod').value = ''; document.getElementById('p-nom').value = ''; 
             document.getElementById('p-imagen').value = ''; 
-            document.getElementById('p-media').value = ''; document.getElementById('p-docena').value = ''; 
             document.getElementById('p-costo').value = ''; document.getElementById('p-venta').value = ''; document.getElementById('p-stock').value = ''; document.getElementById('p-cat').value = 'LIBRERIA'; 
+            document.getElementById('p-media-docena').value = ''; document.getElementById('p-docena').value = '';
             document.getElementById('p-oferta-precio').value = ''; document.getElementById('p-oferta-inicio').value = ''; document.getElementById('p-oferta-fin').value = '';
             document.getElementById('p-farma-cant').value = ''; document.getElementById('p-farma-precio').value = ''; document.getElementById('div-farma-modal').classList.add('hidden');
         }
