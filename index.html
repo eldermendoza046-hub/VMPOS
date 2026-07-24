@@ -529,45 +529,33 @@
 
         function calcularSubtotal(c, cantidad) {
             let pBase = getPrecioActual(c);
-            let total = 0;
 
-            // Lógica Farmacia (Blister + unidades sueltas)
+            // Lógica Farmacia (Blister cerrado + unidades sueltas - INTACTA)
             if(c.cat === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
                 let blisters = Math.floor(cantidad / c.cant_blister); 
                 let sueltas = cantidad % c.cant_blister;
                 return (blisters * c.precio_blister) + (sueltas * pBase);
             } 
             
-            // Lógica Mayorista Exacta (Unidad por volumen)
+            // Lógica Mayorista por Escalas de Volumen (A partir de 6 o 12 unidades)
             let pDocenaUnitario = parseFloat(c.precio_docena) || 0;
             let pMediaDocenaUnitario = parseFloat(c.precio_media_docena) || 0;
 
-            if (pDocenaUnitario > 0 || pMediaDocenaUnitario > 0) {
-                let cantRestante = cantidad;
-                let docenas = 0;
-                let mediasDocenas = 0;
-
-                if (pDocenaUnitario > 0) {
-                    docenas = Math.floor(cantRestante / 12);
-                    cantRestante = cantRestante % 12;
-                }
-
-                if (pMediaDocenaUnitario > 0) {
-                    mediasDocenas = Math.floor(cantRestante / 6);
-                    cantRestante = cantRestante % 6;
-                }
-
-                total += docenas * (pDocenaUnitario * 12);
-                total += mediasDocenas * (pMediaDocenaUnitario * 6);
-                total += cantRestante * pBase;
-
-                return total;
+            // Si lleva 12 o más, TODAS se cobran al precio unitario de docena (si existe)
+            if (cantidad >= 12 && pDocenaUnitario > 0) {
+                return cantidad * pDocenaUnitario;
+            }
+            
+            // Si lleva de 6 a 11, TODAS se cobran al precio unitario de media docena (si existe)
+            if (cantidad >= 6 && pMediaDocenaUnitario > 0) {
+                return cantidad * pMediaDocenaUnitario;
             }
 
+            // Si lleva de 1 a 5, o no hay precios mayoristas configurados, cobra precio normal
             return pBase * cantidad;
         }
 
-        window.onload = () => {
+       window.onload = () => {
             const f = new Date(); 
             const primerDia = new Date(f.getFullYear(), f.getMonth(), 1);
             if(document.getElementById('rep-inicio')) document.getElementById('rep-inicio').value = `${primerDia.getFullYear()}-${String(primerDia.getMonth() + 1).padStart(2, '0')}-${String(primerDia.getDate()).padStart(2, '0')}`;
