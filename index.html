@@ -218,9 +218,11 @@
 
         <!-- SECCIÓN REPORTES -->
         <div id="section-reportes" class="hidden space-y-6">
+            
             <div class="bg-white p-6 rounded-3xl shadow-xl border">
                 <h2 class="text-2xl font-black mb-4 text-center uppercase italic text-indigo-950">📊 REPORTE MAESTRO DE VENTAS</h2>
                 
+                <!-- FILTRO DE RANGOS DE FECHA -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end bg-gray-50 p-4 rounded-2xl border mb-6">
                     <div>
                         <label class="block text-xs font-black uppercase mb-1 text-gray-500">Desde (Inicio):</label>
@@ -232,13 +234,19 @@
                     </div>
                     <div class="col-span-2 md:col-span-2 flex flex-wrap gap-2">
                         <button onclick="cargarReportePorFechas()" class="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white p-3 rounded-xl font-black uppercase text-xs shadow transition-colors">🔄 Actualizar</button>
+                        
+                        <!-- BOTÓN DE AJUSTE FINANCIERO -->
                         <button onclick="abrirModalAjuste()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white p-3 rounded-xl font-black uppercase text-xs shadow-lg transition-colors">🛠️ Ajuste Sin Stock</button>
+                        
+                        <!-- BOTÓN MAESTRO DE IMPRESIÓN -->
                         <button onclick="imprimirReporteMaestro()" class="w-full bg-black hover:bg-gray-800 text-white p-3 rounded-xl font-black uppercase text-xs shadow-lg transition-colors">🖨️ Imprimir Resumen</button>
                     </div>
                 </div>
 
+                <!-- MÓDULO: CONTROL DE EFECTIVO Y DEPÓSITOS POR SOCIA -->
                 <div class="bg-indigo-50 border-4 border-indigo-200 p-5 rounded-3xl mb-6 shadow-md">
                     <h3 class="text-lg font-black text-indigo-900 uppercase italic mb-4 text-center border-b border-indigo-200 pb-2">💸 CONTROL DE EFECTIVO Y DEPÓSITOS (POR SOCIA)</h3>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="bg-white border-2 border-blue-200 rounded-3xl p-5 shadow">
                             <h4 class="text-md font-black text-blue-900 uppercase italic mb-3 text-center border-b pb-1">LIBRERÍA Y FARMACIA</h4>
@@ -290,6 +298,7 @@
                     </div>
                 </div>
 
+                <!-- SALUD FINANCIERA (Ganancias y Utilidad) -->
                 <h3 class="text-lg font-black text-gray-800 uppercase italic mb-4 border-b pb-2">🩺 Salud Financiera (Ganancias Neta)</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
@@ -400,7 +409,6 @@
                 <input type="text" id="p-cod" placeholder="Código" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
                 <input type="text" id="p-nom" placeholder="Nombre" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
                 
-                <!-- CAMPO AGREGADO PARA LA IMAGEN CON DISEÑO ROSADO LLAMATIVO -->
                 <div class="p-3 bg-pink-50 border-2 border-pink-300 rounded-xl shadow-sm">
                     <label class="text-[10px] text-pink-800 uppercase font-black mb-1 block">🖼️ Link de la Imagen (Catálogo)</label>
                     <input type="text" id="p-imagen" placeholder="Pega aquí el enlace de internet..." class="w-full p-2 border rounded-lg text-xs outline-none focus:border-pink-500 bg-white">
@@ -557,7 +565,6 @@
                             db.rol = rolPrevio; 
                             db.tiendaActual = tiendaCongelada; 
 
-                            // FIX CRÍTICO: Asegurar que productos sea un array para evitar fallos
                             if(!db.productos) db.productos = []; 
                             else if(!Array.isArray(db.productos)) db.productos = Object.values(db.productos);
 
@@ -584,7 +591,6 @@
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
             if(navigator.onLine) {
-                // FIX CRÍTICO: Usar UPDATE atómico en lugar de SET parciales para evitar "choques" en Firebase
                 database.ref('tienda_datos').update({
                     productos: db.productos || [],
                     ventas: db.ventas || [],
@@ -642,7 +648,7 @@
                 }
                 if (filtroInv !== '' && !String(p.nombre || "").toLowerCase().includes(filtroInv) && !String(p.codigo || "").toLowerCase().includes(filtroInv)) return;
 
-                if(stockActualTienda > 0) {
+                if(stockActualTienda > 0 || isA) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
                     
@@ -681,11 +687,10 @@
         }
 
                function anularVenta(idx) { 
-            const vLocal = db.ventas[idx]; // Tomamos los datos locales para saber qué ticket anular
+            const vLocal = db.ventas[idx]; 
             sysConfirm(`¿ANULAR LA VENTA #${vLocal.ticket} Y DEVOLVER STOCK?`, () => {
                 if(vLocal.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada anteriormente.");
                 
-                // TRANSACCIÓN SEGURA
                 database.ref('tienda_datos').transaction(curr => {
                     if (!curr) return curr;
                     if (!curr.productos) curr.productos = [];
@@ -693,12 +698,10 @@
                     if (!curr.ventas) curr.ventas = [];
                     else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
 
-                    // Buscar la venta en la nube usando el ticket para no equivocarse
                     const realIdx = curr.ventas.findIndex(x => x.ticket === vLocal.ticket && x.tienda === vLocal.tienda);
                     if (realIdx > -1 && curr.ventas[realIdx].estado !== 'ANULADA') {
                         curr.ventas[realIdx].estado = 'ANULADA';
                         
-                        // Devolver stock en la nube
                         curr.ventas[realIdx].det.forEach(i => { 
                             const p = curr.productos.find(x => x.codigo === i.codigo); 
                             if(p){ 
@@ -746,7 +749,6 @@
 
             const tiendaLocal = db.tiendaActual;
             
-            // Validación local inicial
             for (let item of cart) { 
                 const p = db.productos.find(x => x.codigo === item.codigo); 
                 if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
@@ -754,12 +756,10 @@
                 if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
             }
 
-            // Cambiar el botón para evitar doble clic
             const btnCobrar = document.getElementById('btn-cobrar');
             btnCobrar.innerText = "COBRANDO...";
             btnCobrar.disabled = true;
 
-            // TRANSACCIÓN SEGURA: Cobro en tiempo real sin sobreescribir ventas de otra caja
             database.ref('tienda_datos').transaction(curr => {
                 if (!curr) return curr;
                 if (!curr.productos) curr.productos = [];
@@ -767,12 +767,11 @@
                 if (!curr.ventas) curr.ventas = [];
                 else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
 
-                // Verificación estricta de stock en la nube
                 for (let item of cart) {
                     const p = curr.productos.find(x => x.codigo === item.codigo);
-                    if (!p) return; // aborta si no existe
+                    if (!p) return; 
                     const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
-                    if (item.cant > stockDisp) return; // aborta si alguien más ya vendió el stock
+                    if (item.cant > stockDisp) return; 
                 }
 
                 const f = new Date(); 
@@ -798,11 +797,9 @@
                     det: detallesVenta
                 };
 
-                // Guardar ticket de forma segura
                 curr.ventas.unshift(nuevaVenta);
                 if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
 
-                // Descontar inventario de forma segura
                 cart.forEach(item => { 
                     const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
                     if(pIdx > -1) { 
@@ -944,7 +941,6 @@
             
             if(!c || !n) return sysAlert("Código y Nombre son obligatorios");
             
-            // TRANSACCIÓN SEGURA: Lee la nube y actualiza sin borrar datos de otros dispositivos
             database.ref('tienda_datos').transaction(curr => {
                 if (!curr) return curr;
                 if (!curr.productos) curr.productos = [];
@@ -1252,7 +1248,6 @@
             if(tT <= 0) return alert("NO HAY VENTAS PARA CERRAR JORNADA"); 
             const tiendaLocal = db.tiendaActual;
             
-            // Congelamos las ventas locales que se van a guardar en el historial
             const ventasHoy = db.ventas.filter(v => v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK'); 
             
             const cierre = { 
@@ -1265,7 +1260,6 @@
             
             if(!confirm(`¿ESTÁS SEGURO DE CERRAR LA JORNADA?\n\nTotal a entregar en caja: Q ${tT.toFixed(2)}`)) return;
 
-            // TRANSACCIÓN SEGURA
             database.ref('tienda_datos').transaction(curr => {
                 if (!curr) return curr;
                 if (!curr.ventas) curr.ventas = [];
@@ -1273,7 +1267,7 @@
 
                 curr.ventas.forEach(v => {
                     if(v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK') {
-                        v.jornada_abierta = false; // Cerramos la jornada en la nube sin borrar nada
+                        v.jornada_abierta = false; 
                     }
                 });
                 return curr;
@@ -1281,7 +1275,6 @@
                 if (error || !committed) {
                     alert("❌ Error al cerrar la caja. Revisa tu internet.");
                 } else {
-                    // Solo si la nube dice OK, guardamos el ticket del cierre
                     database.ref('cierres_historial').push(cierre);
                     setTimeout(() => {
                         if(confirm(`✅ JORNADA CERRADA EXITOSAMENTE.\n\nTotal Entregado: Q ${cierre.total.toFixed(2)}\nLibrería: Q ${cierre.lib.toFixed(2)}\nMaquillaje: Q ${cierre.maq.toFixed(2)}\n\nEl sistema está en 0 para el nuevo turno.\n\n¿Deseas IMPRIMIR el comprobante de cierre?`)) {
@@ -1518,7 +1511,7 @@
         
         function calcVuelto() { const t = parseFloat(document.getElementById('total-txt').innerText); const p = parseFloat(document.getElementById('pago-txt').value) || 0; document.getElementById('vuelto-txt').innerText = Math.max(0, p - t).toFixed(2); }
 
-        function cargarCierres() { database.ref('cierres_historial').on('value', snap => { const div = document.getElementById('lista-cierres'); if(!div) return; let htmlCierres = ''; const data = snap.val(); if(data) { Object.entries(data).reverse().forEach(([key, c]) => { if(c.tienda === db.tiendaActual) { htmlCierres += `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center font-black italic"><div><p class="text-gray-400 text-[10px]">${c.fecha}</p><p class="text-indigo-900 text-lg">Q${c.total.toFixed(2)}</p></div><div class="flex gap-2"><button onclick='verMovimiento(${JSON.stringify(c)})' class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] px-3">👁️ MOVIMIENTO</button><button onclick='imprimirTicketCierre(${JSON.stringify(c)})' class="bg-gray-100 p-2 rounded-lg">🖨️</button>${db.rol === 'ADMIN' ? `<button onclick="eliminarCierreIndividual('${key}')" class="bg-red-100 text-red-600 p-2 rounded-lg text-lg">🗑️</button>` : ''}</div></div>`; } }); } div.innerHTML = htmlCierres; }); }
+        function cargarCierres() { database.ref('cierres_historial').on('value', snap => { const div = document.getElementById('lista-cierres'); if(!div) return; let htmlCierres = ''; const data = snap.val(); if(data) { Object.entries(data).reverse().forEach(([key, c]) => { if(c.tienda === db.tiendaActual) { htmlCierres += `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center font-black italic"><div><p class="text-gray-400 text-[10px]">${c.fecha}</p><p class="text-indigo-900 text-lg">Q${c.total.toFixed(2)}</p></div><div class="flex gap-2"><button type="button" onclick='verMovimiento(${JSON.stringify(c)})' class="bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] px-3">👁️ MOVIMIENTO</button><button type="button" onclick='imprimirTicketCierre(${JSON.stringify(c)})' class="bg-gray-100 p-2 rounded-lg">🖨️</button>${db.rol === 'ADMIN' ? `<button type="button" onclick="eliminarCierreIndividual('${key}')" class="bg-red-100 text-red-600 p-2 rounded-lg text-lg">🗑️</button>` : ''}</div></div>`; } }); } div.innerHTML = htmlCierres; }); }
         function eliminarCierreIndividual(key) { sysConfirm("⚠️ ¿Estás seguro de ELIMINAR SÓLO ESTE CIERRE?", () => database.ref(`cierres_historial/${key}`).remove()); }
         function verMovimiento(c) { document.getElementById('mov-fecha').innerText = c.fecha; document.getElementById('mov-total').innerText = `Q ${c.total.toFixed(2)}`; const body = document.getElementById('mov-body'); let htmlMovimiento = ''; let consolidado = {}; c.movimientos.forEach(v => v.det.forEach(i => { if(!consolidado[i.nombre]) consolidado[i.nombre] = { cant: 0, sub: 0 }; consolidado[i.nombre].cant += parseInt(i.cant); consolidado[i.nombre].sub += (i.cant * i.pre); })); for(let p in consolidado) htmlMovimiento += `<tr class="uppercase text-[11px]"><td class="py-2">${p}</td><td class="text-center">x${consolidado[p].cant}</td><td class="text-right">Q${consolidado[p].sub.toFixed(2)}</td></tr>`; body.innerHTML = htmlMovimiento; document.getElementById('modal-movimiento').classList.remove('hidden'); }
         function cerrarMovimiento() { document.getElementById('modal-movimiento').classList.add('hidden'); }
