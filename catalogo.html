@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Etiquetas para obligar a cargar siempre lo más nuevo -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <title>Catálogo Virtual - Variedades M&M</title>
+    
+    <!-- Scripts requeridos -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
@@ -11,6 +19,7 @@
 
     <script>
         // Conexión a tu base de datos existente
+
         const firebaseConfig = {
             apiKey: "AIzaSyDbO2-MazSUKp-sXo9Xh7f7dg4NFpSkH70",
             authDomain: "variedadesmm-38061.firebaseapp.com",
