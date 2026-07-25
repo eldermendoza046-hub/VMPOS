@@ -457,6 +457,36 @@
         <div class="bg-white rounded-3xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"><div class="p-6 bg-indigo-900 text-white flex justify-between items-center"><div><h2 class="text-xl font-black uppercase italic">Movimientos</h2><p id="mov-fecha" class="text-xs opacity-70"></p></div><button type="button" onclick="cerrarMovimiento()" class="text-2xl font-black hover:text-red-400 transition-colors">✕</button></div><div class="p-4 overflow-y-auto"><table class="w-full text-left text-sm font-bold"><tbody id="mov-body" class="divide-y"></tbody></table></div><div class="p-6 bg-gray-50 border-t flex justify-between items-center"><span class="font-black italic">Total Jornada:</span><span id="mov-total" class="text-2xl font-black text-indigo-700">Q 0.00</span></div></div>
     </div>
 
+    <!-- MODAL KARDEX / TRACKING -->
+    <div id="modal-kardex" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-[300] backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div class="p-6 bg-indigo-900 text-white flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-black uppercase italic">Kárdex de Producto</h2>
+                    <p id="kardex-prod-nombre" class="text-xs opacity-70 font-bold"></p>
+                </div>
+                <button type="button" onclick="cerrarKardex()" class="text-2xl font-black hover:text-red-400 transition-colors">✕</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <table class="w-full text-left text-sm font-bold">
+                    <thead class="bg-gray-100 uppercase border-b sticky top-0">
+                        <tr>
+                            <th class="p-2">Fecha</th>
+                            <th class="p-2 text-center">Ticket</th>
+                            <th class="p-2 text-center">Estado</th>
+                            <th class="p-2 text-center">Cant. Salida</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kardex-body" class="divide-y"></tbody>
+                </table>
+            </div>
+            <div class="p-6 bg-gray-50 border-t flex justify-between items-center">
+                <span class="font-black italic text-gray-600">Total Unidades Vendidas:</span>
+                <span id="kardex-total-cant" class="text-2xl font-black text-indigo-700">0</span>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPT PRINCIPAL -->
     <script>
         let db = { tiendaActual: 'Variedades Maria', rol: 'VENDEDOR', productos: [], ventas: [], cMaria: 1, cMarisol: 1, admin_pin: '1892' };
@@ -655,7 +685,7 @@
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
                     const imgThumb = p.imagen ? `<img src="${p.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
-                    htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black"><div class="flex items-center gap-2">${imgThumb}<div>${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span></div></div></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
+                    htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black"><div class="flex items-center gap-2">${imgThumb}<div>${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span></div></div></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="verKardex('${p.codigo}')" class="text-indigo-500 hover:text-indigo-700 transition-colors" title="Kárdex / Historial">📊</button>` : ''} ${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
                 }
             });
 
@@ -1665,6 +1695,56 @@
                 </div>
             </div>`; 
             window.print();
+        }
+
+        // FUNCIONES NUEVAS DEL KÁRDEX
+        function verKardex(codigo) {
+            const p = db.productos.find(x => x.codigo === codigo);
+            if (!p) return;
+            
+            document.getElementById('kardex-prod-nombre').innerText = `${p.codigo} - ${p.nombre}`;
+            
+            const body = document.getElementById('kardex-body');
+            let htmlKardex = '';
+            let totalSalidas = 0;
+            
+            // Filtramos las ventas para que solo muestre las de la tienda en la que está el admin actualmente
+            const ventasTienda = db.ventas.filter(v => v.tienda === db.tiendaActual);
+            
+            ventasTienda.forEach(v => {
+                const item = v.det.find(i => i.codigo === codigo);
+                if (item) {
+                    const isAnulada = v.estado === 'ANULADA';
+                    if (!isAnulada) {
+                        totalSalidas += item.cant;
+                    }
+                    
+                    const statusClass = isAnulada ? 'text-red-500 line-through' : 'text-green-600';
+                    const bgClass = isAnulada ? 'bg-red-50 opacity-60' : '';
+                    
+                    htmlKardex += `<tr class="uppercase text-[11px] ${bgClass}">
+                        <td class="p-2">${v.fecha.split(',')[0]} <span class="text-[9px] text-gray-400">${v.fecha.split(',')[1] || ''}</span></td>
+                        <td class="p-2 text-center text-indigo-700 font-black">#${v.ticket}</td>
+                        <td class="p-2 text-center text-[9px] ${isAnulada ? 'text-red-500' : 'text-gray-500'}">${v.estado}</td>
+                        <td class="p-2 text-center font-black ${statusClass}">${isAnulada ? '0' : '-' + item.cant}</td>
+                    </tr>`;
+                }
+            });
+            
+            if(htmlKardex === '') {
+                htmlKardex = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No hay registros de venta de este producto en esta tienda.</td></tr>';
+            }
+            
+            body.innerHTML = htmlKardex;
+            document.getElementById('kardex-total-cant').innerText = totalSalidas;
+            
+            document.getElementById('modal-kardex').classList.remove('hidden');
+            document.getElementById('modal-kardex').classList.add('flex');
+        }
+        
+        function cerrarKardex() {
+            document.getElementById('modal-kardex').classList.add('hidden');
+            document.getElementById('modal-kardex').classList.remove('flex');
         }
     </script>
 </body>
