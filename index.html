@@ -589,9 +589,10 @@
             document.getElementById('login-modal').style.display = 'flex';
 
             window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
-            window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); });
-            if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
-        };
+window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); sincronizarVentasOffline(); });
+if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
+};
+
 
         function ejecutarLogin() {
             const u = document.getElementById('login-user').value;
@@ -785,96 +786,142 @@
         }
 
         function procesarVenta() { 
-            const t = parseFloat(document.getElementById('total-txt').innerText); 
-            if(!cart.length || t <= 0) return; 
-            const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
-            if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
+    const t = parseFloat(document.getElementById('total-txt').innerText); 
+    if(!cart.length || t <= 0) return; 
+    const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
+    if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
 
-            const tiendaLocal = db.tiendaActual;
-            
-            for (let item of cart) { 
-                const p = db.productos.find(x => x.codigo === item.codigo); 
-                if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
-                const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
-                if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
-            }
+    const tiendaLocal = db.tiendaActual;
+    
+    // Verificación visual de stock antes de cobrar
+    for (let item of cart) { 
+        const p = db.productos.find(x => x.codigo === item.codigo); 
+        if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
+        const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
+        if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
+    }
 
-            const btnCobrar = document.getElementById('btn-cobrar');
-            btnCobrar.innerText = "COBRANDO...";
-            btnCobrar.disabled = true;
+    const btnCobrar = document.getElementById('btn-cobrar');
+    btnCobrar.innerText = "COBRANDO...";
+    btnCobrar.disabled = true;
 
-            database.ref('tienda_datos').transaction(curr => {
-                if (!curr) return curr;
-                if (!curr.productos) curr.productos = [];
-                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
-                if (!curr.ventas) curr.ventas = [];
-                else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+    const f = new Date(); 
+    const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
 
-                for (let item of cart) {
-                    const p = curr.productos.find(x => x.codigo === item.codigo);
-                    if (!p) return; 
-                    const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
-                    if (item.cant > stockDisp) return; 
-                }
+    const detallesVenta = cart.map(c => { 
+        let sub = calcularSubtotal(c, c.cant); 
+        return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
+    });
 
-                const f = new Date(); 
-                const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    const nuevaVenta = {
+        id_offline: idUnicoOffline,
+        fecha: new Date().toLocaleString(),
+        fecha_filtro: fechaFiltro,
+        total: t,
+        pago: pago,
+        tienda: tiendaLocal,
+        estado: 'OK',
+        jornada_abierta: true,
+        det: detallesVenta
+    };
 
-                const detallesVenta = cart.map(c => { 
-                    let sub = calcularSubtotal(c, c.cant); 
-                    return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
-                });
+    // ==========================================
+    // MODO OFFLINE (SALA DE ESPERA)
+    // ==========================================
+    if (!navigator.onLine) {
+        nuevaVenta.ticket = "PENDIENTE";
+        
+        let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+        pendientes.push(nuevaVenta);
+        localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
 
-                let isMaria = tiendaLocal === 'Variedades Maria';
-                let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
-                
-                const nuevaVenta = {
-                    ticket: num,
-                    fecha: new Date().toLocaleString(),
-                    fecha_filtro: fechaFiltro,
-                    total: t,
-                    pago: pago,
-                    tienda: tiendaLocal,
-                    estado: 'OK',
-                    jornada_abierta: true,
-                    det: detallesVenta
-                };
+        cart.forEach(item => { 
+            const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
+            if(pIdx > -1) { 
+                if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
+                else db.productos[pIdx].stock_marisol -= item.cant; 
+            } 
+        });
+        
+        db.ventas.unshift(nuevaVenta);
+        persistir(); 
 
-                curr.ventas.unshift(nuevaVenta);
-                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+        cart = []; 
+        document.getElementById('pago-txt').value = ''; 
+        renderCart(); 
+        render();
 
-                cart.forEach(item => { 
-                    const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
-                    if(pIdx > -1) { 
-                        if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
-                        else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
-                    } 
-                });
+        btnCobrar.innerText = "COBRAR";
+        btnCobrar.disabled = false;
 
-                return curr;
-            }, (error, committed, snapshot) => {
-                btnCobrar.innerText = "COBRAR";
-                btnCobrar.disabled = false;
+        setTimeout(() => {
+            sysConfirm(`⚠️ VENTA REGISTRADA SIN INTERNET.\nSe guardó en la sala de espera y se subirá al volver la conexión.\n\n¿Desea IMPRIMIR el comprobante temporal?`, () => {
+                imprimirTicket(nuevaVenta);
+            }, "Cobro Local Activo");
+        }, 100);
+        return;
+    }
 
-                if (error || !committed) {
-                    sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
-                } else {
-                    const datosNuevos = snapshot.val();
-                    let num = tiendaLocal === 'Variedades Maria' ? (datosNuevos.cMaria - 1) : (datosNuevos.cMarisol - 1);
-                    const ventaReciente = datosNuevos.ventas[0];
+    // ==========================================
+    // MODO ONLINE (TRANSACCIÓN ORIGINAL)
+    // ==========================================
+    database.ref('tienda_datos').transaction(curr => {
+        if (!curr) return curr;
+        if (!curr.productos) curr.productos = [];
+        else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+        if (!curr.ventas) curr.ventas = [];
+        else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
 
-                    cart = []; 
-                    document.getElementById('pago-txt').value = ''; 
-                    renderCart(); 
-
-                    setTimeout(() => {
-                        sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                            imprimirTicket(ventaReciente);
-                        }, "Venta Exitosa");
-                    }, 100);
-                }
-            });
+        for (let item of cart) {
+            const p = curr.productos.find(x => x.codigo === item.codigo);
+            if (!p) return; 
+            const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
+            if (item.cant > stockDisp) return; 
         }
+
+        let isMaria = tiendaLocal === 'Variedades Maria';
+        let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+        
+        nuevaVenta.ticket = num;
+        delete nuevaVenta.id_offline; 
+
+        curr.ventas.unshift(nuevaVenta);
+        if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
+        cart.forEach(item => { 
+            const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
+            if(pIdx > -1) { 
+                if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
+                else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
+            } 
+        });
+
+        return curr;
+    }, (error, committed, snapshot) => {
+        btnCobrar.innerText = "COBRAR";
+        btnCobrar.disabled = false;
+
+        if (error || !committed) {
+            sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
+        } else {
+            const datosNuevos = snapshot.val();
+            let num = tiendaLocal === 'Variedades Maria' ? (datosNuevos.cMaria - 1) : (datosNuevos.cMarisol - 1);
+            const ventaReciente = datosNuevos.ventas[0];
+
+            cart = []; 
+            document.getElementById('pago-txt').value = ''; 
+            renderCart(); 
+
+            setTimeout(() => {
+                sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                    imprimirTicket(ventaReciente);
+                }, "Venta Exitosa");
+            }, 100);
+        }
+    });
+}
+
 
         function abrirModalAjuste() {
             if(db.rol !== 'ADMIN') return sysAlert("Solo el administrador puede usar esta función.");
