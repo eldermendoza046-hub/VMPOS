@@ -784,6 +784,60 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 });
             });
         }
+function sincronizarVentasOffline() {
+    let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+    if (pendientes.length === 0) return;
+
+    sysAlert(`Sincronizando ${pendientes.length} venta(s) local(es) con la nube...`, "Conexión Restaurada");
+
+    pendientes.forEach((ventaPendiente) => {
+        database.ref('tienda_datos').transaction(curr => {
+            if (!curr) return curr;
+            if (!curr.productos) curr.productos = [];
+            else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+            if (!curr.ventas) curr.ventas = [];
+            else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+
+            // 1. Evitar duplicados revisando el ID temporal
+            const yaExiste = curr.ventas.some(v => v.id_offline === ventaPendiente.id_offline);
+            if (yaExiste) return; 
+
+            // 2. Asignar el número de ticket real oficial
+            let isMaria = ventaPendiente.tienda === 'Variedades Maria';
+            let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+            
+            let ventaFinal = { ...ventaPendiente };
+            ventaFinal.ticket = num; 
+            delete ventaFinal.id_offline; 
+
+            curr.ventas.unshift(ventaFinal);
+            if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
+            // 3. Descontar stock definitivo de la base de datos central
+            ventaFinal.det.forEach(item => {
+                const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
+                if(pIdx > -1) {
+                    if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0);
+                    else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0);
+                }
+            });
+
+            return curr;
+        }, (error, committed) => {
+            if (committed) {
+                // 4. Si Firebase la aceptó, la borramos de la sala de espera local
+                let cola = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+                cola = cola.filter(v => v.id_offline !== ventaPendiente.id_offline);
+                localStorage.setItem('ventas_offline', JSON.stringify(cola));
+                
+                // Si la cola quedó vacía, avisamos que ya terminó
+                if(cola.length === 0) {
+                    setTimeout(() => { sysAlert("Todas las ventas offline han sido sincronizadas.", "Sincronización Exitosa"); }, 1000);
+                }
+            }
+        });
+    });
+}
 
         function procesarVenta() { 
     const t = parseFloat(document.getElementById('total-txt').innerText); 
