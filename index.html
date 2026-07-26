@@ -225,7 +225,7 @@
             <div id="lista-cierres" class="space-y-3"></div>
         </div>
 
-        <!-- SECCIÓN REPORTES -->
+    <!-- SECCIÓN REPORTES -->
         <div id="section-reportes" class="hidden space-y-6">
             <div class="bg-white p-6 rounded-3xl shadow-xl border">
                 <h2 class="text-2xl font-black mb-4 text-center uppercase italic text-indigo-950">📊 REPORTE MAESTRO DE VENTAS</h2>
@@ -245,6 +245,36 @@
                         <button onclick="imprimirReporteMaestro()" class="w-full bg-black hover:bg-gray-800 text-white p-3 rounded-xl font-black uppercase text-xs shadow-lg transition-colors">🖨️ Imprimir Resumen</button>
                     </div>
                 </div>
+
+                <!-- NUEVO PANEL DE RESUMEN EJECUTIVO (SOBRES) -->
+                <div class="bg-black p-6 rounded-3xl mb-8 shadow-2xl border-4 border-yellow-400 text-white">
+                    <h3 class="text-xl font-black text-yellow-400 uppercase italic mb-4 text-center border-b border-yellow-600 pb-2">💰 Tu Dinero en 3 Sobres (Resumen Total)</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div class="bg-white/10 p-4 rounded-2xl border border-white/20">
+                            <p class="text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">📦 Sobre 1: Capital (Para Surtir)</p>
+                            <p id="resumen-capital" class="text-3xl font-black text-yellow-300">Q 0.00</p>
+                            <p class="text-[10px] text-gray-400 mt-1 italic">Intocable. El costo de la mercadería.</p>
+                        </div>
+                        
+                        <div class="bg-white/10 p-4 rounded-2xl border border-white/20">
+                            <p class="text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">💸 Sobre 2: Gastos de Tienda</p>
+                            <p id="resumen-gastos" class="text-3xl font-black text-red-400">Q 0.00</p>
+                            <p class="text-[10px] text-gray-400 mt-1 italic">Luz, internet, sueldos ya pagados.</p>
+                        </div>
+                        
+                        <div class="bg-yellow-500 p-4 rounded-2xl border-2 border-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)]">
+                            <p class="text-[11px] font-black text-yellow-900 uppercase tracking-wider mb-1">💎 Sobre 3: Tu Ganancia Libre</p>
+                            <p id="resumen-ganancia" class="text-3xl font-black text-black">Q 0.00</p>
+                            <p class="text-[10px] text-yellow-900 mt-1 italic font-bold">¡Lo que te quedó 100% libre!</p>
+                        </div>
+                    </div>
+                    <div class="mt-5 text-center">
+                        <span class="text-xs text-gray-400 uppercase font-bold">Total ingresado en caja (Ventas Globales): </span>
+                        <span id="resumen-total-ventas" class="text-xl font-black text-white ml-2 bg-white/20 px-3 py-1 rounded">Q 0.00</span>
+                    </div>
+                </div>
+                <!-- FIN DEL NUEVO PANEL -->
 
                 <div class="bg-indigo-50 border-4 border-indigo-200 p-5 rounded-3xl mb-6 shadow-md">
                     <h3 class="text-lg font-black text-indigo-900 uppercase italic mb-4 text-center border-b border-indigo-200 pb-2">💸 CONTROL DE EFECTIVO Y DEPÓSITOS (POR SOCIA)</h3>
@@ -1201,7 +1231,7 @@ function sincronizarVentasOffline() {
         
         function imprimirTicketCierre(c) { const pa = document.getElementById('print-area'); pa.className = "ticket-mode"; pa.innerHTML = `<div style="text-align:center;"><b>CIERRE DE CAJA</b><br>${c.tienda.toUpperCase()}<br>${c.fecha}</div><hr style="border:1px dashed #000; margin:8px 0">LIB: Q${c.lib.toFixed(2)}<br>MAQ: Q${c.maq.toFixed(2)}<br>OTR: Q${c.otr.toFixed(2)}<hr style="border:1px dashed #000; margin:8px 0"><div style="text-align:center; font-size:16px"><b>TOTAL: Q${c.total.toFixed(2)}</b></div>`; window.print(); }
 
-        function cargarReportePorFechas() {
+     function cargarReportePorFechas() {
             const fIniStr = document.getElementById('rep-inicio').value; 
             const fFinStr = document.getElementById('rep-fin').value;
             if(!fIniStr || !fFinStr) return;
@@ -1283,6 +1313,22 @@ function sincronizarVentasOffline() {
                 document.getElementById('efectivo-dep-maq').innerText = `Q ${depMaq.toFixed(2)}`;
                 document.getElementById('efectivo-pen-maq').innerText = `Q ${pendienteMaq.toFixed(2)}`;
                 document.getElementById('box-pen-maq').className = pendienteMaq >= 0 ? "flex justify-between bg-pink-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors" : "flex justify-between bg-green-600 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors";
+
+                // --- NUEVO CÁLCULO DE SOBRES (CAPITAL VS GANANCIA) ---
+                const ventasTotalesGlobal = vLib + vMaq + vOtr;
+                const gananciaBrutaGlobal = gLib + gMaq + gOtr;
+                const gastosTotalesGlobal = gastosDirectosLib + gastosDirectosMaq + gastosCompartidosTotal;
+                
+                const capitalParaSurtir = ventasTotalesGlobal - gananciaBrutaGlobal;
+                const gananciaLibreNeta = gananciaBrutaGlobal - gastosTotalesGlobal;
+                
+                if(document.getElementById('resumen-total-ventas')) {
+                    document.getElementById('resumen-total-ventas').innerText = 'Q ' + ventasTotalesGlobal.toFixed(2);
+                    document.getElementById('resumen-capital').innerText = 'Q ' + capitalParaSurtir.toFixed(2);
+                    document.getElementById('resumen-gastos').innerText = 'Q ' + gastosTotalesGlobal.toFixed(2);
+                    document.getElementById('resumen-ganancia').innerText = 'Q ' + gananciaLibreNeta.toFixed(2);
+                }
+                // -----------------------------------------------------
             });
         }
 
