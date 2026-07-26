@@ -274,183 +274,101 @@
                         <span id="resumen-total-ventas" class="text-xl font-black text-white ml-2 bg-white/20 px-3 py-1 rounded">Q 0.00</span>
                     </div>
                 </div>
-                <!-- FIN DEL NUEVO PANEL -->
-
-                <div class="bg-indigo-50 border-4 border-indigo-200 p-5 rounded-3xl mb-6 shadow-md">
-                    <h3 class="text-lg font-black text-indigo-900 uppercase italic mb-4 text-center border-b border-indigo-200 pb-2">💸 CONTROL DE EFECTIVO Y DEPÓSITOS (POR SOCIA)</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div class="bg-white border-2 border-blue-200 rounded-3xl p-5 shadow">
-                            <h4 class="text-md font-black text-blue-900 uppercase italic mb-3 text-center border-b pb-1">LIBRERÍA Y FARMACIA</h4>
-                            <div class="space-y-2 font-bold text-sm">
-                                <div class="flex justify-between text-gray-700"><span>Efectivo Total Generado (Ventas - Gastos):</span><span id="efectivo-gen-lib">Q 0.00</span></div>
-                                <div class="flex justify-between text-green-600"><span>(-) Depósitos Ya Registrados:</span><span id="efectivo-dep-lib">Q 0.00</span></div>
-                                <div id="box-pen-lib" class="flex justify-between bg-blue-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors">
-                                    <span class="font-black italic">EFECTIVO FÍSICO PENDIENTE:</span><span class="font-black" id="efectivo-pen-lib">Q 0.00</span>
-                                </div>
+                                <!-- ========================================== -->
+                <!-- 1. RESUMEN PRÁCTICO POR SOCIO (GANANCIA Y EFECTIVO) -->
+                <!-- ========================================== -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- BLOQUE SOCIO 1: LIBRERÍA Y FARMACIA -->
+                    <div class="bg-blue-50 border-4 border-blue-500 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                        <h3 class="text-2xl font-black text-blue-900 uppercase italic mb-4 text-center border-b-2 border-blue-200 pb-2">👤 Socio 1: Librería + Farmacia</h3>
+                        <div class="space-y-3 text-lg font-bold">
+                            <div class="flex justify-between text-gray-700"><span>💰 Total Vendido:</span><span id="p1-ventas">Q 0.00</span></div>
+                            <div class="flex justify-between text-red-600"><span>📉 Gastos (Propios+Mitad):</span><span id="p1-gastos">Q 0.00</span></div>
+                            <div class="flex justify-between text-blue-700 pt-2 border-t-2 border-blue-200"><span>📦 Capital (Re-Invertir):</span><span id="p1-capital" class="font-black text-xl">Q 0.00</span></div>
+                            <div class="flex justify-between bg-green-500 text-white p-3 rounded-xl shadow-md text-xl mt-2 border-b-4 border-green-700">
+                                <span class="font-black italic">💵 Ganancia Libre:</span><span class="font-black" id="p1-ganancia">Q 0.00</span>
+                            </div>
+                            
+                            <!-- CUADRE DE CAJA DEL SOCIO 1 -->
+                            <div class="bg-white p-3 rounded-xl border-2 border-blue-200 mt-4">
+                                <div class="flex justify-between text-sm text-gray-600"><span>Efectivo Físico Generado:</span><span id="p1-efectivo-gen">Q 0.00</span></div>
+                                <div class="flex justify-between text-sm text-green-600"><span>(-) Depósitos Realizados:</span><span id="p1-depositos">Q 0.00</span></div>
+                                <div class="flex justify-between text-base text-blue-900 font-black border-t mt-1 pt-1"><span>BILLETE EN CAJA PENDIENTE:</span><span id="p1-efectivo-pen">Q 0.00</span></div>
                             </div>
                         </div>
-                        <div class="bg-white border-2 border-pink-200 rounded-3xl p-5 shadow">
-                            <h4 class="text-md font-black text-pink-900 uppercase italic mb-3 text-center border-b pb-1">MAQUILLAJE</h4>
-                            <div class="space-y-2 font-bold text-sm">
-                                <div class="flex justify-between text-gray-700"><span>Efectivo Total Generado (Ventas - Gastos):</span><span id="efectivo-gen-maq">Q 0.00</span></div>
-                                <div class="flex justify-between text-green-600"><span>(-) Depósitos Ya Registrados:</span><span id="efectivo-dep-maq">Q 0.00</span></div>
-                                <div id="box-pen-maq" class="flex justify-between bg-pink-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors">
-                                    <span class="font-black italic">EFECTIVO FÍSICO PENDIENTE:</span><span class="font-black" id="efectivo-pen-maq">Q 0.00</span>
-                                </div>
-                            </div>
-                        </div>
+                        <p class="text-[10px] text-gray-400 mt-4 text-center">*Tus números incluyen el 50% de las ventas de "Otros".</p>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-white p-4 rounded-2xl border-2 border-green-200">
-                            <h3 class="text-sm font-black uppercase mb-4 text-green-800 italic">📥 Ingresar Nuevo Depósito</h3>
-                            <div class="space-y-3 text-xs font-bold">
-                                <label class="text-gray-500 uppercase">El depósito pertenece a:</label>
-                                <select id="dep-area" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black uppercase outline-none">
-                                    <option value="LIBRERIA">A CUENTA DE LIBRERÍA</option>
-                                    <option value="MAQUILLAJE">A CUENTA DE MAQUILLAJE</option>
-                                </select>
-                                <input type="text" id="dep-ref" placeholder="No. Boleta o Referencia..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
-                                <input type="number" id="dep-monto" placeholder="Monto Depositado Q" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none">
-                                <button onclick="guardarDeposito(this)" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Registrar Depósito</button>
+                    <!-- BLOQUE SOCIO 2: MAQUILLAJE -->
+                    <div class="bg-pink-50 border-4 border-pink-500 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+                        <h3 class="text-2xl font-black text-pink-900 uppercase italic mb-4 text-center border-b-2 border-pink-200 pb-2">👤 Socio 2: Maquillaje</h3>
+                        <div class="space-y-3 text-lg font-bold">
+                            <div class="flex justify-between text-gray-700"><span>💰 Total Vendido:</span><span id="p2-ventas">Q 0.00</span></div>
+                            <div class="flex justify-between text-red-600"><span>📉 Gastos (Propios+Mitad):</span><span id="p2-gastos">Q 0.00</span></div>
+                            <div class="flex justify-between text-pink-700 pt-2 border-t-2 border-pink-200"><span>📦 Capital (Re-Invertir):</span><span id="p2-capital" class="font-black text-xl">Q 0.00</span></div>
+                            <div class="flex justify-between bg-green-500 text-white p-3 rounded-xl shadow-md text-xl mt-2 border-b-4 border-green-700">
+                                <span class="font-black italic">💵 Ganancia Libre:</span><span class="font-black" id="p2-ganancia">Q 0.00</span>
+                            </div>
+                            
+                            <!-- CUADRE DE CAJA DEL SOCIO 2 -->
+                            <div class="bg-white p-3 rounded-xl border-2 border-pink-200 mt-4">
+                                <div class="flex justify-between text-sm text-gray-600"><span>Efectivo Físico Generado:</span><span id="p2-efectivo-gen">Q 0.00</span></div>
+                                <div class="flex justify-between text-sm text-green-600"><span>(-) Depósitos Realizados:</span><span id="p2-depositos">Q 0.00</span></div>
+                                <div class="flex justify-between text-base text-pink-900 font-black border-t mt-1 pt-1"><span>BILLETE EN CAJA PENDIENTE:</span><span id="p2-efectivo-pen">Q 0.00</span></div>
                             </div>
                         </div>
-                        <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px] md:col-span-2">
-                            <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Depósitos</h3>
-                            <div class="overflow-y-auto flex-1 text-xs">
-                                <table class="w-full text-left font-bold">
-                                    <thead class="bg-gray-100 uppercase border-b sticky top-0">
-                                        <tr><th class="p-2">Fecha</th><th class="p-2">Área</th><th class="p-2">Boleta/Ref</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Acción</th></tr>
-                                    </thead>
-                                    <tbody id="depositos-body" class="divide-y"></tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <p class="text-[10px] text-gray-400 mt-4 text-center">*Tus números incluyen el 50% de las ventas de "Otros".</p>
                     </div>
                 </div>
 
-                <h3 class="text-lg font-black text-gray-800 uppercase italic mb-4 border-b pb-2">🩺 Salud Financiera (Ganancias Neta)</h3>
+                <!-- ========================================== -->
+                <!-- 2. FORMULARIOS DE REGISTRO (DEPÓSITOS Y GASTOS) -->
+                <!-- ========================================== -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="bg-blue-50 border border-blue-100 rounded-2xl p-5">
-                        <div class="space-y-2 font-bold text-sm">
-                            <div class="flex justify-between"><span>Ventas Totales Librería:</span><span class="text-blue-800" id="ind-ventas-lib">Q 0.00</span></div>
-                            <div class="flex justify-between bg-white p-2 rounded-xl border"><span>(+) Ganancia (Lo que le ganaste):</span><span class="text-green-600 font-black" id="ind-ganancia-lib">Q 0.00</span></div>
-                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) Gastos Propios:</span><span id="ind-gastos-lib">Q 0.00</span></div>
-                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) 50% Gastos Compartidos:</span><span id="ind-gastoscomp-lib">Q 0.00</span></div>
-                            <div class="flex justify-between text-blue-900 border-t pt-2 mt-2"><span class="font-black italic">UTILIDAD NETA LIB:</span><span class="font-black" id="ind-utilidad-lib">Q 0.00</span></div>
+                    <!-- REGISTRO DE DEPÓSITOS -->
+                    <div class="bg-white p-5 rounded-2xl border-2 border-green-200 shadow-md">
+                        <h3 class="text-md font-black uppercase mb-4 text-green-800 italic">📥 Ingresar Nuevo Depósito</h3>
+                        <div class="space-y-3 text-xs font-bold">
+                            <label class="text-gray-500 uppercase">El depósito pertenece a:</label>
+                            <select id="dep-area" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black uppercase outline-none">
+                                <option value="LIBRERIA">A CUENTA DE LIBRERÍA</option>
+                                <option value="MAQUILLAJE">A CUENTA DE MAQUILLAJE</option>
+                            </select>
+                            <input type="text" id="dep-ref" placeholder="No. Boleta o Referencia..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
+                            <input type="number" id="dep-monto" placeholder="Monto Depositado Q" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none">
+                            <button onclick="guardarDeposito(this)" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Registrar Depósito</button>
                         </div>
                     </div>
-                    <div class="bg-pink-50 border border-pink-100 rounded-2xl p-5">
-                        <div class="space-y-2 font-bold text-sm">
-                            <div class="flex justify-between"><span>Ventas Totales Maquillaje:</span><span class="text-pink-800" id="ind-ventas-maq">Q 0.00</span></div>
-                            <div class="flex justify-between bg-white p-2 rounded-xl border"><span>(+) Ganancia (Lo que le ganaste):</span><span class="text-green-600 font-black" id="ind-ganancia-maq">Q 0.00</span></div>
-                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) Gastos Propios:</span><span id="ind-gastos-maq">Q 0.00</span></div>
-                            <div class="flex justify-between text-[10px] text-gray-500"><span>(-) 50% Gastos Compartidos:</span><span id="ind-gastoscomp-maq">Q 0.00</span></div>
-                            <div class="flex justify-between text-pink-900 border-t pt-2 mt-2"><span class="font-black italic">UTILIDAD NETA MAQ:</span><span class="font-black" id="ind-utilidad-maq">Q 0.00</span></div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="bg-gray-100 border rounded-2xl p-4 mb-6 text-center text-xs font-bold text-gray-700 max-w-md mx-auto">⚠️ <span class="uppercase font-black">Categoría "Otros":</span> Ventas Q <span id="ind-ventas-otr">0.00</span> | Ganancia Q <span id="ind-ganancia-otr">0.00</span><br><span class="text-[9px]">(El dinero y ganancias de 'Otros' ya está repartido 50/50 arriba)</span></div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-gray-50 p-4 rounded-2xl border">
-                        <h3 class="text-sm font-black uppercase mb-4 text-gray-700 italic">💸 Pago de Gastos Físicos</h3>
+                    <!-- REGISTRO DE GASTOS -->
+                    <div class="bg-white p-5 rounded-2xl border-2 border-red-200 shadow-md">
+                        <h3 class="text-md font-black uppercase mb-4 text-red-800 italic">💸 Pago de Gastos Físicos</h3>
                         <div class="space-y-3 text-xs font-bold">
                             <label class="text-gray-500 uppercase">¿De qué cuenta salió el pago?</label>
-                            <select id="gasto-asignacion" class="w-full p-3 border-2 rounded-xl bg-white font-black uppercase outline-none"><option value="COMPARTIDO">MITAD Y MITAD (Luz, Alquiler...)</option><option value="LIBRERIA">SOLO LIBRERÍA</option><option value="MAQUILLAJE">SOLO MAQUILLAJE</option></select>
+                            <select id="gasto-asignacion" class="w-full p-3 border-2 rounded-xl bg-white font-black uppercase outline-none">
+                                <option value="COMPARTIDO">MITAD Y MITAD (Luz, Alquiler...)</option>
+                                <option value="LIBRERIA">SOLO LIBRERÍA</option>
+                                <option value="MAQUILLAJE">SOLO MAQUILLAJE</option>
+                            </select>
                             <input type="text" id="gasto-desc" placeholder="Ej. Recibo de Luz..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
                             <input type="number" id="gasto-monto" placeholder="Monto (Q) 0.00" class="w-full p-3 border-2 rounded-xl text-red-600 text-lg font-black outline-none">
                             <button onclick="guardarGasto(this)" class="w-full bg-red-600 hover:bg-red-800 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Guardar Gasto</button>
                         </div>
                     </div>
-                    <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px] md:col-span-2">
+                </div>
+
+                <!-- TABLAS DE HISTORIALES (DEPÓSITOS Y GASTOS JUNTOS) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px]">
+                        <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Depósitos</h3>
+                        <div class="overflow-y-auto flex-1 text-xs"><table class="w-full text-left font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0"><tr><th class="p-2">Fecha</th><th class="p-2">Área</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Acción</th></tr></thead><tbody id="depositos-body" class="divide-y"></tbody></table></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px]">
                         <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Gastos</h3>
-                        <div class="overflow-y-auto flex-1 text-xs"><table class="w-full text-left font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0"><tr><th class="p-2">Fecha</th><th class="p-2">Área</th><th class="p-2">Detalle</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Acción</th></tr></thead><tbody id="gastos-body" class="divide-y"></tbody></table></div>
+                        <div class="overflow-y-auto flex-1 text-xs"><table class="w-full text-left font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0"><tr><th class="p-2">Fecha</th><th class="p-2">Detalle</th><th class="p-2 text-right">Monto</th><th class="p-2 text-center">Acción</th></tr></thead><tbody id="gastos-body" class="divide-y"></tbody></table></div>
                     </div>
                 </div>
 
-                <div class="mt-6 border-t pt-4">
-                    <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Ventas (Tickets del Rango)</h3>
-                    <div class="overflow-x-auto max-h-[300px] overflow-y-auto text-xs rounded-xl border"><table class="w-full text-center font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0 z-10"><tr><th class="p-3">Fecha</th><th class="p-3">Ticket</th><th class="p-3 text-blue-800">Librería+Farm</th><th class="p-3 text-pink-800">Maquillaje</th><th class="p-3 text-gray-600">Otros</th><th class="p-3 bg-gray-200">Total</th><th class="p-3 bg-green-100 text-green-800">Ganancia</th></tr></thead><tbody id="rep-ventas-body" class="divide-y"></tbody></table></div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- MODAL AJUSTE FINANCIERO -->
-    <div id="modal-ajuste" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[400] backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md p-8 rounded-[2rem] shadow-2xl border-4 border-yellow-400">
-            <h2 class="text-xl font-black mb-2 text-yellow-600 uppercase italic">🛠️ Ajuste Financiero</h2>
-            <p class="text-[10px] text-gray-500 font-bold uppercase mb-6">Ingreso de dinero sin afectar el inventario</p>
-            
-            <div class="space-y-4 font-bold text-xs">
-                <div>
-                    <label class="text-gray-500 uppercase">Tienda de Destino</label>
-                    <select id="ajuste-tienda" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black text-indigo-700 outline-none">
-                        <option value="Variedades Maria">Variedades María</option>
-                        <option value="Marisol">Tienda Marisol</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-gray-500 uppercase">Categoría</label>
-                    <select id="ajuste-cat" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black outline-none">
-                        <option value="LIBRERIA">LIBRERÍA Y FARMACIA</option>
-                        <option value="MAQUILLAJE">MAQUILLAJE</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-gray-500 uppercase">Fecha del Ingreso Atrasado</label>
-                    <input type="date" id="ajuste-fecha" class="w-full p-3 border-2 rounded-xl font-black text-gray-700 outline-none">
-                </div>
-                <div>
-                    <label class="text-gray-500 uppercase">Monto Total a Ingresar (Q)</label>
-                    <input type="number" id="ajuste-monto" placeholder="0.00" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none focus:border-yellow-500">
-                </div>
-            </div>
-            
-            <div class="flex gap-2 mt-8">
-                <button type="button" onclick="document.getElementById('modal-ajuste').classList.add('hidden')" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-gray-600 hover:bg-gray-300 transition-colors">Cancelar</button>
-                <button type="button" onclick="ejecutarAjuste()" class="flex-[2] bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-xl font-black uppercase shadow-lg transition-colors">Guardar Ingreso</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL PRODUCTO -->
-    <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h2 class="text-xl font-black mb-4 italic uppercase">Producto</h2>
-            <div class="space-y-3 font-bold text-xs">
-                <select id="p-cat" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black italic outline-none focus:border-indigo-500">
-                    <option value="LIBRERIA">LIBRERIA</option>
-                    <option value="MAQUILLAJE">MAQUILLAJE</option>
-                    <option value="FARMACIA">FARMACIA (MEDICAMENTOS)</option>
-                    <option value="OTROS">OTROS</option>
-                </select>
-                <input type="text" id="p-cod" placeholder="Código" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
-                <input type="text" id="p-nom" placeholder="Nombre" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
-                
-                <div class="p-3 bg-pink-50 border-2 border-pink-300 rounded-xl shadow-sm">
-                    <label class="text-[10px] text-pink-800 uppercase font-black mb-1 block">🖼️ Link de la Imagen (Catálogo)</label>
-                    <input type="text" id="p-imagen" placeholder="Pega aquí el enlace de internet..." class="w-full p-2 border rounded-lg text-xs outline-none focus:border-pink-500 bg-white">
-                </div>
-                
-                <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
-                <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
-                
-                <div id="div-farma-modal" class="hidden border-2 border-green-400 p-3 rounded-xl bg-green-50">
-                    <label class="text-[10px] text-green-800 uppercase font-black">💊 Precio Especial por Blister / Caja</label>
-                    <div class="flex gap-2 mt-2">
-                        <div class="w-1/2">
-                            <label class="text-[9px] text-gray-500 uppercase">Trae (Unidades):</label>
-                            <input type="number" id="p-farma-cant" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 10">
-                        </div>
-                        <div class="w-1/2">
-                            <label class="text-[9px] text-gray-500 uppercase">Precio Blister Q:</label>
-                            <input type="number" id="p-farma-precio" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 12.00">
-                        </div>
-                    </div>
-                </div>
                 
                 <!-- PRECIOS MAYORISTAS -->
                 <div id="div-mayorista-modal" class="border-2 border-blue-400 p-3 rounded-xl bg-blue-50 mt-3">
@@ -1292,42 +1210,57 @@ function sincronizarVentasOffline() {
                 if(gb) gb.innerHTML = htmlGastos; 
                 if(dbb) dbb.innerHTML = htmlDepositos;
 
+                                // --- CÁLCULOS PRÁCTICOS POR SOCIO ---
                 const mitadGastoCompartido = gastosCompartidosTotal / 2;
-                
-                document.getElementById('ind-gastos-lib').innerText = `Q ${gastosDirectosLib.toFixed(2)}`; document.getElementById('ind-gastoscomp-lib').innerText = `Q ${mitadGastoCompartido.toFixed(2)}`;
-                document.getElementById('ind-gastos-maq').innerText = `Q ${gastosDirectosMaq.toFixed(2)}`; document.getElementById('ind-gastoscomp-maq').innerText = `Q ${mitadGastoCompartido.toFixed(2)}`;
-                document.getElementById('ind-utilidad-lib').innerText = `Q ${(gananciaFinalLib - gastosDirectosLib - mitadGastoCompartido).toFixed(2)}`; document.getElementById('ind-utilidad-maq').innerText = `Q ${(gananciaFinalMaq - gastosDirectosMaq - mitadGastoCompartido).toFixed(2)}`;
 
-                const efectivoLibGen = vLib + (vOtr/2) - gastosDirectosLib - mitadGastoCompartido;
-                const efectivoMaqGen = vMaq + (vOtr/2) - gastosDirectosMaq - mitadGastoCompartido;
+                // 1. NÚMEROS SOCIO 1 (LIBRERÍA Y FARMACIA)
+                const ventasTotalesS1 = vLib + (vOtr / 2);
+                const gananciaBrutaS1 = gLib + (gOtr / 2);
+                const gastosTotalesS1 = gastosDirectosLib + mitadGastoCompartido;
                 
-                const pendienteLib = efectivoLibGen - depLib;
-                const pendienteMaq = efectivoMaqGen - depMaq;
-
-                document.getElementById('efectivo-gen-lib').innerText = `Q ${efectivoLibGen.toFixed(2)}`;
-                document.getElementById('efectivo-dep-lib').innerText = `Q ${depLib.toFixed(2)}`;
-                document.getElementById('efectivo-pen-lib').innerText = `Q ${pendienteLib.toFixed(2)}`;
-                document.getElementById('box-pen-lib').className = pendienteLib >= 0 ? "flex justify-between bg-blue-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors" : "flex justify-between bg-green-600 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors";
-
-                document.getElementById('efectivo-gen-maq').innerText = `Q ${efectivoMaqGen.toFixed(2)}`;
-                document.getElementById('efectivo-dep-maq').innerText = `Q ${depMaq.toFixed(2)}`;
-                document.getElementById('efectivo-pen-maq').innerText = `Q ${pendienteMaq.toFixed(2)}`;
-                document.getElementById('box-pen-maq').className = pendienteMaq >= 0 ? "flex justify-between bg-pink-700 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors" : "flex justify-between bg-green-600 text-white p-3 rounded-xl shadow-md text-base mt-2 transition-colors";
-
-                // --- NUEVO CÁLCULO DE SOBRES (CAPITAL VS GANANCIA) ---
-                const ventasTotalesGlobal = vLib + vMaq + vOtr;
-                const gananciaBrutaGlobal = gLib + gMaq + gOtr;
-                const gastosTotalesGlobal = gastosDirectosLib + gastosDirectosMaq + gastosCompartidosTotal;
+                const capitalS1 = ventasTotalesS1 - gananciaBrutaS1; // Costo intocable de la mercadería
+                const gananciaNetaS1 = gananciaBrutaS1 - gastosTotalesS1; // Ganancia libre real
                 
-                const capitalParaSurtir = ventasTotalesGlobal - gananciaBrutaGlobal;
-                const gananciaLibreNeta = gananciaBrutaGlobal - gastosTotalesGlobal;
-                
-                if(document.getElementById('resumen-total-ventas')) {
-                    document.getElementById('resumen-total-ventas').innerText = 'Q ' + ventasTotalesGlobal.toFixed(2);
-                    document.getElementById('resumen-capital').innerText = 'Q ' + capitalParaSurtir.toFixed(2);
-                    document.getElementById('resumen-gastos').innerText = 'Q ' + gastosTotalesGlobal.toFixed(2);
-                    document.getElementById('resumen-ganancia').innerText = 'Q ' + gananciaLibreNeta.toFixed(2);
+                const efectivoGeneradoS1 = ventasTotalesS1 - gastosTotalesS1; // Plata física que entró
+                const pendienteDepositarS1 = efectivoGeneradoS1 - depLib; // Billete pendiente en caja
+
+                if(document.getElementById('p1-ventas')) {
+                    document.getElementById('p1-ventas').innerText = `Q ${ventasTotalesS1.toFixed(2)}`;
+                    document.getElementById('p1-gastos').innerText = `Q ${gastosTotalesS1.toFixed(2)}`;
+                    document.getElementById('p1-capital').innerText = `Q ${capitalS1.toFixed(2)}`;
+                    document.getElementById('p1-ganancia').innerText = `Q ${gananciaNetaS1.toFixed(2)}`;
+                    
+                    document.getElementById('p1-efectivo-gen').innerText = `Q ${efectivoGeneradoS1.toFixed(2)}`;
+                    document.getElementById('p1-depositos').innerText = `Q ${depLib.toFixed(2)}`;
+                    document.getElementById('p1-efectivo-pen').innerText = `Q ${pendienteDepositarS1.toFixed(2)}`;
+                    
+                    document.getElementById('p1-efectivo-pen').parentElement.className = pendienteDepositarS1 >= 0 ? "flex justify-between text-base text-blue-900 font-black border-t mt-1 pt-1" : "flex justify-between text-base text-green-600 font-black border-t mt-1 pt-1";
                 }
+
+                // 2. NÚMEROS SOCIO 2 (MAQUILLAJE)
+                const ventasTotalesS2 = vMaq + (vOtr / 2);
+                const gananciaBrutaS2 = gMaq + (gOtr / 2);
+                const gastosTotalesS2 = gastosDirectosMaq + mitadGastoCompartido;
+                
+                const capitalS2 = ventasTotalesS2 - gananciaBrutaS2; // Costo intocable de la mercadería
+                const gananciaNetaS2 = gananciaBrutaS2 - gastosTotalesS2; // Ganancia libre real
+                
+                const efectivoGeneradoS2 = ventasTotalesS2 - gastosTotalesS2; // Plata física que entró
+                const pendienteDepositarS2 = efectivoGeneradoS2 - depMaq; // Billete pendiente en caja
+
+                if(document.getElementById('p2-ventas')) {
+                    document.getElementById('p2-ventas').innerText = `Q ${ventasTotalesS2.toFixed(2)}`;
+                    document.getElementById('p2-gastos').innerText = `Q ${gastosTotalesS2.toFixed(2)}`;
+                    document.getElementById('p2-capital').innerText = `Q ${capitalS2.toFixed(2)}`;
+                    document.getElementById('p2-ganancia').innerText = `Q ${gananciaNetaS2.toFixed(2)}`;
+                    
+                    document.getElementById('p2-efectivo-gen').innerText = `Q ${efectivoGeneradoS2.toFixed(2)}`;
+                    document.getElementById('p2-depositos').innerText = `Q ${depMaq.toFixed(2)}`;
+                    document.getElementById('p2-efectivo-pen').innerText = `Q ${pendienteDepositarS2.toFixed(2)}`;
+
+                    document.getElementById('p2-efectivo-pen').parentElement.className = pendienteDepositarS2 >= 0 ? "flex justify-between text-base text-pink-900 font-black border-t mt-1 pt-1" : "flex justify-between text-base text-green-600 font-black border-t mt-1 pt-1";
+                }
+
                 // -----------------------------------------------------
             });
         }
