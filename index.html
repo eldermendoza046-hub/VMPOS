@@ -1376,6 +1376,12 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
         }
 
         function accesoAdmin() {
+            const usuarioActual = firebase.auth().currentUser;
+if (usuarioActual && usuarioActual.email !== "admin@vm.com") {
+    alert("🚨 Estás en modo VENTAS. Recuerda usar tu celular o cambiar a Admin para hacer modificaciones.");
+    return;
+}
+
             if(db.rol === 'ADMIN') {
                 db.rol = 'VENDEDOR';
                 render();
