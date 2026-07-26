@@ -225,7 +225,7 @@
             <div id="lista-cierres" class="space-y-3"></div>
         </div>
 
-    <!-- SECCIÓN REPORTES -->
+        <!-- SECCIÓN REPORTES -->
         <div id="section-reportes" class="hidden space-y-6">
             <div class="bg-white p-6 rounded-3xl shadow-xl border">
                 <h2 class="text-2xl font-black mb-4 text-center uppercase italic text-indigo-950">📊 REPORTE MAESTRO DE VENTAS</h2>
@@ -246,35 +246,7 @@
                     </div>
                 </div>
 
-                <!-- NUEVO PANEL DE RESUMEN EJECUTIVO (SOBRES) -->
-                <div class="bg-black p-6 rounded-3xl mb-8 shadow-2xl border-4 border-yellow-400 text-white">
-                    <h3 class="text-xl font-black text-yellow-400 uppercase italic mb-4 text-center border-b border-yellow-600 pb-2">💰 Tu Dinero en 3 Sobres (Resumen Total)</h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                        <div class="bg-white/10 p-4 rounded-2xl border border-white/20">
-                            <p class="text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">📦 Sobre 1: Capital (Para Surtir)</p>
-                            <p id="resumen-capital" class="text-3xl font-black text-yellow-300">Q 0.00</p>
-                            <p class="text-[10px] text-gray-400 mt-1 italic">Intocable. El costo de la mercadería.</p>
-                        </div>
-                        
-                        <div class="bg-white/10 p-4 rounded-2xl border border-white/20">
-                            <p class="text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">💸 Sobre 2: Gastos de Tienda</p>
-                            <p id="resumen-gastos" class="text-3xl font-black text-red-400">Q 0.00</p>
-                            <p class="text-[10px] text-gray-400 mt-1 italic">Luz, internet, sueldos ya pagados.</p>
-                        </div>
-                        
-                        <div class="bg-yellow-500 p-4 rounded-2xl border-2 border-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)]">
-                            <p class="text-[11px] font-black text-yellow-900 uppercase tracking-wider mb-1">💎 Sobre 3: Tu Ganancia Libre</p>
-                            <p id="resumen-ganancia" class="text-3xl font-black text-black">Q 0.00</p>
-                            <p class="text-[10px] text-yellow-900 mt-1 italic font-bold">¡Lo que te quedó 100% libre!</p>
-                        </div>
-                    </div>
-                    <div class="mt-5 text-center">
-                        <span class="text-xs text-gray-400 uppercase font-bold">Total ingresado en caja (Ventas Globales): </span>
-                        <span id="resumen-total-ventas" class="text-xl font-black text-white ml-2 bg-white/20 px-3 py-1 rounded">Q 0.00</span>
-                    </div>
-                </div>
-                                <!-- ========================================== -->
+                <!-- ========================================== -->
                 <!-- 1. RESUMEN PRÁCTICO POR SOCIO (GANANCIA Y EFECTIVO) -->
                 <!-- ========================================== -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -369,7 +341,89 @@
                     </div>
                 </div>
 
+                <!-- HISTORIAL DE VENTAS (RESTAURADO) -->
+                <div class="mt-6 border-t pt-4">
+                    <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Ventas (Tickets del Rango)</h3>
+                    <div class="overflow-x-auto max-h-[300px] overflow-y-auto text-xs rounded-xl border"><table class="w-full text-center font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0 z-10"><tr><th class="p-3">Fecha</th><th class="p-3">Ticket</th><th class="p-3 text-blue-800">Librería+Farm</th><th class="p-3 text-pink-800">Maquillaje</th><th class="p-3 text-gray-600">Otros</th><th class="p-3 bg-gray-200">Total</th><th class="p-3 bg-green-100 text-green-800">Ganancia</th></tr></thead><tbody id="rep-ventas-body" class="divide-y"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL AJUSTE FINANCIERO (RESTAURADO) -->
+    <div id="modal-ajuste" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[400] backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md p-8 rounded-[2rem] shadow-2xl border-4 border-yellow-400">
+            <h2 class="text-xl font-black mb-2 text-yellow-600 uppercase italic">🛠️ Ajuste Financiero</h2>
+            <p class="text-[10px] text-gray-500 font-bold uppercase mb-6">Ingreso de dinero sin afectar el inventario</p>
+            
+            <div class="space-y-4 font-bold text-xs">
+                <div>
+                    <label class="text-gray-500 uppercase">Tienda de Destino</label>
+                    <select id="ajuste-tienda" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black text-indigo-700 outline-none">
+                        <option value="Variedades Maria">Variedades María</option>
+                        <option value="Marisol">Tienda Marisol</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase">Categoría</label>
+                    <select id="ajuste-cat" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black outline-none">
+                        <option value="LIBRERIA">LIBRERÍA Y FARMACIA</option>
+                        <option value="MAQUILLAJE">MAQUILLAJE</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase">Fecha del Ingreso Atrasado</label>
+                    <input type="date" id="ajuste-fecha" class="w-full p-3 border-2 rounded-xl font-black text-gray-700 outline-none">
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase">Monto Total a Ingresar (Q)</label>
+                    <input type="number" id="ajuste-monto" placeholder="0.00" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none focus:border-yellow-500">
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-8">
+                <button type="button" onclick="document.getElementById('modal-ajuste').classList.add('hidden')" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-gray-600 hover:bg-gray-300 transition-colors">Cancelar</button>
+                <button type="button" onclick="ejecutarAjuste()" class="flex-[2] bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-xl font-black uppercase shadow-lg transition-colors">Guardar Ingreso</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PRODUCTO (RESTAURADO) -->
+    <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h2 class="text-xl font-black mb-4 italic uppercase">Producto</h2>
+            <div class="space-y-3 font-bold text-xs">
+                <select id="p-cat" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black italic outline-none focus:border-indigo-500">
+                    <option value="LIBRERIA">LIBRERIA</option>
+                    <option value="MAQUILLAJE">MAQUILLAJE</option>
+                    <option value="FARMACIA">FARMACIA (MEDICAMENTOS)</option>
+                    <option value="OTROS">OTROS</option>
+                </select>
+                <input type="text" id="p-cod" placeholder="Código" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
+                <input type="text" id="p-nom" placeholder="Nombre" class="w-full p-3 border-2 rounded-xl uppercase outline-none focus:border-indigo-500">
                 
+                <div class="p-3 bg-pink-50 border-2 border-pink-300 rounded-xl shadow-sm">
+                    <label class="text-[10px] text-pink-800 uppercase font-black mb-1 block">🖼️ Link de la Imagen (Catálogo)</label>
+                    <input type="text" id="p-imagen" placeholder="Pega aquí el enlace de internet..." class="w-full p-2 border rounded-lg text-xs outline-none focus:border-pink-500 bg-white">
+                </div>
+                
+                <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
+                <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
+                
+                <div id="div-farma-modal" class="hidden border-2 border-green-400 p-3 rounded-xl bg-green-50">
+                    <label class="text-[10px] text-green-800 uppercase font-black">💊 Precio Especial por Blister / Caja</label>
+                    <div class="flex gap-2 mt-2">
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Trae (Unidades):</label>
+                            <input type="number" id="p-farma-cant" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 10">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Precio Blister Q:</label>
+                            <input type="number" id="p-farma-precio" class="w-full p-2 border rounded-lg text-xs font-bold text-gray-700 outline-none" placeholder="Ej. 12.00">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PRECIOS MAYORISTAS -->
                 <div id="div-mayorista-modal" class="border-2 border-blue-400 p-3 rounded-xl bg-blue-50 mt-3">
                     <label class="text-[10px] text-blue-800 uppercase font-black">📦 Precios Mayorista (Precio c/u)</label>
@@ -583,7 +637,6 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 });
         }
 
-        // CORRECCIÓN CRÍTICA DE CONCURRENCIA: Persistir ya NO sube la base de datos entera ciegamente. Solo guarda en el PC.
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
         }
@@ -701,7 +754,6 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             });
         }
 
-        // CORRECCIÓN: Ahora usa una Transacción Segura para no sobreescribir datos de otras personas.
         function eliminarVentaRegistroUnico(idx) { 
             const vLocal = db.ventas[idx];
             sysConfirm("⚠️ ¿Deseas ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
@@ -732,198 +784,186 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 });
             });
         }
-function sincronizarVentasOffline() {
-    let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
-    if (pendientes.length === 0) return;
 
-    sysAlert(`Sincronizando ${pendientes.length} venta(s) local(es) con la nube...`, "Conexión Restaurada");
+        function sincronizarVentasOffline() {
+            let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+            if (pendientes.length === 0) return;
 
-    pendientes.forEach((ventaPendiente) => {
-        database.ref('tienda_datos').transaction(curr => {
-            if (!curr) return curr;
-            if (!curr.productos) curr.productos = [];
-            else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
-            if (!curr.ventas) curr.ventas = [];
-            else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+            sysAlert(`Sincronizando ${pendientes.length} venta(s) local(es) con la nube...`, "Conexión Restaurada");
 
-            // 1. Evitar duplicados revisando el ID temporal
-            const yaExiste = curr.ventas.some(v => v.id_offline === ventaPendiente.id_offline);
-            if (yaExiste) return; 
+            pendientes.forEach((ventaPendiente) => {
+                database.ref('tienda_datos').transaction(curr => {
+                    if (!curr) return curr;
+                    if (!curr.productos) curr.productos = [];
+                    else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                    if (!curr.ventas) curr.ventas = [];
+                    else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
 
-            // 2. Asignar el número de ticket real oficial
-            let isMaria = ventaPendiente.tienda === 'Variedades Maria';
-            let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
-            
-            let ventaFinal = { ...ventaPendiente };
-            ventaFinal.ticket = num; 
-            delete ventaFinal.id_offline; 
+                    const yaExiste = curr.ventas.some(v => v.id_offline === ventaPendiente.id_offline);
+                    if (yaExiste) return; 
 
-            curr.ventas.unshift(ventaFinal);
-            if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+                    let isMaria = ventaPendiente.tienda === 'Variedades Maria';
+                    let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+                    
+                    let ventaFinal = { ...ventaPendiente };
+                    ventaFinal.ticket = num; 
+                    delete ventaFinal.id_offline; 
 
-            // 3. Descontar stock definitivo de la base de datos central
-            ventaFinal.det.forEach(item => {
-                const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
-                if(pIdx > -1) {
-                    if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0);
-                    else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0);
-                }
+                    curr.ventas.unshift(ventaFinal);
+                    if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
+                    ventaFinal.det.forEach(item => {
+                        const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
+                        if(pIdx > -1) {
+                            if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0);
+                            else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0);
+                        }
+                    });
+
+                    return curr;
+                }, (error, committed) => {
+                    if (committed) {
+                        let cola = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+                        cola = cola.filter(v => v.id_offline !== ventaPendiente.id_offline);
+                        localStorage.setItem('ventas_offline', JSON.stringify(cola));
+                        
+                        if(cola.length === 0) {
+                            setTimeout(() => { sysAlert("Todas las ventas offline han sido sincronizadas.", "Sincronización Exitosa"); }, 1000);
+                        }
+                    }
+                });
             });
-
-            return curr;
-        }, (error, committed) => {
-            if (committed) {
-                // 4. Si Firebase la aceptó, la borramos de la sala de espera local
-                let cola = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
-                cola = cola.filter(v => v.id_offline !== ventaPendiente.id_offline);
-                localStorage.setItem('ventas_offline', JSON.stringify(cola));
-                
-                // Si la cola quedó vacía, avisamos que ya terminó
-                if(cola.length === 0) {
-                    setTimeout(() => { sysAlert("Todas las ventas offline han sido sincronizadas.", "Sincronización Exitosa"); }, 1000);
-                }
-            }
-        });
-    });
-}
+        }
 
         function procesarVenta() { 
-    const t = parseFloat(document.getElementById('total-txt').innerText); 
-    if(!cart.length || t <= 0) return; 
-    const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
-    if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
+            const t = parseFloat(document.getElementById('total-txt').innerText); 
+            if(!cart.length || t <= 0) return; 
+            const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
+            if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
 
-    const tiendaLocal = db.tiendaActual;
-    
-    // Verificación visual de stock antes de cobrar
-    for (let item of cart) { 
-        const p = db.productos.find(x => x.codigo === item.codigo); 
-        if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
-        const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
-        if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
-    }
+            const tiendaLocal = db.tiendaActual;
+            
+            for (let item of cart) { 
+                const p = db.productos.find(x => x.codigo === item.codigo); 
+                if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
+                const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
+                if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
+            }
 
-    const btnCobrar = document.getElementById('btn-cobrar');
-    btnCobrar.innerText = "COBRANDO...";
-    btnCobrar.disabled = true;
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.innerText = "COBRANDO...";
+            btnCobrar.disabled = true;
 
-    const f = new Date(); 
-    const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
-    const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
+            const f = new Date(); 
+            const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+            const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
 
-    const detallesVenta = cart.map(c => { 
-        let sub = calcularSubtotal(c, c.cant); 
-        return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
-    });
+            const detallesVenta = cart.map(c => { 
+                let sub = calcularSubtotal(c, c.cant); 
+                return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.cat }; 
+            });
 
-    const nuevaVenta = {
-        id_offline: idUnicoOffline,
-        fecha: new Date().toLocaleString(),
-        fecha_filtro: fechaFiltro,
-        total: t,
-        pago: pago,
-        tienda: tiendaLocal,
-        estado: 'OK',
-        jornada_abierta: true,
-        det: detallesVenta
-    };
+            const nuevaVenta = {
+                id_offline: idUnicoOffline,
+                fecha: new Date().toLocaleString(),
+                fecha_filtro: fechaFiltro,
+                total: t,
+                pago: pago,
+                tienda: tiendaLocal,
+                estado: 'OK',
+                jornada_abierta: true,
+                det: detallesVenta
+            };
 
-    // ==========================================
-    // MODO OFFLINE (SALA DE ESPERA)
-    // ==========================================
-    if (!navigator.onLine) {
-        nuevaVenta.ticket = "PENDIENTE";
-        
-        let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
-        pendientes.push(nuevaVenta);
-        localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
+            if (!navigator.onLine) {
+                nuevaVenta.ticket = "PENDIENTE";
+                
+                let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+                pendientes.push(nuevaVenta);
+                localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
 
-        cart.forEach(item => { 
-            const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
-            if(pIdx > -1) { 
-                if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
-                else db.productos[pIdx].stock_marisol -= item.cant; 
-            } 
-        });
-        
-        db.ventas.unshift(nuevaVenta);
-        persistir(); 
+                cart.forEach(item => { 
+                    const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
+                    if(pIdx > -1) { 
+                        if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
+                        else db.productos[pIdx].stock_marisol -= item.cant; 
+                    } 
+                });
+                
+                db.ventas.unshift(nuevaVenta);
+                persistir(); 
 
-        cart = []; 
-        document.getElementById('pago-txt').value = ''; 
-        renderCart(); 
-        render();
+                cart = []; 
+                document.getElementById('pago-txt').value = ''; 
+                renderCart(); 
+                render();
 
-        btnCobrar.innerText = "COBRAR";
-        btnCobrar.disabled = false;
+                btnCobrar.innerText = "COBRAR";
+                btnCobrar.disabled = false;
 
-        setTimeout(() => {
-            sysConfirm(`⚠️ VENTA REGISTRADA SIN INTERNET.\nSe guardó en la sala de espera y se subirá al volver la conexión.\n\n¿Desea IMPRIMIR el comprobante temporal?`, () => {
-                imprimirTicket(nuevaVenta);
-            }, "Cobro Local Activo");
-        }, 100);
-        return;
-    }
+                setTimeout(() => {
+                    sysConfirm(`⚠️ VENTA REGISTRADA SIN INTERNET.\nSe guardó en la sala de espera y se subirá al volver la conexión.\n\n¿Desea IMPRIMIR el comprobante temporal?`, () => {
+                        imprimirTicket(nuevaVenta);
+                    }, "Cobro Local Activo");
+                }, 100);
+                return;
+            }
 
-    // ==========================================
-    // MODO ONLINE (TRANSACCIÓN ORIGINAL)
-    // ==========================================
-    database.ref('tienda_datos').transaction(curr => {
-        if (!curr) return curr;
-        if (!curr.productos) curr.productos = [];
-        else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
-        if (!curr.ventas) curr.ventas = [];
-        else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
+            database.ref('tienda_datos').transaction(curr => {
+                if (!curr) return curr;
+                if (!curr.productos) curr.productos = [];
+                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                if (!curr.ventas) curr.ventas = [];
+                else if (!Array.isArray(curr.ventas)) curr.ventas = Object.values(curr.ventas);
 
-        for (let item of cart) {
-            const p = curr.productos.find(x => x.codigo === item.codigo);
-            if (!p) return; 
-            const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
-            if (item.cant > stockDisp) return; 
+                for (let item of cart) {
+                    const p = curr.productos.find(x => x.codigo === item.codigo);
+                    if (!p) return; 
+                    const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
+                    if (item.cant > stockDisp) return; 
+                }
+
+                let isMaria = tiendaLocal === 'Variedades Maria';
+                let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+                
+                nuevaVenta.ticket = num;
+                delete nuevaVenta.id_offline; 
+
+                curr.ventas.unshift(nuevaVenta);
+                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
+                cart.forEach(item => { 
+                    const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
+                    if(pIdx > -1) { 
+                        if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
+                        else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
+                    } 
+                });
+
+                return curr;
+            }, (error, committed, snapshot) => {
+                btnCobrar.innerText = "COBRAR";
+                btnCobrar.disabled = false;
+
+                if (error || !committed) {
+                    sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
+                } else {
+                    const datosNuevos = snapshot.val();
+                    let num = tiendaLocal === 'Variedades Maria' ? (datosNuevos.cMaria - 1) : (datosNuevos.cMarisol - 1);
+                    const ventaReciente = datosNuevos.ventas[0];
+
+                    cart = []; 
+                    document.getElementById('pago-txt').value = ''; 
+                    renderCart(); 
+
+                    setTimeout(() => {
+                        sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                            imprimirTicket(ventaReciente);
+                        }, "Venta Exitosa");
+                    }, 100);
+                }
+            });
         }
-
-        let isMaria = tiendaLocal === 'Variedades Maria';
-        let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
-        
-        nuevaVenta.ticket = num;
-        delete nuevaVenta.id_offline; 
-
-        curr.ventas.unshift(nuevaVenta);
-        if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
-
-        cart.forEach(item => { 
-            const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
-            if(pIdx > -1) { 
-                if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
-                else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
-            } 
-        });
-
-        return curr;
-    }, (error, committed, snapshot) => {
-        btnCobrar.innerText = "COBRAR";
-        btnCobrar.disabled = false;
-
-        if (error || !committed) {
-            sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
-        } else {
-            const datosNuevos = snapshot.val();
-            let num = tiendaLocal === 'Variedades Maria' ? (datosNuevos.cMaria - 1) : (datosNuevos.cMarisol - 1);
-            const ventaReciente = datosNuevos.ventas[0];
-
-            cart = []; 
-            document.getElementById('pago-txt').value = ''; 
-            renderCart(); 
-
-            setTimeout(() => {
-                sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                    imprimirTicket(ventaReciente);
-                }, "Venta Exitosa");
-            }, 100);
-        }
-    });
-}
-
 
         function abrirModalAjuste() {
             if(db.rol !== 'ADMIN') return sysAlert("Solo el administrador puede usar esta función.");
@@ -935,7 +975,6 @@ function sincronizarVentasOffline() {
             document.getElementById('modal-ajuste').classList.add('flex');
         }
 
-        // CORRECCIÓN: Ajuste ahora utiliza Transaction de Firebase.
         function ejecutarAjuste() {
             const tiendaDestino = document.getElementById('ajuste-tienda').value;
             const categoria = document.getElementById('ajuste-cat').value;
@@ -1091,7 +1130,6 @@ function sincronizarVentasOffline() {
             });
         }
 
-        // CORRECCIÓN: Borrado definitivo mediante transacción segura
         function eliminarProductoDefinitivo(codigo) {
             sysConfirm("¿Eliminar stock de este producto en " + db.tiendaActual + "?", () => {
                 database.ref('tienda_datos').transaction(curr => {
@@ -1149,13 +1187,13 @@ function sincronizarVentasOffline() {
         
         function imprimirTicketCierre(c) { const pa = document.getElementById('print-area'); pa.className = "ticket-mode"; pa.innerHTML = `<div style="text-align:center;"><b>CIERRE DE CAJA</b><br>${c.tienda.toUpperCase()}<br>${c.fecha}</div><hr style="border:1px dashed #000; margin:8px 0">LIB: Q${c.lib.toFixed(2)}<br>MAQ: Q${c.maq.toFixed(2)}<br>OTR: Q${c.otr.toFixed(2)}<hr style="border:1px dashed #000; margin:8px 0"><div style="text-align:center; font-size:16px"><b>TOTAL: Q${c.total.toFixed(2)}</b></div>`; window.print(); }
 
-     function cargarReportePorFechas() {
+        function cargarReportePorFechas() {
             const fIniStr = document.getElementById('rep-inicio').value; 
             const fFinStr = document.getElementById('rep-fin').value;
             if(!fIniStr || !fFinStr) return;
 
             let vLib = 0, vMaq = 0, vOtr = 0; let gLib = 0, gMaq = 0, gOtr = 0;
-            const rb = document.getElementById('rep-ventas-body'); if (!rb) return; let htmlRepVentas = ''; 
+            const rb = document.getElementById('rep-ventas-body'); let htmlRepVentas = ''; 
 
             db.ventas.forEach(v => {
                 if(v.tienda !== db.tiendaActual || v.estado === 'ANULADA') return; 
@@ -1174,10 +1212,7 @@ function sincronizarVentasOffline() {
                 }
             });
 
-            rb.innerHTML = htmlRepVentas; 
-            document.getElementById('ind-ventas-lib').innerText = `Q ${vLib.toFixed(2)}`; document.getElementById('ind-ventas-maq').innerText = `Q ${vMaq.toFixed(2)}`; document.getElementById('ind-ventas-otr').innerText = `Q ${vOtr.toFixed(2)}`; document.getElementById('ind-ganancia-otr').innerText = `Q ${gOtr.toFixed(2)}`;
-            const gOtrCompartida = gOtr / 2; const gananciaFinalLib = gLib + gOtrCompartida; const gananciaFinalMaq = gMaq + gOtrCompartida;
-            document.getElementById('ind-ganancia-lib').innerText = `Q ${gananciaFinalLib.toFixed(2)} (+Q ${gOtrCompartida.toFixed(2)} Otros)`; document.getElementById('ind-ganancia-maq').innerText = `Q ${gananciaFinalMaq.toFixed(2)} (+Q ${gOtrCompartida.toFixed(2)} Otros)`;
+            if (rb) rb.innerHTML = htmlRepVentas; 
 
             database.ref('gastos_historial').once('value', snap => {
                 let gastosDirectosLib = 0; let gastosDirectosMaq = 0; let gastosCompartidosTotal = 0; 
@@ -1210,7 +1245,7 @@ function sincronizarVentasOffline() {
                 if(gb) gb.innerHTML = htmlGastos; 
                 if(dbb) dbb.innerHTML = htmlDepositos;
 
-                                // --- CÁLCULOS PRÁCTICOS POR SOCIO ---
+                // --- CÁLCULOS PRÁCTICOS POR SOCIO ---
                 const mitadGastoCompartido = gastosCompartidosTotal / 2;
 
                 // 1. NÚMEROS SOCIO 1 (LIBRERÍA Y FARMACIA)
@@ -1260,8 +1295,6 @@ function sincronizarVentasOffline() {
 
                     document.getElementById('p2-efectivo-pen').parentElement.className = pendienteDepositarS2 >= 0 ? "flex justify-between text-base text-pink-900 font-black border-t mt-1 pt-1" : "flex justify-between text-base text-green-600 font-black border-t mt-1 pt-1";
                 }
-
-                // -----------------------------------------------------
             });
         }
 
@@ -1389,7 +1422,6 @@ function sincronizarVentasOffline() {
             });
         }
 
-        // CORRECCIÓN: Cierre de jornada seguro. 
         function finalizarJornada() { 
             const tT = parseFloat(document.getElementById('c-total').innerText.replace('Q ','')); 
             if(tT <= 0) return sysAlert("NO HAY VENTAS PARA CERRAR JORNADA"); 
@@ -1508,7 +1540,6 @@ function sincronizarVentasOffline() {
             event.target.value = '';
         }
 
-        // CORRECCIÓN CRÍTICA DE EXCEL: Se pasa a Transaction para mezclar los datos con la nube en vivo sin sobreescribir las ventas en curso.
         function ejecutarCargaMasiva(json, modoSuma) {
             const tiendaLocal = db.tiendaActual;
             const rolLocal = db.rol;
@@ -1582,7 +1613,6 @@ function sincronizarVentasOffline() {
             });
         }
 
-       // CORRECCIÓN: Vaciar inventario seguro en la nube.
        function eliminarTodoElInventario() {
             sysPrompt("⚠️ ATENCIÓN: ¿Quieres VACIAR EL INVENTARIO DE " + db.tiendaActual.toUpperCase() + "?\nEscribe la palabra BORRAR para confirmar:", (palabra) => {
                 if (palabra && palabra.trim().toUpperCase() === "BORRAR") { 
@@ -1726,61 +1756,50 @@ function sincronizarVentasOffline() {
                     <h2 style="margin:5px 0; color:#555; font-size: 16px;">TIENDA: ${tienda} | DEL: ${fIniStr} AL: ${fFinStr}</h2>
                 </div>
                 
-                <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">1. SALUD FINANCIERA (UTILIDAD NETA)</h3>
-                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
-                    <tr>
-                        <td style="width:48%; vertical-align:top; padding: 10px; border: 1px solid #1e3a8a; border-radius: 8px;">
-                            <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 LIBRERÍA Y FARMACIA</h4>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Ventas Totales:</span> <b>${document.getElementById('ind-ventas-lib').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(+) Ganancia en Ventas:</span> <b>${document.getElementById('ind-ganancia-lib').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos Propios:</span> <b>${document.getElementById('ind-gastos-lib').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) 50% Gastos Comp.:</span> <b>${document.getElementById('ind-gastoscomp-lib').innerText}</b></div>
-                            <hr style="border:1px solid #ccc; margin: 8px 0;">
-                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:#1e3a8a;"><span>UTILIDAD NETA:</span> <span>${document.getElementById('ind-utilidad-lib').innerText}</span></div>
-                        </td>
-                        <td style="width:4%;"></td>
-                        <td style="width:48%; vertical-align:top; padding: 10px; border: 1px solid #831843; border-radius: 8px;">
-                            <h4 style="color:#831843; text-align:center; margin-top:0;">💄 MAQUILLAJE</h4>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Ventas Totales:</span> <b>${document.getElementById('ind-ventas-maq').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(+) Ganancia en Ventas:</span> <b>${document.getElementById('ind-ganancia-maq').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos Propios:</span> <b>${document.getElementById('ind-gastos-maq').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) 50% Gastos Comp.:</span> <b>${document.getElementById('ind-gastoscomp-maq').innerText}</b></div>
-                            <hr style="border:1px solid #ccc; margin: 8px 0;">
-                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:#831843;"><span>UTILIDAD NETA:</span> <span>${document.getElementById('ind-utilidad-maq').innerText}</span></div>
-                        </td>
-                    </tr>
-                </table>
-
-                <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">2. LIQUIDACIÓN DE EFECTIVO (DINERO DEL VENDEDOR)</h3>
+                <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">RESUMEN DE SOCIOS</h3>
                 <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
                     <tr>
                         <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #1e3a8a; border-radius: 8px;">
-                            <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 LIBRERÍA Y FARMACIA</h4>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Total Generado:</span> <b>${document.getElementById('efectivo-gen-lib').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('efectivo-dep-lib').innerText}</b></div>
+                            <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 SOCIO 1: LIBRERÍA Y FARMACIA</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${document.getElementById('p1-ventas').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${document.getElementById('p1-gastos').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:blue; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${document.getElementById('p1-capital').innerText}</b></div>
                             <hr style="border:1px solid #1e3a8a; margin: 8px 0;">
-                            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight: bold; background-color: #eff6ff; padding: 5px;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('efectivo-pen-lib').innerText}</span></div>
+                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${document.getElementById('p1-ganancia').innerText}</span></div>
+                            
+                            <div style="margin-top: 15px; background-color: #eff6ff; padding: 5px; border-radius: 5px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${document.getElementById('p1-efectivo-gen').innerText}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('p1-depositos').innerText}</b></div>
+                                <hr style="border:1px solid #ccc; margin: 4px 0;">
+                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('p1-efectivo-pen').innerText}</span></div>
+                            </div>
                         </td>
                         <td style="width:4%;"></td>
                         <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #831843; border-radius: 8px;">
-                            <h4 style="color:#831843; text-align:center; margin-top:0;">💄 MAQUILLAJE</h4>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Total Generado:</span> <b>${document.getElementById('efectivo-gen-maq').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('efectivo-dep-maq').innerText}</b></div>
+                            <h4 style="color:#831843; text-align:center; margin-top:0;">💄 SOCIO 2: MAQUILLAJE</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${document.getElementById('p2-ventas').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${document.getElementById('p2-gastos').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:purple; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${document.getElementById('p2-capital').innerText}</b></div>
                             <hr style="border:1px solid #831843; margin: 8px 0;">
-                            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight: bold; background-color: #fdf2f8; padding: 5px;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('efectivo-pen-maq').innerText}</span></div>
+                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${document.getElementById('p2-ganancia').innerText}</span></div>
+                            
+                            <div style="margin-top: 15px; background-color: #fdf2f8; padding: 5px; border-radius: 5px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${document.getElementById('p2-efectivo-gen').innerText}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('p2-depositos').innerText}</b></div>
+                                <hr style="border:1px solid #ccc; margin: 4px 0;">
+                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('p2-efectivo-pen').innerText}</span></div>
+                            </div>
                         </td>
                     </tr>
                 </table>
-
                 <div style="text-align:center; font-size: 10px; color: #777; margin-top: 30px;">
-                    <p>Categoría "Otros": Ventas ${document.getElementById('ind-ventas-otr').innerText} | Ganancias ${document.getElementById('ind-ganancia-otr').innerText} (Ya distribuidos 50/50 en el reporte)</p>
+                    <p>*Los cálculos ya incluyen la distribución 50/50 de la categoría "Otros".</p>
                     <p>Reporte generado el: ${new Date().toLocaleString()}</p>
                 </div>
             </div>`; 
             window.print();
         }
 
-        // FUNCIONES NUEVAS DEL KÁRDEX
         function verKardex(codigo) {
             const p = db.productos.find(x => x.codigo === codigo);
             if (!p) return;
@@ -1791,7 +1810,6 @@ function sincronizarVentasOffline() {
             let htmlKardex = '';
             let totalSalidas = 0;
             
-            // Filtramos las ventas para que solo muestre las de la tienda en la que está el admin actualmente
             const ventasTienda = db.ventas.filter(v => v.tienda === db.tiendaActual);
             
             ventasTienda.forEach(v => {
