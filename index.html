@@ -1397,9 +1397,16 @@ if (usuarioActual && usuarioActual.email !== "admin@vm.com") {
             }
         }
 
-        function verifyAdminPin() {
+       function verifyAdminPin() {
             const pinIntroducido = document.getElementById('input-pin-admin').value;
-            const pinSeguro = db.admin_pin || '1892';
+            // Quitamos el '1892'. Ahora solo usa lo que viene de la base de datos (db.admin_pin)
+            const pinSeguro = db.admin_pin; 
+
+            if (!pinSeguro) {
+                sysAlert("PIN no configurado. Contacte a soporte.", "Error");
+                return;
+            }
+
             if(pinIntroducido === pinSeguro) {
                 db.rol = 'ADMIN';
                 closeAdminLogin();
@@ -1426,7 +1433,9 @@ if (usuarioActual && usuarioActual.email !== "admin@vm.com") {
             sysPrompt("Introduce el NUEVO PIN numérico para el Administrador (mínimo 4 dígitos):", (nuevoPin) => {
                 if (nuevoPin && nuevoPin.trim().length >= 4) { 
                     db.admin_pin = nuevoPin.trim(); 
-                    database.ref('tienda_datos/admin_pin').set(db.admin_pin).then(() => { sysAlert("✅ PIN de Administrador actualizado correctamente en la nube."); }); 
+                    database.ref('tienda_datos/admin_pin').set(db.admin_pin).then(() => { 
+                        sysAlert("✅ PIN de Administrador actualizado correctamente en la nube."); 
+                    }); 
                 } else { 
                     sysAlert("❌ Operación cancelada. El PIN debe tener al menos 4 números."); 
                 }
