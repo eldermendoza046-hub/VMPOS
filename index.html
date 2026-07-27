@@ -499,7 +499,15 @@
 
     <!-- SCRIPT PRINCIPAL -->
     <script>
-        let db = { tiendaActual: 'Variedades Maria', rol: 'VENDEDOR', productos: [], ventas: [], cMaria: 1, cMarisol: 1, admin_pin: '1892' };
+       let db = { 
+    tiendaActual: 'Variedades Maria', 
+    rol: 'VENDEDOR', 
+    productos: [], 
+    ventas: [], 
+    cMaria: 1, 
+    cMarisol: 1, 
+    admin_pin: 'MTg5Mg==' // Esto es 1892 codificado
+};
         let cart = []; let debounceTimerInventario; 
 
         function sysAlert(text, title = "Atención") {
