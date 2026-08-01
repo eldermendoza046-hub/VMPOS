@@ -215,7 +215,6 @@
                 <button onclick="limpiarCierresPasados()" class="bg-black text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-gray-800 transition-colors">BORRAR TODO</button>
                 <button onclick="limpiarCierresAnosAnteriores()" class="bg-red-800 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-red-900 transition-colors">🗑️ BORRAR AÑOS PASADOS</button>
                 <button onclick="cambiarPinAdmin()" class="bg-purple-600 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-purple-700 transition-colors">🔑 CAMBIAR PIN ADMIN</button>
-                <!-- BOTÓN TEMPORAL DE MIGRACIÓN -->
                 <button onclick="migrarTicketsViejos()" class="bg-blue-600 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-blue-700 transition-colors">🚀 MIGRAR TICKETS VIEJOS</button>
             </div>
             
@@ -619,7 +618,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                             if(!db.productos) db.productos = []; 
                             else if(!Array.isArray(db.productos)) db.productos = Object.values(db.productos);
 
-                            db.ventas = []; // Eliminado el cuello de botella
+                            // AQUÍ NO DESCARGAMOS EL HISTORIAL DE VENTAS PARA EVITAR EL CUELLO DE BOTELLA
+                            db.ventas = []; 
                             
                             if(!db.admin_pin) db.admin_pin = '1892'; 
                             
@@ -705,9 +705,11 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             const fechaFiltro = document.getElementById('filtro-fecha-ticket') ? document.getElementById('filtro-fecha-ticket').value : '';
 
             if (fechaFiltro) {
+                // Buscamos las ventas en la carpeta rápida (ventas_historial)
                 database.ref('ventas_historial').orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
                     let htmlHistorial = ''; let tL=0, tM=0, tO=0, tT=0;
                     
+                    // Mostrar tickets pendientes offline primero
                     let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
                     pendientes.forEach(v => {
                         if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
@@ -722,7 +724,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
                     snap.forEach(child => {
                         let v = child.val();
-                        let idx = child.key; 
+                        let idx = child.key; // Usamos la key de Firebase
                         if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
                         if(v.estado !== 'ANULADA' && v.jornada_abierta) {
                             tT += v.total;
@@ -740,62 +742,41 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             cargarCierres(); if(isA) cargarReportePorFechas();
         }
 
-        // --- FUNCIÓN DE MIGRACIÓN MÁS SEGURA ---
-        function migrarTicketsViejos() {
-            sysConfirm("¿Mover tickets antiguos al nuevo sistema? Haz esto SOLO UNA VEZ.", () => {
-                database.ref('tienda_datos/ventas').once('value').then(snap => {
-                    let viejas = snap.val();
-                    if(!viejas) return sysAlert("No se encontraron tickets antiguos guardados.");
-                    let actualizacionesVentas = {}; let conteo = 0;
-                    const procesarVenta = (v) => {
-                        if(v && v.ticket) {
-                            let idVenta = database.ref('ventas_historial').push().key;
-                            actualizacionesVentas[idVenta] = v;
-                            conteo++;
-                        }
-                    };
-                    if(Array.isArray(viejas)) viejas.forEach(procesarVenta);
-                    else Object.values(viejas).forEach(procesarVenta);
-                    
-                    // Solo actualizamos ventas_historial
-                    database.ref('ventas_historial').update(actualizacionesVentas).then(() => {
-                        // Luego borramos el historial viejo por separado
-                        return database.ref('tienda_datos/ventas').remove();
-                    }).then(() => {
-                        sysAlert(`✅ Éxito. Se movieron ${conteo} tickets antiguos al nuevo sistema.`);
-                        render();
-                    }).catch(err => sysAlert("❌ Error al migrar: " + err));
-                });
-            });
-        }
-        // ------------------------------------
-
-       function anularVentaNube(idVenta) { 
+        // --- FUNCIONES ARREGLADAS (USAN TRANSACCIÓN PARA DEVOLVER INVENTARIO SEGURO Y LUEGO GUARDAN EN LA CARPETA RÁPIDA) ---
+        function anularVentaNube(idVenta) { 
             sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
                 database.ref('ventas_historial/' + idVenta).once('value').then(snap => {
                     const v = snap.val();
                     if(!v || v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada.");
                     
-                    let actualizaciones = {};
-                    actualizaciones['/ventas_historial/' + idVenta + '/estado'] = 'ANULADA';
-                    
-                    v.det.forEach(i => {
-                        const pIdx = db.productos.findIndex(x => x.codigo === i.codigo);
-                        if(pIdx > -1) {
-                            if(v.tienda === 'Variedades Maria') {
-                                actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_maria'] = parseInt(db.productos[pIdx].stock_maria || 0) + parseInt(i.cant || 0);
+                    // 1. Marcamos como anulado en la carpeta rápida
+                    database.ref('ventas_historial/' + idVenta + '/estado').set('ANULADA').then(() => {
+                        
+                        // 2. Usamos tu transacción destructible SÓLO para devolver el inventario
+                        database.ref('tienda_datos').transaction(curr => {
+                            if (!curr || !curr.productos) return curr;
+                            if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                            
+                            v.det.forEach(i => {
+                                const pIdx = curr.productos.findIndex(x => x.codigo === i.codigo);
+                                if(pIdx > -1) {
+                                    if(v.tienda === 'Variedades Maria') {
+                                        curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) + parseInt(i.cant || 0);
+                                    } else {
+                                        curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) + parseInt(i.cant || 0);
+                                    }
+                                }
+                            });
+                            return curr;
+                        }, (error, committed) => {
+                            if(committed) {
+                                sysAlert("✅ Venta anulada. Stock devuelto.", "Éxito");
+                                render();
                             } else {
-                                actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_marisol'] = parseInt(db.productos[pIdx].stock_marisol || 0) + parseInt(i.cant || 0);
+                                sysAlert("❌ Error al devolver el stock.");
                             }
-                        }
+                        });
                     });
-                    
-                    return database.ref().update(actualizaciones);
-                }).then(() => {
-                    sysAlert("✅ Venta anulada. Stock devuelto.", "Éxito");
-                    render();
-                }).catch(err => {
-                    sysAlert("❌ Error de red al anular.");
                 });
             });
         }
@@ -806,26 +787,38 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     const v = snap.val();
                     if(!v) return;
                     
-                    let actualizaciones = {};
-                    actualizaciones['/ventas_historial/' + idVenta] = null;
-                    
-                    if (v.estado !== 'ANULADA') {
-                        v.det.forEach(i => {
-                            const pIdx = db.productos.findIndex(x => x.codigo === i.codigo);
-                            if(pIdx > -1) {
-                                if(v.tienda === 'Variedades Maria') {
-                                    actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_maria'] = parseInt(db.productos[pIdx].stock_maria || 0) + parseInt(i.cant || 0);
-                                } else {
-                                    actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_marisol'] = parseInt(db.productos[pIdx].stock_marisol || 0) + parseInt(i.cant || 0);
+                    // 1. Borramos el ticket de la carpeta rápida
+                    database.ref('ventas_historial/' + idVenta).remove().then(() => {
+                        
+                        // 2. Si NO estaba anulada, usamos la transacción para devolver el inventario
+                        if (v.estado !== 'ANULADA') {
+                            database.ref('tienda_datos').transaction(curr => {
+                                if (!curr || !curr.productos) return curr;
+                                if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                                
+                                v.det.forEach(i => {
+                                    const pIdx = curr.productos.findIndex(x => x.codigo === i.codigo);
+                                    if(pIdx > -1) {
+                                        if(v.tienda === 'Variedades Maria') {
+                                            curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) + parseInt(i.cant || 0);
+                                        } else {
+                                            curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) + parseInt(i.cant || 0);
+                                        }
+                                    }
+                                });
+                                return curr;
+                            }, (error, committed) => {
+                                if(committed) {
+                                    sysAlert("✅ Registro eliminado y stock devuelto.");
+                                    render();
                                 }
-                            }
-                        });
-                    }
-                    return database.ref().update(actualizaciones);
-                }).then(() => {
-                    sysAlert("✅ Registro eliminado.");
-                    render();
-                }).catch(err => sysAlert("❌ Error al eliminar."));
+                            });
+                        } else {
+                            sysAlert("✅ Registro eliminado.");
+                            render();
+                        }
+                    });
+                });
             });
         }
 
@@ -845,42 +838,40 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 
                 let ventaPendiente = pendientes[index];
                 let isMaria = ventaPendiente.tienda === 'Variedades Maria';
-                let nodoTicket = isMaria ? 'cMaria' : 'cMarisol';
-                
-                database.ref('tienda_datos/' + nodoTicket).once('value').then(snapNum => {
-                    let numTicket = parseInt(snapNum.val() || 1);
-                    
-                    let ventaFinal = { ...ventaPendiente };
-                    ventaFinal.ticket = numTicket; 
-                    delete ventaFinal.id_offline; 
+                let ventaFinal = { ...ventaPendiente };
+                delete ventaFinal.id_offline; 
 
-                    let idVenta = database.ref('ventas_historial').push().key;
-                    let actualizaciones = {};
-                    
-                    actualizaciones['/ventas_historial/' + idVenta] = ventaFinal;
-                    actualizaciones['/tienda_datos/' + nodoTicket] = numTicket + 1;
-                    
+                // Usamos la transacción SÓLO para restar el inventario seguro offline
+                database.ref('tienda_datos').transaction(curr => {
+                    if (!curr || !curr.productos) return curr;
+                    if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+
+                    let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+                    ventaFinal.ticket = num; 
+                    if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
                     ventaFinal.det.forEach(item => {
-                        const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
+                        const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
                         if(pIdx > -1) {
-                            if(isMaria) {
-                                let st = parseInt(db.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0);
-                                actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_maria'] = st;
-                            } else {
-                                let st = parseInt(db.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0);
-                                actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_marisol'] = st;
-                            }
+                            if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0);
+                            else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0);
                         }
                     });
-                    
-                    return database.ref().update(actualizaciones);
-                }).then(() => {
-                    procesarCola(index + 1);
-                }).catch(err => {
-                    sysAlert("❌ Error sincronizando ticket offline.");
+                    return curr;
+                }, (error, committed) => {
+                    if (committed) {
+                        // Inventario descontado con transacción. Ahora guardamos la venta en el historial rápido.
+                        database.ref('ventas_historial').push(ventaFinal).then(() => {
+                            let cola = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+                            cola = cola.filter(v => v.id_offline !== ventaPendiente.id_offline);
+                            localStorage.setItem('ventas_offline', JSON.stringify(cola));
+                            procesarCola(index + 1);
+                        });
+                    } else {
+                        procesarCola(index + 1); // Continuar si falla
+                    }
                 });
             };
-            
             procesarCola(0);
         }
 
@@ -957,57 +948,60 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 return;
             }
 
-            let isMaria = tiendaLocal === 'Variedades Maria';
-            let nodoTicket = isMaria ? 'cMaria' : 'cMarisol';
+            // AQUÍ ESTÁ LA SOLUCIÓN MAESTRA: 
+            // 1. Usamos tu transacción para asegurar el inventario y apartar el # de ticket
+            database.ref('tienda_datos').transaction(curr => {
+                if (!curr) return curr;
+                if (!curr.productos) curr.productos = [];
+                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
 
-            database.ref('tienda_datos/' + nodoTicket).once('value').then(snapNum => {
-                let numTicket = parseInt(snapNum.val() || 1);
+                for (let item of cart) {
+                    const p = curr.productos.find(x => x.codigo === item.codigo);
+                    if (!p) return; // Rompe si no hay producto
+                    const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
+                    if (item.cant > stockDisp) return; // Rompe si otro cajero ya lo vendió
+                }
+
+                let isMaria = tiendaLocal === 'Variedades Maria';
+                let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
                 
-                nuevaVenta.ticket = numTicket;
+                nuevaVenta.ticket = num;
                 delete nuevaVenta.id_offline; 
-                
-                const idVenta = database.ref('ventas_historial').push().key;
-                let actualizaciones = {};
-                
-                actualizaciones['/ventas_historial/' + idVenta] = nuevaVenta;
-                actualizaciones['/tienda_datos/' + nodoTicket] = numTicket + 1;
-                
+
+                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+
                 cart.forEach(item => { 
-                    const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
+                    const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
                     if(pIdx > -1) { 
-                        if(isMaria) {
-                            let stockRestante = parseInt(db.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0);
-                            actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_maria'] = stockRestante;
-                        } else {
-                            let stockRestante = parseInt(db.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0);
-                            actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_marisol'] = stockRestante;
-                        }
+                        if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
+                        else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
                     } 
                 });
 
-                return database.ref().update(actualizaciones).then(() => {
-                    return { num: numTicket, ventaRealizada: nuevaVenta };
-                });
+                return curr;
+            }, (error, committed) => {
+                // 2. Si la transacción descontó bien, AHORA guardamos el ticket en la carpeta rápida
+                if (!error && committed) {
+                    database.ref('ventas_historial').push(nuevaVenta).then(() => {
+                        btnCobrar.innerText = "COBRAR";
+                        btnCobrar.disabled = false;
 
-            }).then((resultado) => {
-                btnCobrar.innerText = "COBRAR";
-                btnCobrar.disabled = false;
+                        cart = []; 
+                        document.getElementById('pago-txt').value = ''; 
+                        renderCart(); 
+                        render();
 
-                cart = []; 
-                document.getElementById('pago-txt').value = ''; 
-                renderCart(); 
-                render(); 
-
-                setTimeout(() => {
-                    sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${resultado.num}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                        imprimirTicket(resultado.ventaRealizada);
-                    }, "Venta Exitosa");
-                }, 100);
-
-            }).catch(error => {
-                btnCobrar.innerText = "COBRAR";
-                btnCobrar.disabled = false;
-                sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
+                        setTimeout(() => {
+                            sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                                imprimirTicket(nuevaVenta);
+                            }, "Venta Exitosa");
+                        }, 100);
+                    });
+                } else {
+                    btnCobrar.innerText = "COBRAR";
+                    btnCobrar.disabled = false;
+                    sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
+                }
             });
         }
 
@@ -1044,25 +1038,24 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: categoria }] 
             }; 
 
-            let isMaria = tiendaDestino === 'Variedades Maria';
-            let nodoTicket = isMaria ? 'cMaria' : 'cMarisol';
-
-            database.ref('tienda_datos/' + nodoTicket).once('value').then(snapNum => {
-                let numTicket = parseInt(snapNum.val() || 1);
-                ventaFantasma.ticket = "AJ-" + numTicket;
-                
-                let idVenta = database.ref('ventas_historial').push().key;
-                let actualizaciones = {};
-                
-                actualizaciones['/ventas_historial/' + idVenta] = ventaFantasma;
-                actualizaciones['/tienda_datos/' + nodoTicket] = numTicket + 1;
-                
-                return database.ref().update(actualizaciones);
-            }).then(() => {
-                sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${categoria}. El stock no fue modificado.`, "Éxito");
-                document.getElementById('modal-ajuste').classList.add('hidden');
-                cargarReportePorFechas();
-            }).catch(err => sysAlert("❌ Error al guardar el ajuste."));
+            database.ref('tienda_datos').transaction(curr => {
+                if(!curr) return curr;
+                let isMaria = tiendaDestino === 'Variedades Maria';
+                let num = isMaria ? (curr.cMaria || 1) : (curr.cMarisol || 1);
+                ventaFantasma.ticket = "AJ-" + num;
+                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+                return curr;
+            }, (error, committed) => {
+                if(committed) {
+                    database.ref('ventas_historial').push(ventaFantasma).then(() => {
+                        sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${categoria}. El stock no fue modificado.`, "Éxito");
+                        document.getElementById('modal-ajuste').classList.add('hidden');
+                        cargarReportePorFechas();
+                    });
+                } else {
+                    sysAlert("❌ Error al guardar el ajuste. Intenta de nuevo.");
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1463,6 +1456,33 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             });
         }
 
+        // --- FUNCION PARA MIGRAR TICKETS VIEJOS ---
+        function migrarTicketsViejos() {
+            sysConfirm("¿Mover tickets antiguos al nuevo sistema? Haz esto SOLO UNA VEZ.", () => {
+                database.ref('tienda_datos/ventas').once('value').then(snap => {
+                    let viejas = snap.val();
+                    if(!viejas) return sysAlert("No se encontraron tickets antiguos guardados.");
+                    let actualizacionesVentas = {}; let conteo = 0;
+                    const procesarVenta = (v) => {
+                        if(v && v.ticket) {
+                            let idVenta = database.ref('ventas_historial').push().key;
+                            actualizacionesVentas[idVenta] = v;
+                            conteo++;
+                        }
+                    };
+                    if(Array.isArray(viejas)) viejas.forEach(procesarVenta);
+                    else Object.values(viejas).forEach(procesarVenta);
+                    
+                    database.ref('ventas_historial').update(actualizacionesVentas).then(() => {
+                        return database.ref('tienda_datos/ventas').remove();
+                    }).then(() => {
+                        sysAlert(`✅ Éxito. Se movieron ${conteo} tickets antiguos al nuevo sistema.`);
+                        render();
+                    }).catch(err => sysAlert("❌ Error al migrar: " + err));
+                });
+            });
+        }
+
         function finalizarJornada() { 
             const tT = parseFloat(document.getElementById('c-total').innerText.replace('Q ','')); 
             if(tT <= 0) return sysAlert("NO HAY VENTAS PARA CERRAR JORNADA"); 
@@ -1509,31 +1529,43 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 const tiendaLocal = db.tiendaActual;
                 
                 database.ref('ventas_historial').once('value').then(snap => {
-                    let actualizaciones = {};
+                    let hayBorrados = false;
+                    
                     snap.forEach(child => {
                         let v = child.val();
                         if (v.tienda === tiendaLocal) {
                             if(v.det && v.det.some(d => String(d.nombre).includes("PRUEBA") || String(d.codigo).includes("PRUEBA"))) { 
-                                actualizaciones['/ventas_historial/' + child.key] = null;
+                                hayBorrados = true;
                                 
-                                v.det.forEach(i => { 
-                                    const pIdx = db.productos.findIndex(x => x.codigo === i.codigo); 
-                                    if(pIdx > -1) { 
-                                        if(tiendaLocal === 'Variedades Maria') {
-                                            actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_maria'] = parseInt(db.productos[pIdx].stock_maria || 0) + parseInt(i.cant);
-                                        } else {
-                                            actualizaciones['/tienda_datos/productos/' + pIdx + '/stock_marisol'] = parseInt(db.productos[pIdx].stock_marisol || 0) + parseInt(i.cant);
-                                        }
-                                    } 
-                                }); 
+                                // Borrar el ticket en la nube
+                                database.ref('ventas_historial/' + child.key).remove().then(() => {
+                                    // Devolver el inventario seguro
+                                    database.ref('tienda_datos').transaction(curr => {
+                                        if (!curr || !curr.productos) return curr;
+                                        if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+                                        
+                                        v.det.forEach(i => { 
+                                            const pIdx = curr.productos.findIndex(x => x.codigo === i.codigo); 
+                                            if(pIdx > -1) { 
+                                                if(tiendaLocal === 'Variedades Maria') {
+                                                    curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) + parseInt(i.cant);
+                                                } else {
+                                                    curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) + parseInt(i.cant);
+                                                }
+                                            } 
+                                        });
+                                        return curr;
+                                    });
+                                });
                             }
                         }
                     });
                     
-                    return database.ref().update(actualizaciones);
-                }).then(() => {
-                    sysAlert("✅ Pruebas eliminadas exitosamente.");
-                    render();
+                    if(hayBorrados) {
+                        setTimeout(() => { sysAlert("✅ Pruebas eliminadas exitosamente."); render(); }, 1000);
+                    } else {
+                        sysAlert("No se encontraron pruebas.");
+                    }
                 }).catch(err => sysAlert("❌ Error al limpiar pruebas."));
             });
         }
@@ -1655,7 +1687,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 if (error || !committed) {
                     sysAlert("❌ Error de red al cargar el inventario de Excel. Revisa tu conexión.");
                 } else {
-                    sysAlert(`✅ ¡Carga Exitosa en ${tiendaLocal}!\nNuevos: ${resImportados}\nActualizados: ${resActualizados}\nIgnorados (Vacíos/Ceros): ${resIgnorados}`); 
+                    sysAlert(`✅ ¡Carga Exitosa en ${tiendaLocal}!\nNuevos: ${resImportados}\nActualizados: ${resActualizados}\nIgnrotados (Vacíos/Ceros): ${resIgnorados}`); 
                     document.getElementById('input-excel').value = '';
                 }
             });
