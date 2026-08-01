@@ -617,7 +617,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                             if(!db.productos) db.productos = []; 
                             else if(!Array.isArray(db.productos)) db.productos = Object.values(db.productos);
 
-                            db.ventas = []; // Cuello de botella solucionado: No cargar todo el historial
+                            db.ventas = []; // Eliminado el cuello de botella
                             
                             if(!db.admin_pin) db.admin_pin = '1892'; 
                             
@@ -705,25 +705,20 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             if (fechaFiltro) {
                 database.ref('ventas_historial').orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
                     let htmlHistorial = ''; let tL=0, tM=0, tO=0, tT=0;
-                    
                     snap.forEach(child => {
                         let v = child.val();
-                        let idx = child.key; 
-                        
+                        let idx = child.key;
                         if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
-                        
                         if(v.estado !== 'ANULADA' && v.jornada_abierta) {
                             tT += v.total;
                             if(v.det) v.det.forEach(d => { let sub = d.cant * d.pre; if(d.cat==='LIBRERIA' || d.cat==='FARMACIA') tL += sub; else if(d.cat==='MAQUILLAJE') tM += sub; else tO += sub; });
                         }
-                        
                         htmlHistorial += `<tr class="${v.estado==='ANULADA'?'opacity-30 bg-red-50':''}"><td class="p-3">#${v.ticket}</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">${v.estado}</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button>${v.estado==='OK' && isA ? `<button type="button" onclick="anularVentaNube('${idx}')" class="text-red-500 font-black hover:text-red-700 transition-colors">X</button>` : ''} ${isA ? `<button type="button" onclick="eliminarVentaNube('${idx}')" class="text-red-700 font-black hover:scale-125 transition-transform">🗑️</button>` : ''}</td></tr>`;
                     });
-                    
-                    if (hb) hb.innerHTML = htmlHistorial; 
-                    document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`; 
-                    document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`; 
-                    document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`; 
+                    if (hb) hb.innerHTML = htmlHistorial;
+                    document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`;
+                    document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`;
+                    document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`;
                     document.getElementById('c-total').innerText = `Q ${tT.toFixed(2)}`;
                 });
             } else {
@@ -733,7 +728,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             cargarCierres(); if(isA) cargarReportePorFechas();
         }
 
-        function anularVentaNube(idVenta) { 
+       function anularVentaNube(idVenta) { 
             sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
                 database.ref('ventas_historial/' + idVenta).once('value').then(snap => {
                     const v = snap.val();
@@ -1468,7 +1463,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
         }
             
         function limpiarSoloVentasPrueba() { 
-            sysConfirm("¿Seguro que deseas eliminar ventas de 'PRUEBA' de la base de datos central?", () => {
+            sysConfirm("¿Seguro que deseas eliminar ventas con productos de 'PRUEBA' de la base de datos central?", () => {
                 const tiendaLocal = db.tiendaActual;
                 
                 database.ref('ventas_historial').once('value').then(snap => {
@@ -1679,7 +1674,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                             } 
                         }); 
                         database.ref().update(actualizaciones).then(() => {
-                            sysAlert(`✅ Limpieza terminada.`); 
+                            sysAlert(`✅ Limpieza terminada.`);
+                            render();
                         });
                     }); 
                 });
