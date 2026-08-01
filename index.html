@@ -210,11 +210,13 @@
                 </div>
                 <button onclick="finalizarJornada()" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl uppercase shadow-lg hover:bg-red-700 transition-colors">Finalizar Jornada</button>
             </div>
-            <div id="admin-tools" class="hidden grid grid-cols-1 md:grid-cols-4 gap-2 bg-red-50 p-4 rounded-2xl border-2 border-red-200">
+            <div id="admin-tools" class="hidden grid grid-cols-1 md:grid-cols-5 gap-2 bg-red-50 p-4 rounded-2xl border-2 border-red-200">
                 <button onclick="limpiarSoloVentasPrueba()" class="bg-orange-600 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-orange-700 transition-colors">BORRAR SÓLO PRUEBAS</button>
                 <button onclick="limpiarCierresPasados()" class="bg-black text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-gray-800 transition-colors">BORRAR TODO</button>
                 <button onclick="limpiarCierresAnosAnteriores()" class="bg-red-800 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-red-900 transition-colors">🗑️ BORRAR AÑOS PASADOS</button>
                 <button onclick="cambiarPinAdmin()" class="bg-purple-600 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-purple-700 transition-colors">🔑 CAMBIAR PIN ADMIN</button>
+                <!-- BOTÓN TEMPORAL DE MIGRACIÓN -->
+                <button onclick="migrarTicketsViejos()" class="bg-blue-600 text-white p-2 rounded-lg font-black text-[9px] uppercase shadow hover:bg-blue-700 transition-colors">🚀 MIGRAR TICKETS VIEJOS</button>
             </div>
             
             <div class="bg-white p-4 rounded-xl shadow border flex justify-between items-center gap-4">
@@ -707,7 +709,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     let htmlHistorial = ''; let tL=0, tM=0, tO=0, tT=0;
                     snap.forEach(child => {
                         let v = child.val();
-                        let idx = child.key;
+                        let idx = child.key; 
                         if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
                         if(v.estado !== 'ANULADA' && v.jornada_abierta) {
                             tT += v.total;
@@ -715,10 +717,10 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         }
                         htmlHistorial += `<tr class="${v.estado==='ANULADA'?'opacity-30 bg-red-50':''}"><td class="p-3">#${v.ticket}</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">${v.estado}</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button>${v.estado==='OK' && isA ? `<button type="button" onclick="anularVentaNube('${idx}')" class="text-red-500 font-black hover:text-red-700 transition-colors">X</button>` : ''} ${isA ? `<button type="button" onclick="eliminarVentaNube('${idx}')" class="text-red-700 font-black hover:scale-125 transition-transform">🗑️</button>` : ''}</td></tr>`;
                     });
-                    if (hb) hb.innerHTML = htmlHistorial;
-                    document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`;
-                    document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`;
-                    document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`;
+                    if (hb) hb.innerHTML = htmlHistorial; 
+                    document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`; 
+                    document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`; 
+                    document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`; 
                     document.getElementById('c-total').innerText = `Q ${tT.toFixed(2)}`;
                 });
             } else {
@@ -727,6 +729,42 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
             cargarCierres(); if(isA) cargarReportePorFechas();
         }
+
+        // --- FUNCIÓN TEMPORAL DE MIGRACIÓN ---
+        function migrarTicketsViejos() {
+            sysConfirm("¿Mover tickets antiguos al nuevo sistema? Haz esto SOLO UNA VEZ. Puede tardar un par de segundos.", () => {
+                database.ref('tienda_datos/ventas').once('value').then(snap => {
+                    let viejas = snap.val();
+                    if(!viejas) return sysAlert("No se encontraron tickets antiguos guardados.");
+                    
+                    let actualizaciones = {};
+                    let conteo = 0;
+                    
+                    const procesarVenta = (v) => {
+                        if(v && v.ticket) {
+                            let idVenta = database.ref('ventas_historial').push().key;
+                            actualizaciones['/ventas_historial/' + idVenta] = v;
+                            conteo++;
+                        }
+                    };
+
+                    if(Array.isArray(viejas)) {
+                        viejas.forEach(procesarVenta);
+                    } else {
+                        Object.values(viejas).forEach(procesarVenta);
+                    }
+                    
+                    // Borramos las ventas del nodo viejo para que no estorben y liberar el cuello de botella definitivamente
+                    actualizaciones['/tienda_datos/ventas'] = null;
+                    
+                    database.ref().update(actualizaciones).then(() => {
+                        sysAlert(`✅ Éxito. Se movieron ${conteo} tickets antiguos al nuevo sistema. Ya deberían aparecer en tu historial.`);
+                        render();
+                    }).catch(err => sysAlert("❌ Error al migrar: " + err));
+                });
+            });
+        }
+        // ------------------------------------
 
        function anularVentaNube(idVenta) { 
             sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
