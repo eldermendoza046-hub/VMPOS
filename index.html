@@ -619,7 +619,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                             if(!db.productos) db.productos = []; 
                             else if(!Array.isArray(db.productos)) db.productos = Object.values(db.productos);
 
-                            db.ventas = []; // Cuello de botella arreglado: no descargamos el historial
+                            db.ventas = []; // Eliminado el cuello de botella
                             
                             if(!db.admin_pin) db.admin_pin = '1892'; 
                             
@@ -722,17 +722,14 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
                     snap.forEach(child => {
                         let v = child.val();
-                        let idx = child.key;
+                        let idx = child.key; 
                         if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
-                        
                         if(v.estado !== 'ANULADA' && v.jornada_abierta) {
                             tT += v.total;
                             if(v.det) v.det.forEach(d => { let sub = d.cant * d.pre; if(d.cat==='LIBRERIA' || d.cat==='FARMACIA') tL += sub; else if(d.cat==='MAQUILLAJE') tM += sub; else tO += sub; });
                         }
-                        
                         htmlHistorial += `<tr class="${v.estado==='ANULADA'?'opacity-30 bg-red-50':''}"><td class="p-3">#${v.ticket}</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">${v.estado}</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button>${v.estado==='OK' && isA ? `<button type="button" onclick="anularVentaNube('${idx}')" class="text-red-500 font-black hover:text-red-700 transition-colors">X</button>` : ''} ${isA ? `<button type="button" onclick="eliminarVentaNube('${idx}')" class="text-red-700 font-black hover:scale-125 transition-transform">🗑️</button>` : ''}</td></tr>`;
                     });
-                    
                     if (hb) hb.innerHTML = htmlHistorial; 
                     document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`; document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`; document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`; document.getElementById('c-total').innerText = `Q ${tT.toFixed(2)}`;
                 });
@@ -742,6 +739,36 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
             cargarCierres(); if(isA) cargarReportePorFechas();
         }
+
+        // --- FUNCIÓN DE MIGRACIÓN MÁS SEGURA ---
+        function migrarTicketsViejos() {
+            sysConfirm("¿Mover tickets antiguos al nuevo sistema? Haz esto SOLO UNA VEZ.", () => {
+                database.ref('tienda_datos/ventas').once('value').then(snap => {
+                    let viejas = snap.val();
+                    if(!viejas) return sysAlert("No se encontraron tickets antiguos guardados.");
+                    let actualizacionesVentas = {}; let conteo = 0;
+                    const procesarVenta = (v) => {
+                        if(v && v.ticket) {
+                            let idVenta = database.ref('ventas_historial').push().key;
+                            actualizacionesVentas[idVenta] = v;
+                            conteo++;
+                        }
+                    };
+                    if(Array.isArray(viejas)) viejas.forEach(procesarVenta);
+                    else Object.values(viejas).forEach(procesarVenta);
+                    
+                    // Solo actualizamos ventas_historial
+                    database.ref('ventas_historial').update(actualizacionesVentas).then(() => {
+                        // Luego borramos el historial viejo por separado
+                        return database.ref('tienda_datos/ventas').remove();
+                    }).then(() => {
+                        sysAlert(`✅ Éxito. Se movieron ${conteo} tickets antiguos al nuevo sistema.`);
+                        render();
+                    }).catch(err => sysAlert("❌ Error al migrar: " + err));
+                });
+            });
+        }
+        // ------------------------------------
 
        function anularVentaNube(idVenta) { 
             sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
@@ -1433,32 +1460,6 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 } else { 
                     sysAlert("❌ Operación cancelada. El PIN debe tener al menos 4 números."); 
                 }
-            });
-        }
-
-        // --- FUNCIÓN DE MIGRACIÓN ---
-        function migrarTicketsViejos() {
-            sysConfirm("¿Mover tickets antiguos al nuevo sistema? Haz esto SOLO UNA VEZ.", () => {
-                database.ref('tienda_datos/ventas').once('value').then(snap => {
-                    let viejas = snap.val();
-                    if(!viejas) return sysAlert("No se encontraron tickets antiguos guardados.");
-                    let actualizaciones = {}; let conteo = 0;
-                    const procesarVenta = (v) => {
-                        if(v && v.ticket) {
-                            let idVenta = database.ref('ventas_historial').push().key;
-                            actualizaciones['/ventas_historial/' + idVenta] = v;
-                            conteo++;
-                        }
-                    };
-                    if(Array.isArray(viejas)) viejas.forEach(procesarVenta);
-                    else Object.values(viejas).forEach(procesarVenta);
-                    
-                    actualizaciones['/tienda_datos/ventas'] = null;
-                    database.ref().update(actualizaciones).then(() => {
-                        sysAlert(`✅ Éxito. Se movieron ${conteo} tickets antiguos al nuevo sistema.`);
-                        render();
-                    }).catch(err => sysAlert("❌ Error al migrar: " + err));
-                });
             });
         }
 
