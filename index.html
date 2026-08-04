@@ -478,7 +478,32 @@
                 <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
                 <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
                 
-                <div id="div-farma-modal" class="hidden border-2 border-green-400 p-3 rounded-xl bg-green-50">
+                <!-- NUEVO: SECCIÓN PAPELERÍA -->
+                <div id="div-papeleria-modal" class="hidden border-2 border-orange-400 p-3 rounded-xl bg-orange-50 mt-3">
+                    <label class="text-[10px] text-orange-800 uppercase font-black">📄 Precios Especiales Papelería (Hojas)</label>
+                    <div class="flex gap-2 mt-2">
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Promo Trae (Ej. 4):</label>
+                            <input type="number" id="p-pape-cant" class="w-full p-2 border rounded-lg text-xs font-bold outline-none text-orange-700" placeholder="Ej. 4">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Precio Promo Q:</label>
+                            <input type="number" id="p-pape-precio" class="w-full p-2 border rounded-lg text-xs font-bold outline-none text-orange-700" placeholder="Ej. 1.00">
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Medio Ciento (50) Q:</label>
+                            <input type="number" id="p-pape-medio" class="w-full p-2 border rounded-lg text-xs font-bold outline-none text-orange-700" placeholder="Ej. 10.00">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[9px] text-gray-500 uppercase">Ciento (100) Q:</label>
+                            <input type="number" id="p-pape-ciento" class="w-full p-2 border rounded-lg text-xs font-bold outline-none text-orange-700" placeholder="Ej. 18.00">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="div-farma-modal" class="hidden border-2 border-green-400 p-3 rounded-xl bg-green-50 mt-3">
                     <label class="text-[10px] text-green-800 uppercase font-black">💊 Precio Especial por Blister / Caja</label>
                     <div class="flex gap-2 mt-2">
                         <div class="w-1/2">
@@ -629,11 +654,44 @@
 
         function calcularSubtotal(c, cantidad) {
             let pBase = getPrecioActual(c);
+            
+            // 1. MÓDULO FARMACIA
             if(c.categoria === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
                 let blisters = Math.floor(cantidad / c.cant_blister); 
                 let sueltas = cantidad % c.cant_blister;
                 return (blisters * c.precio_blister) + (sueltas * pBase);
             } 
+
+            // 2. MÓDULO PAPELERÍA (NUEVO)
+            if((c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA')) && (c.pape_cant > 0 || c.pape_medio > 0 || c.pape_ciento > 0)) {
+                let totalPape = 0;
+                let qty = cantidad;
+
+                // Primero cobramos los cientos (si hay)
+                if (c.pape_ciento > 0 && qty >= 100) {
+                    let cientos = Math.floor(qty / 100);
+                    totalPape += cientos * c.pape_ciento;
+                    qty = qty % 100; // Lo que sobra
+                }
+                // Luego cobramos los medios cientos (si hay)
+                if (c.pape_medio > 0 && qty >= 50) {
+                    let medios = Math.floor(qty / 50);
+                    totalPape += medios * c.pape_medio;
+                    qty = qty % 50; // Lo que sobra
+                }
+                // Luego cobramos las promociones chicas (Ej. 4xQ1)
+                if (c.pape_cant > 0 && c.pape_precio > 0 && qty >= c.pape_cant) {
+                    let promos = Math.floor(qty / c.pape_cant);
+                    totalPape += promos * c.pape_precio;
+                    qty = qty % c.pape_cant; // Lo que sobra
+                }
+                
+                // Finalmente cobramos las hojas sueltas a precio normal
+                totalPape += qty * pBase;
+                return totalPape;
+            }
+
+            // 3. MÓDULO MAYORISTA (Cualquier otra categoría)
             let pDocenaUnitario = parseFloat(c.precio_docena) || 0;
             let pMediaDocenaUnitario = parseFloat(c.precio_media_docena) || 0;
             if (cantidad >= 12 && pDocenaUnitario > 0) {
@@ -642,6 +700,8 @@
             if (cantidad >= 6 && pMediaDocenaUnitario > 0) {
                 return cantidad * pMediaDocenaUnitario;
             }
+            
+            // 4. MÓDULO NORMAL
             return pBase * cantidad;
         }
 
@@ -919,7 +979,12 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
             if(categoriaPreseleccionada) selectCat.value = categoriaPreseleccionada;
 
+            // Activar ventana verde de farmacia
             document.getElementById('div-farma-modal').classList.toggle('hidden', selectCat.value !== 'FARMACIA');
+            
+            // Activar ventana naranja de papelería
+            const esPapeleria = selectCat.value.includes('PAPELERIA') || selectCat.value.includes('LIBRERIA');
+            document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
         }
 
         function anularVentaNube(idVenta) { 
@@ -1243,6 +1308,12 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         
                         document.getElementById('p-farma-cant').value = prod.cant_blister || '';
                         document.getElementById('p-farma-precio').value = prod.precio_blister || '';
+                        
+                        document.getElementById('p-pape-cant').value = prod.pape_cant || '';
+                        document.getElementById('p-pape-precio').value = prod.pape_precio || '';
+                        document.getElementById('p-pape-medio').value = prod.pape_medio || '';
+                        document.getElementById('p-pape-ciento').value = prod.pape_ciento || '';
+                        
                         document.getElementById('p-oferta-precio').value = prod.precio_oferta || '';
                         document.getElementById('p-oferta-inicio').value = prod.oferta_inicio || '';
                         document.getElementById('p-oferta-fin').value = prod.oferta_fin || '';
@@ -1251,6 +1322,9 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         document.getElementById('p-docena').value = prod.precio_docena || '';
 
                         document.getElementById('div-farma-modal').classList.toggle('hidden', (prod.categoria || 'OTROS') !== 'FARMACIA');
+                        
+                        const esPapeleria = (prod.categoria || 'OTROS').includes('PAPELERIA') || (prod.categoria || 'OTROS').includes('LIBRERIA');
+                        document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
                     }
                 });
             }
@@ -1259,6 +1333,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             if (pCat) {
                 pCat.addEventListener('change', function(e) {
                     document.getElementById('div-farma-modal').classList.toggle('hidden', e.target.value !== 'FARMACIA');
+                    const esPapeleria = e.target.value.includes('PAPELERIA') || e.target.value.includes('LIBRERIA');
+                    document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
                 });
             }
 
@@ -1291,6 +1367,11 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             const farmaCant = parseInt(document.getElementById('p-farma-cant').value) || 0; 
             const farmaPre = parseFloat(document.getElementById('p-farma-precio').value) || 0;
             
+            const papeCant = parseInt(document.getElementById('p-pape-cant').value) || 0; 
+            const papePrecio = parseFloat(document.getElementById('p-pape-precio').value) || 0;
+            const papeMedio = parseFloat(document.getElementById('p-pape-medio').value) || 0;
+            const papeCiento = parseFloat(document.getElementById('p-pape-ciento').value) || 0;
+            
             const mediaDocena = parseFloat(document.getElementById('p-media-docena').value) || 0;
             const docena = parseFloat(document.getElementById('p-docena').value) || 0;
             
@@ -1314,6 +1395,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     if(db.rol === 'ADMIN') { 
                         curr.productos[i].precio_oferta = ofPre; curr.productos[i].oferta_inicio = ofIni; curr.productos[i].oferta_fin = ofFin; 
                         curr.productos[i].cant_blister = farmaCant; curr.productos[i].precio_blister = farmaPre; 
+                        curr.productos[i].pape_cant = papeCant; curr.productos[i].pape_precio = papePrecio; curr.productos[i].pape_medio = papeMedio; curr.productos[i].pape_ciento = papeCiento;
                         curr.productos[i].precio_media_docena = mediaDocena; curr.productos[i].precio_docena = docena;
                     }
 
@@ -1325,6 +1407,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
                         stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
                         precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre,
+                        pape_cant: papeCant, pape_precio: papePrecio, pape_medio: papeMedio, pape_ciento: papeCiento,
                         precio_media_docena: mediaDocena, precio_docena: docena
                     });
                 }
@@ -1379,9 +1462,18 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             document.getElementById('p-oferta-fin').value = p.oferta_fin || ''; 
             document.getElementById('p-farma-cant').value = p.cant_blister || ''; 
             document.getElementById('p-farma-precio').value = p.precio_blister || '';
+            
+            document.getElementById('p-pape-cant').value = p.pape_cant || ''; 
+            document.getElementById('p-pape-precio').value = p.pape_precio || ''; 
+            document.getElementById('p-pape-medio').value = p.pape_medio || ''; 
+            document.getElementById('p-pape-ciento').value = p.pape_ciento || ''; 
+            
             document.getElementById('p-media-docena').value = p.precio_media_docena || '';
             document.getElementById('p-docena').value = p.precio_docena || '';
             document.getElementById('div-farma-modal').classList.toggle('hidden', (p.categoria || 'OTROS') !== 'FARMACIA'); 
+            
+            const esPapeleria = (p.categoria || 'OTROS').includes('PAPELERIA') || (p.categoria || 'OTROS').includes('LIBRERIA');
+            document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
         }
 
         function limpiarCierresPasados() { sysConfirm(`¿BORRAR HISTORIAL?`, () => { database.ref('cierres_historial').once('value', snap => { const d = snap.val(); if(d) Object.keys(d).forEach(k => { if(d[k].tienda === db.tiendaActual) database.ref(`cierres_historial/${k}`).remove(); }); render(); }); }); }
@@ -2092,6 +2184,11 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             document.getElementById('p-propietario').value = 'S1'; document.getElementById('p-cat').value = ''; 
             document.getElementById('p-oferta-precio').value = ''; document.getElementById('p-oferta-inicio').value = ''; document.getElementById('p-oferta-fin').value = '';
             document.getElementById('p-farma-cant').value = ''; document.getElementById('p-farma-precio').value = ''; document.getElementById('div-farma-modal').classList.add('hidden');
+            
+            document.getElementById('p-pape-cant').value = ''; document.getElementById('p-pape-precio').value = ''; 
+            document.getElementById('p-pape-medio').value = ''; document.getElementById('p-pape-ciento').value = ''; 
+            document.getElementById('div-papeleria-modal').classList.add('hidden');
+
             document.getElementById('p-media-docena').value = ''; document.getElementById('p-docena').value = '';
         }
         function abrirModal() { 
