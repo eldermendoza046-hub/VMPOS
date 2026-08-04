@@ -19,7 +19,6 @@
 
     <script>
         // Conexión a tu base de datos existente
-
         const firebaseConfig = {
             apiKey: "AIzaSyDbO2-MazSUKp-sXo9Xh7f7dg4NFpSkH70",
             authDomain: "variedadesmm-38061.firebaseapp.com",
@@ -37,7 +36,7 @@
 <body class="bg-gray-50 min-h-screen font-sans">
 
     <!-- Encabezado de la tienda -->
-    <header class="bg-pink-600 text-white p-6 shadow-md sticky top-0 z-40">
+    <header class="bg-pink-600 text-white p-6 shadow-md relative z-40">
         <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="text-center md:text-left">
                 <h1 class="text-3xl font-black italic tracking-tighter">VARIEDADES M&M</h1>
@@ -60,20 +59,31 @@
         </div>
     </header>
 
-    <!-- Filtros de Categoría -->
-    <div class="bg-white border-b shadow-sm overflow-x-auto whitespace-nowrap px-4 py-3 text-center sticky top-[130px] md:top-[96px] z-30">
-        <button onclick="filtrarCat('TODOS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-pink-600 text-white rounded-full font-bold text-xs uppercase shadow">Todos</button>
-        <button onclick="filtrarCat('OFERTAS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-red-600 text-white rounded-full font-black text-xs uppercase shadow animate-pulse hover:bg-red-700 transition">🔥 Ofertas</button>
-        <button onclick="filtrarCat('MAQUILLAJE')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Maquillaje</button>
-        <button onclick="filtrarCat('LIBRERIA')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Librería</button>
-        <button onclick="filtrarCat('FARMACIA')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Farmacia</button>
-        <button onclick="filtrarCat('OTROS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition">Otros</button>
+    <!-- CARRUSEL DE IMÁGENES PROMOCIONALES (NUEVO) -->
+    <div class="w-full bg-white border-b shadow-sm relative z-30">
+        <div class="max-w-6xl mx-auto relative overflow-hidden h-40 md:h-64 lg:h-80 group">
+            <div id="carousel-track" class="flex transition-transform duration-500 ease-out h-full w-full">
+                <!-- Las imágenes se inyectan por JS aquí -->
+            </div>
+            
+            <!-- Botones laterales del carrusel -->
+            <button onclick="moverCarousel(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 font-black">❮</button>
+            <button onclick="moverCarousel(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 font-black">❯</button>
+            
+            <!-- Puntitos indicadores -->
+            <div id="carousel-dots" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2"></div>
+        </div>
+    </div>
+
+    <!-- Filtros de Categoría DINÁMICOS -->
+    <div id="contenedor-filtros" class="bg-white border-b shadow-sm overflow-x-auto whitespace-nowrap px-4 py-3 text-center sticky top-0 z-50">
+        <!-- Los botones se dibujarán aquí automáticamente -->
     </div>
 
     <!-- Pantalla de Carga y Errores -->
     <div id="loader" class="flex flex-col items-center justify-center py-20 px-4 text-center">
         <div id="spinner" class="animate-spin rounded-full h-12 w-12 border-b-4 border-pink-600 mb-4"></div>
-        <p id="loader-text" class="text-gray-500 font-bold animate-pulse">Conectado. Obteniendo productos...</p>
+        <p id="loader-text" class="text-gray-500 font-bold animate-pulse">Conectando. Obteniendo productos...</p>
     </div>
 
     <!-- Cuadrícula de Productos -->
@@ -127,14 +137,54 @@
     <script>
         let productosGlobales = [];
         let categoriaActiva = 'TODOS';
-        let carritoCliente = []; // Array que almacena los productos elegidos
+        let carritoCliente = []; 
         
         // Número de WhatsApp
         const NUMERO_WHATSAPP = "50238301196"; 
 
-        // 1. Iniciar sesión de forma invisible
+        // --- SISTEMA DEL CARRUSEL (NUEVO) ---
+        // Aquí puedes pegar los links de internet de las fotos que quieras mostrar. 
+        // Si quieres cambiar el banner, solo reemplaza el link entre las comillas.
+        const imagenesBanners = [
+            "https://placehold.co/1200x400/ff9ed2/db2777?text=OFERTAS+DE+TEMPORADA", // Banner 1
+            "https://placehold.co/1200x400/bfdbfe/1e3a8a?text=NUEVA+MERCADERIA",      // Banner 2
+            "https://placehold.co/1200x400/fef08a/b45309?text=TODO+PARA+TUS+FIESTAS" // Banner 3
+        ];
+        
+        let slideActual = 0;
+        let intervaloCarrusel;
+
+        function iniciarCarrusel() {
+            const track = document.getElementById('carousel-track');
+            const dots = document.getElementById('carousel-dots');
+            
+            // Dibuja las imágenes y los puntitos
+            track.innerHTML = imagenesBanners.map(img => `<img src="${img}" class="w-full h-full object-cover flex-shrink-0">`).join('');
+            dots.innerHTML = imagenesBanners.map((_, i) => `<div class="w-2 h-2 rounded-full transition-all ${i === 0 ? 'bg-white scale-125' : 'bg-white/50'}"></div>`).join('');
+            
+            // Inicia el movimiento automático cada 4 segundos
+            intervaloCarrusel = setInterval(() => moverCarousel(1), 4000);
+        }
+
+        function moverCarousel(direccion) {
+            slideActual = (slideActual + direccion + imagenesBanners.length) % imagenesBanners.length;
+            document.getElementById('carousel-track').style.transform = `translateX(-${slideActual * 100}%)`;
+            
+            // Actualizar puntitos
+            const dots = document.getElementById('carousel-dots').children;
+            Array.from(dots).forEach((dot, i) => {
+                dot.className = `w-2 h-2 rounded-full transition-all ${i === slideActual ? 'bg-white scale-125' : 'bg-white/50'}`;
+            });
+
+            // Reiniciar temporizador para que no se salte al presionar manual
+            clearInterval(intervaloCarrusel);
+            intervaloCarrusel = setInterval(() => moverCarousel(1), 4000);
+        }
+
+        // 1. Iniciar sesión y descargar
         auth.signInAnonymously().then(() => {
             console.log("Conectado como cliente anónimo");
+            iniciarCarrusel(); // Arranca el carrusel
             cargarDatos();
         }).catch((error) => {
             console.error("Error conectando:", error);
@@ -146,13 +196,17 @@
             document.getElementById('loader-text').classList.remove('animate-pulse');
         });
 
-        // 2. Descargar los productos
+        // 2. Descargar los productos y generar botones
         function cargarDatos() {
             database.ref('tienda_datos/productos').on('value', (snap) => {
                 const data = snap.val();
                 if (data) {
                     productosGlobales = Array.isArray(data) ? data : Object.values(data);
                     document.getElementById('loader').classList.add('hidden');
+                    
+                    // Generar los botones automáticamente
+                    generarBotonesCategorias();
+                    
                     renderizarCatalogo();
                 } else {
                     document.getElementById('spinner').classList.add('hidden');
@@ -162,22 +216,58 @@
             });
         }
 
-        function filtrarCat(cat) {
-            categoriaActiva = cat;
-            document.querySelectorAll('.filtro-btn').forEach(btn => {
-                if (btn.innerText.includes('Ofertas')) {
-                    btn.className = "filtro-btn inline-block mx-1 px-4 py-2 bg-red-600 text-white rounded-full font-black text-xs uppercase shadow animate-pulse hover:bg-red-700 transition";
-                } else {
-                    btn.className = "filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition";
+        // Generador de Categorías
+        function generarBotonesCategorias() {
+            const contenedor = document.getElementById('contenedor-filtros');
+            let categoriasUnicas = new Set();
+            
+            // Extrae todas las categorías de los productos que tengan stock
+            productosGlobales.forEach(p => {
+                const stockTotal = (p.stock_maria || 0) + (p.stock_marisol || 0);
+                if (stockTotal > 0) {
+                    let cat = (p.categoria && p.categoria.trim() !== '') ? p.categoria.trim().toUpperCase() : 'OTROS';
+                    categoriasUnicas.add(cat);
                 }
             });
-            
-            if(cat === 'OFERTAS') {
-                event.target.className = "filtro-btn inline-block mx-1 px-4 py-2 bg-red-800 text-white rounded-full font-black text-xs uppercase shadow ring-4 ring-red-300";
-            } else {
-                event.target.className = "filtro-btn inline-block mx-1 px-4 py-2 bg-pink-600 text-white rounded-full font-bold text-xs uppercase shadow";
-            }
+
+            // Convierte el Set a Array y lo ordena alfabéticamente
+            categoriasUnicas = Array.from(categoriasUnicas).sort();
+
+            // Dibuja primero los botones principales
+            let htmlBotones = `
+                <button onclick="filtrarCat('TODOS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-pink-600 text-white rounded-full font-bold text-xs uppercase shadow" data-cat="TODOS">Todos</button>
+                <button onclick="filtrarCat('OFERTAS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-red-600 text-white rounded-full font-black text-xs uppercase shadow animate-pulse hover:bg-red-700 transition" data-cat="OFERTAS">🔥 Ofertas</button>
+            `;
+
+            // Dibuja el resto de botones dinámicamente
+            categoriasUnicas.forEach(cat => {
+                htmlBotones += `<button onclick="filtrarCat('${cat}')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition" data-cat="${cat}">${cat}</button>`;
+            });
+
+            contenedor.innerHTML = htmlBotones;
+            resaltarBotonActivo();
+        }
+
+        function filtrarCat(cat) {
+            categoriaActiva = cat;
+            resaltarBotonActivo();
             renderizarCatalogo();
+        }
+
+        function resaltarBotonActivo() {
+            document.querySelectorAll('.filtro-btn').forEach(btn => {
+                const catAsignada = btn.getAttribute('data-cat');
+                
+                if (catAsignada === 'OFERTAS') {
+                    btn.className = categoriaActiva === 'OFERTAS' 
+                        ? "filtro-btn inline-block mx-1 px-4 py-2 bg-red-800 text-white rounded-full font-black text-xs uppercase shadow ring-4 ring-red-300"
+                        : "filtro-btn inline-block mx-1 px-4 py-2 bg-red-600 text-white rounded-full font-black text-xs uppercase shadow animate-pulse hover:bg-red-700 transition";
+                } else {
+                    btn.className = categoriaActiva === catAsignada
+                        ? "filtro-btn inline-block mx-1 px-4 py-2 bg-pink-600 text-white rounded-full font-bold text-xs uppercase shadow"
+                        : "filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition";
+                }
+            });
         }
 
         // 3. Revisar si hay oferta activa
@@ -332,8 +422,10 @@
                 const hayOferta = precioOferta !== null;
                 const precioFinal = hayOferta ? precioOferta : p.venta;
 
+                const catProducto = (p.categoria && p.categoria.trim() !== '') ? p.categoria.trim().toUpperCase() : 'OTROS';
+
                 if (categoriaActiva === 'OFERTAS' && !hayOferta) return; 
-                if (categoriaActiva !== 'TODOS' && categoriaActiva !== 'OFERTAS' && p.categoria !== categoriaActiva) return; 
+                if (categoriaActiva !== 'TODOS' && categoriaActiva !== 'OFERTAS' && catProducto !== categoriaActiva) return; 
 
                 if (busqueda && !p.nombre.toLowerCase().includes(busqueda)) return;
 
@@ -349,7 +441,7 @@
                         </div>
                         
                         <div class="p-4 flex flex-col flex-1">
-                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">${p.categoria || 'OTROS'}</p>
+                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">${catProducto}</p>
                             <h3 class="font-bold text-gray-800 text-sm leading-tight flex-1 mb-2">${p.nombre}</h3>
                             
                             <div class="mt-auto">
@@ -379,3 +471,4 @@
     </script>
 </body>
 </html>
+
