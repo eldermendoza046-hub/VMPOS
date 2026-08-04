@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA VARIEDADES M&M - V9.6 (TOTALMENTE CONFIGURABLE)</title>
+    <title>SISTEMA POS - CONTROL DE VENTAS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
@@ -376,6 +376,11 @@
                     
                     <label class="text-[10px] text-gray-500 uppercase">Sucursal 2 (Actualmente Marisol):</label>
                     <input type="text" id="conf-suc2" class="w-full p-2 border rounded-lg outline-none uppercase">
+                    
+                    <h3 class="text-sm font-black uppercase text-indigo-700 mb-2 border-t pt-2 mt-2">Banners del Catálogo</h3>
+                    <input type="text" id="conf-banner1" class="w-full p-2 border rounded-lg mb-2 outline-none text-xs" placeholder="Link de imagen 1">
+                    <input type="text" id="conf-banner2" class="w-full p-2 border rounded-lg mb-2 outline-none text-xs" placeholder="Link de imagen 2">
+                    <input type="text" id="conf-banner3" class="w-full p-2 border rounded-lg mb-2 outline-none text-xs" placeholder="Link de imagen 3">
                 </div>
 
                 <!-- Datos de Socios y Categorías -->
@@ -784,7 +789,13 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     acumuladoCapitalGlobal += ((p.costo || 0) * stockActualTienda); 
                     acumuladoGananciaGlobal += ((precioAct - (p.costo || 0)) * stockActualTienda); 
                 }
-                if (filtroInv !== '' && !String(p.nombre || "").toLowerCase().includes(filtroInv) && !String(p.codigo || "").toLowerCase().includes(filtroInv)) return;
+                
+                if (filtroInv !== '' && 
+                    !String(p.nombre || "").toLowerCase().includes(filtroInv) && 
+                    !String(p.codigo || "").toLowerCase().includes(filtroInv) &&
+                    !String(p.propietario || "").toLowerCase().includes(filtroInv) &&
+                    !String(p.categoria || "").toLowerCase().includes(filtroInv)
+                ) return;
 
                 if(stockActualTienda > 0) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
@@ -856,6 +867,10 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             document.getElementById('conf-s2-nombre').value = db.config.nombre_s2 || "SOCIO 2";
             document.getElementById('conf-s2-cat').value = db.config.cat_s2 || "";
             
+            document.getElementById('conf-banner1').value = db.config.banner_1 || "";
+            document.getElementById('conf-banner2').value = db.config.banner_2 || "";
+            document.getElementById('conf-banner3').value = db.config.banner_3 || "";
+            
             document.getElementById('modal-config').classList.replace('hidden', 'flex');
         }
 
@@ -869,7 +884,10 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 nombre_s1: document.getElementById('conf-s1-nombre').value.trim().toUpperCase(),
                 cat_s1: document.getElementById('conf-s1-cat').value.trim().toUpperCase(),
                 nombre_s2: document.getElementById('conf-s2-nombre').value.trim().toUpperCase(),
-                cat_s2: document.getElementById('conf-s2-cat').value.trim().toUpperCase()
+                cat_s2: document.getElementById('conf-s2-cat').value.trim().toUpperCase(),
+                banner_1: document.getElementById('conf-banner1').value.trim(),
+                banner_2: document.getElementById('conf-banner2').value.trim(),
+                banner_3: document.getElementById('conf-banner3').value.trim()
             };
 
             database.ref('tienda_datos/config').set(nuevaConfig).then(() => {
@@ -1345,6 +1363,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
         function editarProd(c) { 
             const p = db.productos.find(x => x.codigo === c); 
+            abrirModal(); 
             document.getElementById('p-cod').value = p.codigo; 
             document.getElementById('p-nom').value = p.nombre; 
             document.getElementById('p-imagen').value = p.imagen || ''; 
@@ -1363,23 +1382,33 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             document.getElementById('p-media-docena').value = p.precio_media_docena || '';
             document.getElementById('p-docena').value = p.precio_docena || '';
             document.getElementById('div-farma-modal').classList.toggle('hidden', (p.categoria || 'OTROS') !== 'FARMACIA'); 
-            abrirModal(); 
         }
 
         function limpiarCierresPasados() { sysConfirm(`¿BORRAR HISTORIAL?`, () => { database.ref('cierres_historial').once('value', snap => { const d = snap.val(); if(d) Object.keys(d).forEach(k => { if(d[k].tienda === db.tiendaActual) database.ref(`cierres_historial/${k}`).remove(); }); render(); }); }); }
         
         function imprimirInventarioA4() { 
+            const filtroInv = document.getElementById('busqueda-inventario') ? document.getElementById('busqueda-inventario').value.trim().toLowerCase() : '';
             const nombreSucursalImpresa = db.tiendaActual === 'Variedades Maria' 
                 ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA") 
                 : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL");
 
             const pa = document.getElementById('print-area'); pa.className = "a4-mode"; let filas = ""; 
             db.productos.sort((a,b) => String(a.nombre || "").localeCompare(String(b.nombre || ""))).forEach(p => { 
+                
+                if (filtroInv !== '' && 
+                    !String(p.nombre || "").toLowerCase().includes(filtroInv) && 
+                    !String(p.codigo || "").toLowerCase().includes(filtroInv) &&
+                    !String(p.propietario || "").toLowerCase().includes(filtroInv) &&
+                    !String(p.categoria || "").toLowerCase().includes(filtroInv)
+                ) return;
+
                 const s = db.tiendaActual === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
                 if (s > 0) filas += `<tr><td>${p.codigo || '---'}</td><td>${p.nombre}</td><td align="center">${s}</td><td style="width:80px"></td><td></td></tr>`; 
             }); 
-            if(filas === "") filas = "<tr><td colspan='5' align='center'>No hay productos con stock para imprimir</td></tr>";
-            pa.innerHTML = `<h1 style="text-align:center;">INVENTARIO: ${nombreSucursalImpresa.toUpperCase()}</h1><p style="text-align:center">${new Date().toLocaleDateString()}</p><table><thead><tr><th>CÓDIGO</th><th>PRODUCTO</th><th>STOCK (SISTEMA)</th><th>CONTEO FÍSICO</th><th>NOTAS</th></tr></thead><tbody>${filas}</tbody></table>`; 
+            if(filas === "") filas = "<tr><td colspan='5' align='center'>No hay productos para imprimir con este filtro</td></tr>";
+            
+            const tituloFiltro = filtroInv !== '' ? `<h3 style="text-align:center; color:#555;">FILTRO APLICADO: "${filtroInv.toUpperCase()}"</h3>` : '';
+            pa.innerHTML = `<h1 style="text-align:center; margin-bottom:5px;">INVENTARIO: ${nombreSucursalImpresa.toUpperCase()}</h1>${tituloFiltro}<p style="text-align:center">${new Date().toLocaleDateString()}</p><table><thead><tr><th>CÓDIGO</th><th>PRODUCTO</th><th>STOCK (SISTEMA)</th><th>CONTEO FÍSICO</th><th>NOTAS</th></tr></thead><tbody>${filas}</tbody></table>`; 
             window.print(); 
         }
         
@@ -1746,11 +1775,24 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
         function descargarExcel() {
             if (db.productos.length === 0) return sysAlert("No hay productos para exportar.");
+            const filtroInv = document.getElementById('busqueda-inventario') ? document.getElementById('busqueda-inventario').value.trim().toLowerCase() : '';
+            
             const productosDeEstaTienda = db.productos.filter(p => { 
                 let stockActual = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0);
-                return parseInt(stockActual) > 0; 
+                if (parseInt(stockActual) <= 0) return false;
+                
+                if (filtroInv !== '' && 
+                    !String(p.nombre || "").toLowerCase().includes(filtroInv) && 
+                    !String(p.codigo || "").toLowerCase().includes(filtroInv) &&
+                    !String(p.propietario || "").toLowerCase().includes(filtroInv) &&
+                    !String(p.categoria || "").toLowerCase().includes(filtroInv)
+                ) return false;
+
+                return true; 
             });
-            if (productosDeEstaTienda.length === 0) return sysAlert(`No hay productos con stock mayor a 0 en ${db.tiendaActual} para exportar.`);
+
+            if (productosDeEstaTienda.length === 0) return sysAlert(`No hay productos con stock para exportar usando el filtro: "${filtroInv.toUpperCase()}".`);
+            
             const datosExcel = productosDeEstaTienda.map(p => { return { 'CODIGO': p.codigo, 'PRODUCTO': p.nombre, 'VENTA': p.venta, 'COMPRA': p.costo || 0, 'PROPIETARIO': p.propietario || 'OTROS', 'CATEGORIA': p.categoria || 'OTROS', 'STOCK': db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0) }; });
             const worksheet = XLSX.utils.json_to_sheet(datosExcel); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
             
@@ -1758,7 +1800,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA") 
                 : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL");
             
-            const nombreArchivo = `INVENTARIO_${nombreSucursalImpresa.toUpperCase().replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
+            const palabraFiltro = filtroInv !== '' ? `_${filtroInv.toUpperCase()}` : '';
+            const nombreArchivo = `INVENTARIO_${nombreSucursalImpresa.toUpperCase().replace(/\s+/g, '_')}${palabraFiltro}_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`; XLSX.writeFile(workbook, nombreArchivo);
         }
 
         function cargarExcel(event) {
@@ -2168,4 +2211,3 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
     </script>
 </body>
 </html>
-
