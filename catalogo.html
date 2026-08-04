@@ -3,22 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Etiquetas para obligar a cargar siempre lo más nuevo -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-
     <title>Catálogo Virtual - Variedades M&M</title>
-    
-    <!-- Scripts requeridos -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
 
     <script>
-        // Conexión a tu base de datos existente
+        // Conexión a tu base de datos
         const firebaseConfig = {
             apiKey: "AIzaSyDbO2-MazSUKp-sXo9Xh7f7dg4NFpSkH70",
             authDomain: "variedadesmm-38061.firebaseapp.com",
@@ -42,7 +37,6 @@
                 <h1 class="text-3xl font-black italic tracking-tighter">VARIEDADES M&M</h1>
                 <p class="text-sm font-medium text-pink-200 mb-3">Catálogo de Productos y Ofertas</p>
                 
-                <!-- REDES SOCIALES -->
                 <div class="flex justify-center md:justify-start gap-3">
                     <a href="https://www.facebook.com/share/1KAyvuxa62/?mibextid=wwXIfr" target="_blank" class="bg-white/20 hover:bg-white/40 p-2.5 rounded-full transition-all flex items-center justify-center shadow-sm hover:scale-110" title="Síguenos en Facebook">
                         <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
@@ -59,41 +53,35 @@
         </div>
     </header>
 
-    <!-- CARRUSEL DE IMÁGENES PROMOCIONALES (NUEVO) -->
-    <div class="w-full bg-white border-b shadow-sm relative z-30">
+    <!-- CARRUSEL DE IMÁGENES PROMOCIONALES DINÁMICO (Limpio) -->
+    <div id="contenedor-carrusel" class="w-full bg-white border-b shadow-sm relative z-30 hidden">
         <div class="max-w-6xl mx-auto relative overflow-hidden h-40 md:h-64 lg:h-80 group">
             <div id="carousel-track" class="flex transition-transform duration-500 ease-out h-full w-full">
-                <!-- Las imágenes se inyectan por JS aquí -->
+                <!-- Se llena por JS -->
             </div>
-            
-            <!-- Botones laterales del carrusel -->
-            <button onclick="moverCarousel(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 font-black">❮</button>
-            <button onclick="moverCarousel(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 font-black">❯</button>
-            
-            <!-- Puntitos indicadores -->
+            <button id="btn-prev" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 font-black">❮</button>
+            <button id="btn-next" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 font-black">❯</button>
             <div id="carousel-dots" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2"></div>
         </div>
     </div>
 
     <!-- Filtros de Categoría DINÁMICOS -->
     <div id="contenedor-filtros" class="bg-white border-b shadow-sm overflow-x-auto whitespace-nowrap px-4 py-3 text-center sticky top-0 z-50">
-        <!-- Los botones se dibujarán aquí automáticamente -->
+        <!-- Se dibujan por JS -->
     </div>
 
-    <!-- Pantalla de Carga y Errores -->
+    <!-- Carga -->
     <div id="loader" class="flex flex-col items-center justify-center py-20 px-4 text-center">
         <div id="spinner" class="animate-spin rounded-full h-12 w-12 border-b-4 border-pink-600 mb-4"></div>
         <p id="loader-text" class="text-gray-500 font-bold animate-pulse">Conectando. Obteniendo productos...</p>
     </div>
 
-    <!-- Cuadrícula de Productos -->
+    <!-- Cuadrícula -->
     <main class="max-w-6xl mx-auto p-4 sm:p-6 pb-24">
-        <div id="catalogo-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            <!-- Productos inyectados por JS -->
-        </div>
+        <div id="catalogo-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
     </main>
 
-    <!-- BOTÓN FLOTANTE DEL CARRITO -->
+    <!-- BOTÓN CARRITO -->
     <button onclick="toggleCarrito()" class="fixed bottom-6 right-6 bg-green-500 text-white p-4 rounded-full shadow-2xl hover:bg-green-600 transition-transform hover:scale-110 z-50 flex items-center justify-center border-4 border-white">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -101,10 +89,9 @@
         <span id="cart-count" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black px-2.5 py-1 rounded-full shadow-md border-2 border-white">0</span>
     </button>
 
-    <!-- MODAL / PANEL LATERAL DEL CARRITO -->
+    <!-- MODAL CARRITO -->
     <div id="modal-carrito" class="fixed inset-0 bg-black/60 hidden justify-end z-[999] backdrop-blur-sm transition-opacity">
         <div class="bg-gray-50 w-full max-w-md h-full shadow-2xl flex flex-col transform transition-transform shadow-l-2xl">
-            <!-- Header Carrito -->
             <div class="p-5 bg-pink-600 text-white flex justify-between items-center shadow-md z-10">
                 <h2 class="text-xl font-black uppercase italic flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -112,15 +99,11 @@
                 </h2>
                 <button onclick="toggleCarrito()" class="text-3xl font-black hover:text-pink-200 transition-colors leading-none">&times;</button>
             </div>
-            
-            <!-- Lista de Productos -->
             <div class="p-4 flex-1 overflow-y-auto">
                 <div id="carrito-items" class="space-y-3">
                     <p class="text-center text-gray-400 font-bold mt-10">Tu carrito está vacío.</p>
                 </div>
             </div>
-            
-            <!-- Footer Total y Botón Enviar -->
             <div class="p-6 bg-white border-t-2 border-pink-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]">
                 <div class="flex justify-between items-end mb-4">
                     <span class="font-black text-gray-500 uppercase text-sm">Total del pedido:</span>
@@ -138,90 +121,104 @@
         let productosGlobales = [];
         let categoriaActiva = 'TODOS';
         let carritoCliente = []; 
-        
-        // Número de WhatsApp
         const NUMERO_WHATSAPP = "50238301196"; 
-
-        // --- SISTEMA DEL CARRUSEL (NUEVO) ---
-        // Aquí puedes pegar los links de internet de las fotos que quieras mostrar. 
-        // Si quieres cambiar el banner, solo reemplaza el link entre las comillas.
-        const imagenesBanners = [
-            "https://placehold.co/1200x400/ff9ed2/db2777?text=OFERTAS+DE+TEMPORADA", // Banner 1
-            "https://placehold.co/1200x400/bfdbfe/1e3a8a?text=NUEVA+MERCADERIA",      // Banner 2
-            "https://placehold.co/1200x400/fef08a/b45309?text=TODO+PARA+TUS+FIESTAS" // Banner 3
-        ];
         
         let slideActual = 0;
         let intervaloCarrusel;
+        let numBanners = 0;
 
-        function iniciarCarrusel() {
-            const track = document.getElementById('carousel-track');
-            const dots = document.getElementById('carousel-dots');
-            
-            // Dibuja las imágenes y los puntitos
-            track.innerHTML = imagenesBanners.map(img => `<img src="${img}" class="w-full h-full object-cover flex-shrink-0">`).join('');
-            dots.innerHTML = imagenesBanners.map((_, i) => `<div class="w-2 h-2 rounded-full transition-all ${i === 0 ? 'bg-white scale-125' : 'bg-white/50'}"></div>`).join('');
-            
-            // Inicia el movimiento automático cada 4 segundos
-            intervaloCarrusel = setInterval(() => moverCarousel(1), 4000);
-        }
-
-        function moverCarousel(direccion) {
-            slideActual = (slideActual + direccion + imagenesBanners.length) % imagenesBanners.length;
-            document.getElementById('carousel-track').style.transform = `translateX(-${slideActual * 100}%)`;
-            
-            // Actualizar puntitos
-            const dots = document.getElementById('carousel-dots').children;
-            Array.from(dots).forEach((dot, i) => {
-                dot.className = `w-2 h-2 rounded-full transition-all ${i === slideActual ? 'bg-white scale-125' : 'bg-white/50'}`;
-            });
-
-            // Reiniciar temporizador para que no se salte al presionar manual
-            clearInterval(intervaloCarrusel);
-            intervaloCarrusel = setInterval(() => moverCarousel(1), 4000);
-        }
-
-        // 1. Iniciar sesión y descargar
         auth.signInAnonymously().then(() => {
             console.log("Conectado como cliente anónimo");
-            iniciarCarrusel(); // Arranca el carrusel
             cargarDatos();
         }).catch((error) => {
-            console.error("Error conectando:", error);
             document.getElementById('spinner').classList.add('hidden');
-            document.getElementById('loader-text').innerHTML = `
-                <span class="text-red-500 font-black">Error de conexión</span><br><br>
-                <span class="text-xs text-gray-400">Por favor, revisa tu conexión a internet.</span>
-            `;
+            document.getElementById('loader-text').innerHTML = `<span class="text-red-500 font-black">Error de conexión</span>`;
             document.getElementById('loader-text').classList.remove('animate-pulse');
         });
 
-        // 2. Descargar los productos y generar botones
         function cargarDatos() {
+            // 1. Obtener la Configuración para los Banners de Firebase
+            database.ref('tienda_datos/config').on('value', (snapConf) => {
+                const conf = snapConf.val();
+                let banners = [];
+                if (conf) {
+                    if (conf.banner_1 && conf.banner_1.trim() !== "") banners.push(conf.banner_1.trim());
+                    if (conf.banner_2 && conf.banner_2.trim() !== "") banners.push(conf.banner_2.trim());
+                    if (conf.banner_3 && conf.banner_3.trim() !== "") banners.push(conf.banner_3.trim());
+                }
+                iniciarCarrusel(banners);
+            });
+
+            // 2. Obtener los Productos
             database.ref('tienda_datos/productos').on('value', (snap) => {
                 const data = snap.val();
                 if (data) {
                     productosGlobales = Array.isArray(data) ? data : Object.values(data);
                     document.getElementById('loader').classList.add('hidden');
-                    
-                    // Generar los botones automáticamente
                     generarBotonesCategorias();
-                    
                     renderizarCatalogo();
                 } else {
                     document.getElementById('spinner').classList.add('hidden');
-                    document.getElementById('loader-text').innerText = "El catálogo está vacío. Agrega productos desde el sistema POS.";
+                    document.getElementById('loader-text').innerText = "El catálogo está vacío.";
                     document.getElementById('loader-text').classList.remove('animate-pulse');
                 }
             });
         }
 
-        // Generador de Categorías
+        // --- INICIADOR DINÁMICO DE CARRUSEL ---
+        function iniciarCarrusel(listaBanners) {
+            const contenedor = document.getElementById('contenedor-carrusel');
+            const track = document.getElementById('carousel-track');
+            const dots = document.getElementById('carousel-dots');
+            
+            clearInterval(intervaloCarrusel); // Limpiar cualquier giro anterior
+            
+            if (!listaBanners || listaBanners.length === 0) {
+                contenedor.classList.replace('block', 'hidden');
+                contenedor.style.display = 'none';
+                return;
+            }
+
+            contenedor.classList.replace('hidden', 'block');
+            contenedor.style.display = 'block';
+            numBanners = listaBanners.length;
+            slideActual = 0;
+
+            track.innerHTML = listaBanners.map(img => `<img src="${img}" class="w-full h-full object-cover flex-shrink-0" onerror="this.src='https://placehold.co/1200x400/ff9ed2/db2777?text=ERROR+EN+EL+LINK'">`).join('');
+            
+            if (numBanners > 1) {
+                dots.innerHTML = listaBanners.map((_, i) => `<div class="w-2 h-2 rounded-full transition-all ${i === 0 ? 'bg-white scale-125' : 'bg-white/50'}"></div>`).join('');
+                document.getElementById('btn-prev').onclick = () => moverCarousel(-1);
+                document.getElementById('btn-next').onclick = () => moverCarousel(1);
+                intervaloCarrusel = setInterval(() => moverCarousel(1), 4000);
+                document.getElementById('btn-prev').style.display = 'flex';
+                document.getElementById('btn-next').style.display = 'flex';
+            } else {
+                dots.innerHTML = '';
+                document.getElementById('btn-prev').style.display = 'none';
+                document.getElementById('btn-next').style.display = 'none';
+            }
+            track.style.transform = `translateX(0%)`;
+        }
+
+        function moverCarousel(direccion) {
+            if (numBanners <= 1) return;
+            slideActual = (slideActual + direccion + numBanners) % numBanners;
+            document.getElementById('carousel-track').style.transform = `translateX(-${slideActual * 100}%)`;
+            
+            const dots = document.getElementById('carousel-dots').children;
+            Array.from(dots).forEach((dot, i) => {
+                dot.className = `w-2 h-2 rounded-full transition-all ${i === slideActual ? 'bg-white scale-125' : 'bg-white/50'}`;
+            });
+
+            clearInterval(intervaloCarrusel);
+            intervaloCarrusel = setInterval(() => moverCarousel(1), 4000);
+        }
+
         function generarBotonesCategorias() {
             const contenedor = document.getElementById('contenedor-filtros');
             let categoriasUnicas = new Set();
             
-            // Extrae todas las categorías de los productos que tengan stock
             productosGlobales.forEach(p => {
                 const stockTotal = (p.stock_maria || 0) + (p.stock_marisol || 0);
                 if (stockTotal > 0) {
@@ -230,16 +227,13 @@
                 }
             });
 
-            // Convierte el Set a Array y lo ordena alfabéticamente
             categoriasUnicas = Array.from(categoriasUnicas).sort();
 
-            // Dibuja primero los botones principales
             let htmlBotones = `
                 <button onclick="filtrarCat('TODOS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-pink-600 text-white rounded-full font-bold text-xs uppercase shadow" data-cat="TODOS">Todos</button>
                 <button onclick="filtrarCat('OFERTAS')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-red-600 text-white rounded-full font-black text-xs uppercase shadow animate-pulse hover:bg-red-700 transition" data-cat="OFERTAS">🔥 Ofertas</button>
             `;
 
-            // Dibuja el resto de botones dinámicamente
             categoriasUnicas.forEach(cat => {
                 htmlBotones += `<button onclick="filtrarCat('${cat}')" class="filtro-btn inline-block mx-1 px-4 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-bold text-xs uppercase transition" data-cat="${cat}">${cat}</button>`;
             });
@@ -257,7 +251,6 @@
         function resaltarBotonActivo() {
             document.querySelectorAll('.filtro-btn').forEach(btn => {
                 const catAsignada = btn.getAttribute('data-cat');
-                
                 if (catAsignada === 'OFERTAS') {
                     btn.className = categoriaActiva === 'OFERTAS' 
                         ? "filtro-btn inline-block mx-1 px-4 py-2 bg-red-800 text-white rounded-full font-black text-xs uppercase shadow ring-4 ring-red-300"
@@ -270,25 +263,18 @@
             });
         }
 
-        // 3. Revisar si hay oferta activa
         function obtenerPrecioOferta(p) {
             if (p.precio_oferta && p.oferta_inicio && p.oferta_fin) {
                 const hoy = new Date(); 
                 hoy.setHours(0,0,0,0);
                 const [iY, iM, iD] = p.oferta_inicio.split('-'); 
                 const [fY, fM, fD] = p.oferta_fin.split('-');
-                
                 const inicio = new Date(iY, iM-1, iD);
                 const fin = new Date(fY, fM-1, fD, 23, 59, 59);
-                
-                if (hoy >= inicio && hoy <= fin) {
-                    return parseFloat(p.precio_oferta);
-                }
+                if (hoy >= inicio && hoy <= fin) return parseFloat(p.precio_oferta);
             }
             return null;
         }
-
-        // --- FUNCIONES DEL CARRITO DE COMPRAS ---
 
         function toggleCarrito() {
             const modal = document.getElementById('modal-carrito');
@@ -305,7 +291,6 @@
 
             const precioOferta = obtenerPrecioOferta(prod);
             const precioFinal = precioOferta !== null ? precioOferta : parseFloat(prod.venta);
-
             const indexExistente = carritoCliente.findIndex(item => item.codigo === codigo);
             
             if (indexExistente > -1) {
@@ -322,7 +307,6 @@
 
             actualizarCarritoUI();
 
-            // Mensaje flotante de confirmación rápida
             const toast = document.createElement('div');
             toast.className = 'fixed bottom-24 right-6 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold animate-bounce z-40 border-2 border-green-500 flex items-center gap-2';
             toast.innerHTML = '🛒 Añadido al pedido';
@@ -332,9 +316,7 @@
 
         function cambiarCant(index, cantidad) {
             carritoCliente[index].cant += cantidad;
-            if (carritoCliente[index].cant < 1) {
-                carritoCliente.splice(index, 1);
-            }
+            if (carritoCliente[index].cant < 1) carritoCliente.splice(index, 1);
             actualizarCarritoUI();
         }
 
@@ -344,11 +326,9 @@
         }
 
         function actualizarCarritoUI() {
-            // Actualizar burbuja flotante
             const conteo = carritoCliente.reduce((sum, item) => sum + item.cant, 0);
             document.getElementById('cart-count').innerText = conteo;
 
-            // Actualizar lista de productos
             const contenedor = document.getElementById('carrito-items');
             let total = 0;
             
@@ -399,12 +379,10 @@
             });
 
             mensaje += `\n*TOTAL DEL PEDIDO: Q${total.toFixed(2)}*\n\n¡Quedo a la espera de su confirmación para coordinar la entrega!`;
-
             const url = `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
             window.open(url, '_blank');
         }
 
-        // 4. Dibujar los productos
         function renderizarCatalogo() {
             const contenedor = document.getElementById('catalogo-grid');
             const busqueda = document.getElementById('buscador').value.toLowerCase();
@@ -466,9 +444,10 @@
                 htmlHTML = '<div class="col-span-full text-center py-20 text-gray-400 font-bold">No hay productos en esta categoría o búsqueda.</div>';
             }
 
-            contenedor.innerHTML = htmlHTML;
+            document.getElementById('catalogo-grid').innerHTML = htmlHTML;
         }
     </script>
 </body>
 </html>
+
 
