@@ -97,20 +97,43 @@
             #zona-trabajo { min-height: 300px; padding: 10px; }
         }
 
-        /* 🖨️ MAGIA DE IMPRESIÓN CORREGIDA PARA PÓSTER EN CELULARES 🖨️ */
+        /* 🖨️ MAGIA DE IMPRESIÓN (BLINDADA CONTRA IPHONE) 🖨️ */
         @media print {
-            @page { margin: 0; size: auto; }
+            @page { margin: 0.5cm; size: auto; } /* Le damos un mini margen para que iOS no entre en pánico */
             .sidebar, .panel, #msg-vacio, .no-print { display: none !important; }
             body, html { background: white !important; margin: 0 !important; padding: 0 !important; width: 100% !important; height: auto !important; }
             .main-content { padding: 0 !important; margin: 0 !important; display: block !important; width: 100% !important; max-width: 100% !important; overflow: visible !important;}
-            #zona-trabajo { border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; display: block !important; overflow: visible !important; background: transparent !important; position: static !important;}
             
-            /* LA ORDEN ABSOLUTA CON MÁRGENES SEGUROS DE 24CM */
-            .poster-parte { width: 100% !important; height: 24cm !important; max-height: 25cm !important; object-fit: contain !important; margin: 0 auto !important; padding: 0 !important; border: none !important; box-shadow: none !important; page-break-after: always !important; page-break-inside: avoid !important; display: block !important;}
-            .hoja-lote { width: 100% !important; height: 24cm !important; max-height: 25cm !important; border: none !important; padding: 5px !important; margin: 0 auto !important; page-break-after: always !important; page-break-inside: avoid !important;}
-            .img-libre { border: none !important; box-shadow: none !important; border-radius: 0 !important;}
-            .foto-carnet { border: none !important; border-radius: 0 !important; margin: 2px !important;}
-            .letra-molde { width: 100% !important; height: 24cm !important; max-height: 25cm !important; border: none !important; color: transparent !important; -webkit-text-stroke: 6px black !important; page-break-after: always !important; page-break-inside: avoid !important; overflow: hidden; display: flex !important; margin: 0 auto !important;}
+            /* BLINDAJE PARA ACOMODO LIBRE: Corta el sobrante para no crear hojas en blanco */
+            #zona-trabajo { 
+                border: none !important; padding: 0 !important; margin: 0 auto !important; 
+                width: 100% !important; max-width: 100% !important; height: 95vh !important; 
+                display: block !important; position: relative !important; 
+                overflow: hidden !important; /* MAGIA: Oculta lo que se sale del papel */
+                page-break-after: always !important; break-after: page !important;
+                background: transparent !important;
+            }
+            
+            /* BLINDAJE PARA PÓSTER, LOTE Y LETRAS: Obliga a NO partir la hoja por la mitad */
+            .poster-parte, .hoja-lote, .letra-molde { 
+                width: 100% !important; 
+                height: 95vh !important; 
+                max-height: 95vh !important; 
+                object-fit: contain !important; 
+                margin: 0 auto !important; 
+                border: none !important; 
+                box-shadow: none !important; 
+                page-break-inside: avoid !important; /* MAGIA: Prohíbe partir a la mitad */
+                break-inside: avoid !important; 
+                page-break-after: always !important; 
+                break-after: page !important; 
+                display: block !important;
+            }
+
+            .hoja-lote { padding: 5px !important; box-sizing: border-box !important;}
+            .img-libre { border: none !important; box-shadow: none !important; border-radius: 0 !important; page-break-inside: avoid !important; break-inside: avoid !important;}
+            .foto-carnet { border: none !important; border-radius: 0 !important; margin: 2px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
+            .letra-molde { color: transparent !important; -webkit-text-stroke: 6px black !important; overflow: hidden !important; display: flex !important;}
         }
     </style>
 </head>
@@ -381,7 +404,7 @@
                     for (let x = 1; x < w - 1; x++) {
                         let i = y * w + x;
                         let px = (gray[i-w+1] + 2*gray[i+1] + gray[i+w+1]) - (gray[i-w-1] + 2*gray[i-1] + gray[i+w-1]);
-                        let py = (gray[i+w-1] + 2*gray[i+w] + gray[i+w+1]) - (gray[i-w-1] + 2*gray[i-w] + gray[i-w+1]);
+                        let py = (gray[i+w-1] + 2*gray[i+w] + gray[i+w+1]) - (gray[i-w-1] + 2*gray[i-w] + gray[i+w+1]);
                         let val = Math.sqrt(px*px + py*py);
                         
                         if (val > umbral) {
@@ -466,3 +489,4 @@
     </script>
 </body>
 </html>
+
