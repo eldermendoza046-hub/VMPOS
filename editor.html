@@ -82,7 +82,7 @@
         .foto-lote { width: 100%; height: 100%; object-fit: cover; border: 1px dashed #ccc; border-radius: 4px;}
         .letra-molde { width: 100%; min-height: 70vh; display: flex; justify-content: center; align-items: center; text-align: center; color: transparent !important; -webkit-text-stroke: 4px black; font-weight: bold; margin: 0; page-break-after: always; text-transform: uppercase; line-height: 1.1; box-sizing: border-box; padding: 10px;}
 
-        /* 📱 MAGIA PARA CELULARES (RESPONSIVO) 📱 */
+        /* 📱 MAGIA PARA CELULARES (RESPONSIVO) */
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; height: auto; }
             .sidebar { 
@@ -97,24 +97,26 @@
             #zona-trabajo { min-height: 300px; padding: 10px; }
         }
 
-        /* 🖨️ MAGIA DE IMPRESIÓN 🖨️ */
+        /* 🖨️ MAGIA DE IMPRESIÓN (BLINDADA PARA IPHONE Y PC) 🖨️ */
         @media print {
             @page { margin: 0; size: auto; }
             .sidebar, .panel, #msg-vacio, .no-print { display: none !important; }
             body, html { background: white !important; margin: 0 !important; padding: 0 !important; width: 100% !important; height: auto !important; }
             .main-content { padding: 0 !important; margin: 0 !important; display: block !important; width: 100% !important; max-width: 100% !important; overflow: visible !important;}
             #zona-trabajo { border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; display: block !important; overflow: visible !important; background: transparent !important; position: static !important;}
-            .poster-parte { width: 100vw !important; height: 98vh !important; object-fit: contain !important; margin: 0 !important; border: none !important; box-shadow: none !important; page-break-after: always !important; page-break-inside: avoid !important;}
-            .hoja-lote { height: 98vh !important; border: none !important; padding: 5px !important; margin: 0 !important; page-break-after: always !important;}
+            
+            /* LA ORDEN ABSOLUTA PARA QUE EL iPHONE CUBRA LA HOJA CARTA: min-height: 26.5cm */
+            .poster-parte { width: 100% !important; height: 95vh !important; min-height: 26.5cm !important; object-fit: contain !important; margin: 0 auto !important; border: none !important; box-shadow: none !important; page-break-after: always !important; page-break-inside: avoid !important; display: block !important;}
+            .hoja-lote { width: 100% !important; height: 95vh !important; min-height: 26.5cm !important; border: none !important; padding: 5px !important; margin: 0 !important; page-break-after: always !important;}
             .img-libre { border: none !important; box-shadow: none !important; border-radius: 0 !important;}
             .foto-carnet { border: none !important; border-radius: 0 !important; margin: 2px !important;}
-            .letra-molde { height: 98vh !important; border: none !important; color: transparent !important; -webkit-text-stroke: 6px black !important; page-break-after: always !important; overflow: hidden;}
+            .letra-molde { width: 100% !important; height: 95vh !important; min-height: 26.5cm !important; border: none !important; color: transparent !important; -webkit-text-stroke: 6px black !important; page-break-after: always !important; overflow: hidden; display: flex !important;}
         }
     </style>
 </head>
 <body>
 
-    <!-- MENÚ LATERAL (Se vuelve menú superior en celulares) -->
+    <!-- MENÚ LATERAL -->
     <div class="sidebar no-print">
         <h2>🌸 Editor M&M 🌸</h2>
         <button class="tab-btn active" onclick="abrirTab(event, 'tab-carnet')">📸 1. Medidas</button>
@@ -231,7 +233,7 @@
 
         <!-- ZONA PREVIA -->
         <div id="zona-trabajo">
-            <div id="msg-vacio">(✿◠‿◠) <br><br>Selecciona una herramienta a la izquierda.<br><br><i>Recuerda que puedes presionar <b>Ctrl+V</b>.</i></div>
+            <div id="msg-vacio">(✿◠‿◠) <br><br>Selecciona una herramienta.<br><br><i>Recuerda que puedes presionar <b>Ctrl+V</b> en PC.</i></div>
         </div>
     </div>
 
