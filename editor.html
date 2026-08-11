@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editor M&M Pro</title>
     <!-- Importar fuente tierna -->
     <style>
@@ -65,19 +65,29 @@
         }
         .btn-action:hover { background: #2ed573; color: white; transform: translateY(-2px); }
 
+        /* 📄 ESTILOS PARA EL LIENZO DE PAPEL (Vertical/Horizontal) 📄 */
         #zona-trabajo { 
             margin-top: 10px; width: 100%; max-width: 1000px; min-height: 400px; border: 4px dashed #ffb6c1; 
             border-radius: 20px; position: relative; background: #fffcfd; padding: 20px; box-sizing: border-box; overflow: visible; 
         }
+        #zona-trabajo.modo-vertical {
+            aspect-ratio: 8.5 / 11; max-width: 650px; background: white; border: 2px solid #ccc; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin: 10px auto;
+        }
+        #zona-trabajo.modo-horizontal {
+            aspect-ratio: 11 / 8.5; max-width: 850px; background: white; border: 2px solid #ccc; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin: 10px auto;
+        }
+
         #msg-vacio { color: #ff99cc; margin-top: 40px; text-align: center; padding: 20px; font-size: 1.2rem; font-weight: bold;}
 
         /* Herramientas Visuales */
         .contenedor-carnet { display: flex; flex-wrap: wrap; justify-content: flex-start; align-content: flex-start; gap: 5px; }
         .foto-carnet { border: 1px dashed #ccc; box-sizing: border-box; border-radius: 4px; max-width: 100%;}
         .poster-parte { width: 100%; max-width: 100%; border: 2px dashed #ffb6c1; page-break-after: always; display: block; margin: 0 auto 30px auto; box-shadow: 0 5px 15px rgba(0,0,0,0.1);}
-        .img-libre { position: absolute; cursor: grab; border: 3px solid transparent; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); max-width: 100%; border-radius: 8px;}
-        .img-libre:hover { border-color: #7bed9f; }
-        .img-libre:active { cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.2); transform: scale(1.02); }
+        
+        .img-libre { position: absolute; cursor: grab; border: 3px solid transparent; box-shadow: 2px 2px 10px rgba(0,0,0,0.2); max-width: 100%; border-radius: 8px;}
+        .img-libre:hover { border-color: #ff4757; }
+        .img-libre:active { cursor: grabbing; box-shadow: 5px 5px 15px rgba(0,0,0,0.3); transform: scale(1.02); }
+        
         .hoja-lote { width: 100%; height: 95vh; display: grid; gap: 5px; padding: 10px; box-sizing: border-box; page-break-after: always; border: 2px dashed #ffb6c1; margin-bottom: 20px; background: white; border-radius: 10px;}
         .foto-lote { width: 100%; height: 100%; object-fit: cover; border: 1px dashed #ccc; border-radius: 4px;}
         .letra-molde { width: 100%; min-height: 70vh; display: flex; justify-content: center; align-items: center; text-align: center; color: transparent !important; -webkit-text-stroke: 4px black; font-weight: bold; margin: 0; page-break-after: always; text-transform: uppercase; line-height: 1.1; box-sizing: border-box; padding: 10px;}
@@ -85,10 +95,7 @@
         /* 📱 MAGIA PARA CELULARES (RESPONSIVO) */
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; height: auto; }
-            .sidebar { 
-                width: 100%; max-height: none; border-right: none; border-bottom: 4px dashed #ffd1dc; 
-                padding: 15px 10px; display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px;
-            }
+            .sidebar { width: 100%; max-height: none; border-right: none; border-bottom: 4px dashed #ffd1dc; padding: 15px 10px; display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px;}
             .sidebar h2 { width: 100%; margin-bottom: 5px; font-size: 1.4rem; padding-bottom: 5px; }
             .tab-btn { width: calc(50% - 5px); flex: unset; padding: 10px; font-size: 0.85rem; text-align: center; }
             .btn-print { width: 100%; margin-top: 5px; padding: 15px; font-size: 1.1rem; }
@@ -97,43 +104,45 @@
             #zona-trabajo { min-height: 300px; padding: 10px; }
         }
 
-        /* 🖨️ MAGIA DE IMPRESIÓN (BLINDADA CONTRA IPHONE) 🖨️ */
+        /* 🖨️ BLINDAJE EXTREMO DE IMPRESIÓN PARA EL iPHONE 🖨️ */
         @media print {
-            @page { margin: 0.5cm; size: auto; } /* Le damos un mini margen para que iOS no entre en pánico */
+            @page { margin: 0.5cm; size: letter; } /* Le decimos a iOS que ES papel carta a fuerzas */
             .sidebar, .panel, #msg-vacio, .no-print { display: none !important; }
             body, html { background: white !important; margin: 0 !important; padding: 0 !important; width: 100% !important; height: auto !important; }
             .main-content { padding: 0 !important; margin: 0 !important; display: block !important; width: 100% !important; max-width: 100% !important; overflow: visible !important;}
             
-            /* BLINDAJE PARA ACOMODO LIBRE: Corta el sobrante para no crear hojas en blanco */
+            /* ACOMODO LIBRE: Corta todo lo que se salga para no crear hojas dobles */
             #zona-trabajo { 
                 border: none !important; padding: 0 !important; margin: 0 auto !important; 
-                width: 100% !important; max-width: 100% !important; height: 95vh !important; 
+                width: 100% !important; max-width: 100% !important; 
+                height: 25cm !important; max-height: 25cm !important; /* Altura de candado */
                 display: block !important; position: relative !important; 
-                overflow: hidden !important; /* MAGIA: Oculta lo que se sale del papel */
-                page-break-after: always !important; break-after: page !important;
-                background: transparent !important;
+                overflow: hidden !important; /* CORTE DE SOBRANTES */
+                background: transparent !important; box-shadow: none !important;
+                page-break-after: always !important;
             }
             
-            /* BLINDAJE PARA PÓSTER, LOTE Y LETRAS: Obliga a NO partir la hoja por la mitad */
-            .poster-parte, .hoja-lote, .letra-molde { 
+            /* LOTE AUTOMÁTICO: Arregla el fallo de la cuadrícula de la foto 11/12 */
+            .hoja-lote { 
                 width: 100% !important; 
-                height: 95vh !important; 
-                max-height: 95vh !important; 
-                object-fit: contain !important; 
-                margin: 0 auto !important; 
-                border: none !important; 
-                box-shadow: none !important; 
-                page-break-inside: avoid !important; /* MAGIA: Prohíbe partir a la mitad */
-                break-inside: avoid !important; 
-                page-break-after: always !important; 
-                break-after: page !important; 
-                display: block !important;
+                height: 25cm !important; /* Evita que la cuadrícula se expanda hacia abajo */
+                max-height: 25cm !important; 
+                border: none !important; padding: 0 !important; margin: 0 auto !important; 
+                page-break-after: always !important; page-break-inside: avoid !important; break-inside: avoid !important;
+                overflow: hidden !important;
+            }
+            .foto-lote { width: 100% !important; height: 100% !important; object-fit: cover !important; border: 1px solid #ccc !important; }
+
+            /* PÓSTER: Arregla las 8 páginas (foto 10) */
+            .poster-parte { 
+                width: 100% !important; height: 25cm !important; max-height: 25cm !important; 
+                object-fit: contain !important; margin: 0 auto !important; padding: 0 !important; border: none !important; box-shadow: none !important; 
+                page-break-after: always !important; page-break-inside: avoid !important; break-inside: avoid !important; display: block !important;
             }
 
-            .hoja-lote { padding: 5px !important; box-sizing: border-box !important;}
-            .img-libre { border: none !important; box-shadow: none !important; border-radius: 0 !important; page-break-inside: avoid !important; break-inside: avoid !important;}
-            .foto-carnet { border: none !important; border-radius: 0 !important; margin: 2px !important; page-break-inside: avoid !important; break-inside: avoid !important;}
-            .letra-molde { color: transparent !important; -webkit-text-stroke: 6px black !important; overflow: hidden !important; display: flex !important;}
+            .img-libre { border: none !important; box-shadow: none !important; border-radius: 0 !important; page-break-inside: avoid !important;}
+            .foto-carnet { border: none !important; border-radius: 0 !important; margin: 2px !important; page-break-inside: avoid !important;}
+            .letra-molde { width: 100% !important; height: 25cm !important; border: none !important; color: transparent !important; -webkit-text-stroke: 6px black !important; page-break-after: always !important; page-break-inside: avoid !important; overflow: hidden !important; display: flex !important; margin: 0 auto !important;}
         }
     </style>
 </head>
@@ -155,7 +164,6 @@
     <!-- ÁREA PRINCIPAL -->
     <div class="main-content no-print">
         
-        <!-- H1: CARNET -->
         <div id="tab-carnet" class="panel active">
             <h3>📸 Fotos a la Medida</h3>
             <label>Subir fotito: <input type="file" id="file-carnet" accept="image/*" style="width: 100%;"></label><br>
@@ -170,7 +178,6 @@
             <button class="btn-action" onclick="generarCarnet()">✨ Generar Plantilla</button>
         </div>
 
-        <!-- H2: PÓSTER -->
         <div id="tab-poster" class="panel">
             <h3>🧩 Rompecabezas Gigante</h3>
             <label>Subir imagen: <input type="file" id="file-poster" accept="image/*" style="width: 100%;"></label><br>
@@ -178,14 +185,21 @@
             <button class="btn-action" onclick="generarPoster()">✂️ Dividir Imagen</button>
         </div>
 
-        <!-- H3: COLLAGE -->
         <div id="tab-collage" class="panel">
             <h3>✨ Acomodo Libre ✨</h3>
-            <p style="font-size: 0.95em;">Copia cualquier dibujo de Google y presiona <b>Ctrl+V</b>.</p>
+            <p style="font-size: 0.95em;">💡 <b>Tip:</b> Arrastra las imágenes para moverlas, o dales <b>doble clic</b> para borrarlas.</p>
+            
+            <!-- SELECTOR DE ORIENTACIÓN DE HOJA (RESTURADO) -->
+            <label>Orientación de la Hoja: 
+                <select id="orientacion-libre" onchange="cambiarOrientacion()" style="width: 100%; margin-bottom: 15px;">
+                    <option value="vertical">📄 Vertical (Parada)</option>
+                    <option value="horizontal">📜 Horizontal (Acostada)</option>
+                </select>
+            </label><br>
+
             <label>Añadir imágenes: <input type="file" id="file-collage" accept="image/*" multiple style="width: 100%;"></label>
         </div>
 
-        <!-- H4: FILTROS -->
         <div id="tab-filtros" class="panel">
             <h3>🎨 Magia y Filtros</h3>
             <label>Subir imagen: <input type="file" id="file-filtro" accept="image/*" style="width: 100%;"></label><br>
@@ -194,7 +208,6 @@
                 <input type="checkbox" id="val-dibujo" onchange="toggleDibujo()"> 🖍️ Convertir a Molde para Colorear
             </label><br>
 
-            <!-- Controles Normales -->
             <div id="controles-normales" style="width: 100%;">
                 <label style="display:block;">Brillo ☀️: <input type="range" id="val-brillo" min="50" max="250" value="100" onchange="aplicarFiltro()" style="width: 100%;"></label>
                 <label style="display:block;">Contraste 🌓: <input type="range" id="val-contraste" min="50" max="250" value="100" onchange="aplicarFiltro()" style="width: 100%;"></label>
@@ -206,7 +219,6 @@
                 </div>
             </div>
 
-            <!-- Controles para Dibujo Lápiz -->
             <div id="controles-dibujo" style="display:none; background: #fffcfd; padding: 15px; border-radius: 10px; margin-top:10px; border: 2px dashed #ffb6c1; width: 100%; box-sizing: border-box;">
                 <p style="margin-top:0; font-size:0.9em; color:#ff6b81;">Ajusta la sensibilidad hasta que las líneas se vean bien claras.</p>
                 <label style="display:block;">Sensibilidad ✏️: <input type="range" id="val-umbral" min="10" max="150" value="40" onchange="aplicarFiltro()" style="width: 100%;"></label>
@@ -215,7 +227,6 @@
             <button class="btn-action" onclick="aplicarFiltro()">🪄 Aplicar Magia</button>
         </div>
 
-        <!-- H5: LOTE -->
         <div id="tab-lote" class="panel">
             <h3>🗂️ Acomodar por Lote</h3>
             <div style="display: flex; justify-content: center; gap: 10px;">
@@ -226,7 +237,6 @@
             <button class="btn-action" onclick="generarLote()">🚀 Acomodar Todo</button>
         </div>
 
-        <!-- H6: MOLDES -->
         <div id="tab-letras" class="panel">
             <h3>🔤 Moldes para Colorear</h3>
             <p style="font-size: 0.95em;">Letras 100% huecas con medidas exactas.</p>
@@ -254,18 +264,28 @@
             <button class="btn-action" onclick="generarMolde()">🖍️ Crear Molde</button>
         </div>
 
-        <!-- ZONA PREVIA -->
         <div id="zona-trabajo">
             <div id="msg-vacio">(✿◠‿◠) <br><br>Selecciona una herramienta.<br><br><i>Recuerda que puedes presionar <b>Ctrl+V</b> en PC.</i></div>
         </div>
     </div>
 
-    <!-- CÓDIGO JAVASCRIPT -->
     <script>
         const zonaTrabajo = document.getElementById('zona-trabajo');
         let draggedElement = null;
 
         function limpiarZona() { zonaTrabajo.innerHTML = ''; zonaTrabajo.style.display = 'block'; }
+
+        // FUNCION PARA CAMBIAR LA HOJA (RESTAURADA)
+        function cambiarOrientacion() {
+            const or = document.getElementById('orientacion-libre').value;
+            if(or === 'horizontal') {
+                zonaTrabajo.classList.add('modo-horizontal');
+                zonaTrabajo.classList.remove('modo-vertical');
+            } else {
+                zonaTrabajo.classList.add('modo-vertical');
+                zonaTrabajo.classList.remove('modo-horizontal');
+            }
+        }
 
         function abrirTab(evt, tabName) {
             if(tabName !== 'tab-collage' || document.getElementsByClassName('img-libre').length === 0) {
@@ -278,6 +298,13 @@
             document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
             if(evt) evt.currentTarget.classList.add("active");
+
+            // AL ACTIVAR EL MODO LIBRE, CONVERTIR EL FONDO EN PAPEL
+            if(tabName === 'tab-collage') {
+                cambiarOrientacion();
+            } else {
+                zonaTrabajo.classList.remove('modo-vertical', 'modo-horizontal');
+            }
         }
 
         function leerImagen(input, callback) {
@@ -305,13 +332,19 @@
         }
 
         function generarPoster() {
-            const input = document.getElementById('file-poster'); const divisiones = parseInt(document.getElementById('grid-poster').value);
+            const input = document.getElementById('file-poster'); 
+            const divisiones = parseInt(document.getElementById('grid-poster').value);
             leerImagen(input, (img) => {
-                limpiarZona(); const pedazoAncho = img.width / divisiones; const pedazoAlto = img.height / divisiones;
+                limpiarZona(); 
+                const pedazoAncho = img.width / divisiones; 
+                const pedazoAlto = img.height / divisiones;
                 for (let fila = 0; fila < divisiones; fila++) {
                     for (let col = 0; col < divisiones; col++) {
-                        const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-                        canvas.width = pedazoAncho; canvas.height = pedazoAlto; canvas.className = 'poster-parte';
+                        const canvas = document.createElement('canvas'); 
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = pedazoAncho; 
+                        canvas.height = pedazoAlto; 
+                        canvas.className = 'poster-parte';
                         ctx.drawImage(img, col * pedazoAncho, fila * pedazoAlto, pedazoAncho, pedazoAlto, 0, 0, pedazoAncho, pedazoAlto);
                         zonaTrabajo.appendChild(canvas);
                     }
@@ -324,9 +357,14 @@
             Array.from(e.target.files).forEach(file => { const reader = new FileReader(); reader.onload = function(event) { agregarImagenLibre(event.target.result); }; reader.readAsDataURL(file); });
             this.value = ''; 
         });
+        
         function agregarImagenLibre(src) {
             const img = document.createElement('img'); img.src = src; img.className = 'img-libre';
             img.style.width = '250px'; img.style.left = '30px'; img.style.top = '30px';
+            
+            // BORRAR AL HACER DOBLE CLIC (RESTAURADO)
+            img.ondblclick = function() { this.remove(); };
+            
             img.addEventListener('touchstart', iniciarArrastreTouch, {passive: false});
             img.onmousedown = iniciarArrastre; zonaTrabajo.appendChild(img);
         }
@@ -489,4 +527,5 @@
     </script>
 </body>
 </html>
+
 
