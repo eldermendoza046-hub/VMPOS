@@ -97,7 +97,7 @@
             #zona-trabajo { min-height: 300px; padding: 10px; }
         }
 
-        /* 🖨️ MAGIA DE IMPRESIÓN (BLINDADA PARA IPHONE Y PC) 🖨️ */
+        /* 🖨️ MAGIA DE IMPRESIÓN CORREGIDA PARA PÓSTER EN CELULARES 🖨️ */
         @media print {
             @page { margin: 0; size: auto; }
             .sidebar, .panel, #msg-vacio, .no-print { display: none !important; }
@@ -105,12 +105,12 @@
             .main-content { padding: 0 !important; margin: 0 !important; display: block !important; width: 100% !important; max-width: 100% !important; overflow: visible !important;}
             #zona-trabajo { border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; display: block !important; overflow: visible !important; background: transparent !important; position: static !important;}
             
-            /* LA ORDEN ABSOLUTA PARA QUE EL iPHONE CUBRA LA HOJA CARTA: min-height: 26.5cm */
-            .poster-parte { width: 100% !important; height: 95vh !important; min-height: 26.5cm !important; object-fit: contain !important; margin: 0 auto !important; border: none !important; box-shadow: none !important; page-break-after: always !important; page-break-inside: avoid !important; display: block !important;}
-            .hoja-lote { width: 100% !important; height: 95vh !important; min-height: 26.5cm !important; border: none !important; padding: 5px !important; margin: 0 !important; page-break-after: always !important;}
+            /* LA ORDEN ABSOLUTA CON MÁRGENES SEGUROS DE 24CM */
+            .poster-parte { width: 100% !important; height: 24cm !important; max-height: 25cm !important; object-fit: contain !important; margin: 0 auto !important; padding: 0 !important; border: none !important; box-shadow: none !important; page-break-after: always !important; page-break-inside: avoid !important; display: block !important;}
+            .hoja-lote { width: 100% !important; height: 24cm !important; max-height: 25cm !important; border: none !important; padding: 5px !important; margin: 0 auto !important; page-break-after: always !important; page-break-inside: avoid !important;}
             .img-libre { border: none !important; box-shadow: none !important; border-radius: 0 !important;}
             .foto-carnet { border: none !important; border-radius: 0 !important; margin: 2px !important;}
-            .letra-molde { width: 100% !important; height: 95vh !important; min-height: 26.5cm !important; border: none !important; color: transparent !important; -webkit-text-stroke: 6px black !important; page-break-after: always !important; overflow: hidden; display: flex !important;}
+            .letra-molde { width: 100% !important; height: 24cm !important; max-height: 25cm !important; border: none !important; color: transparent !important; -webkit-text-stroke: 6px black !important; page-break-after: always !important; page-break-inside: avoid !important; overflow: hidden; display: flex !important; margin: 0 auto !important;}
         }
     </style>
 </head>
