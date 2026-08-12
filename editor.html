@@ -92,12 +92,29 @@
 
         /* Magia de impresión invisible */
         @media print {
+            @page { margin: 0; size: auto; }
+            
+            /* 🔥 OBLIGA A IMPRIMIR LAS IMÁGENES DE FONDO DEL PÓSTER 🔥 */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            
             .sidebar, .panel, #msg-vacio, .no-print { display: none !important; }
             body, html { background: white !important; margin: 0 !important; padding: 0 !important; width: 100% !important; height: auto !important; }
             .main-content { padding: 0 !important; margin: 0 !important; display: block !important; width: 100% !important; max-width: 100% !important; overflow: visible !important;}
             #zona-trabajo { border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; display: block !important; overflow: visible !important; background: transparent !important; position: static !important;}
             #contenedor-hojas-libres, #contenedor-poster { transform: scale(1) !important; gap: 0 !important; padding: 0 !important; margin: 0 !important;}
             
+            /* 🔥 CORRECCIÓN PARA EL IPHONE Y PC: Evita hojas extra y cortes a la mitad 🔥 */
+            .poster-parte, .pagina-lote, .hoja-libre { 
+                page-break-inside: avoid !important; 
+                break-inside: avoid !important; 
+                max-height: 27cm !important; 
+                overflow: hidden !important; 
+            }
+
             .poster-parte { margin: 0 !important; box-shadow: none !important; border: none !important; padding: 1cm !important; page-break-after: always !important; break-after: page !important;}
             .poster-cuadro { border: none !important; box-shadow: none !important; }
             
@@ -202,7 +219,6 @@
             </div>
         </div>
 
-        <!-- 🔥 PESTAÑA MAGIA Y FILTROS REPARADA (ESTIRAR Y Ctrl+V HABILITADO) 🔥 -->
         <div id="tab-filtros" class="panel">
             <h3>🎨 Magia y Filtros</h3>
             <p style="font-size: 0.85em; color:#555;">💡 ¡Las imágenes de filtro <b>también son libres</b>! Arrastra el punto rojo para estirarlas.</p>
@@ -953,4 +969,3 @@
     </script>
 </body>
 </html>
-
