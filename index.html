@@ -592,9 +592,8 @@
     <script>
         let db = { tiendaActual: 'Variedades Maria', rol: 'VENDEDOR', productos: [], ventas: [], cMaria: 1, cMarisol: 1, admin_pin: '1892' };
         let cart = []; let debounceTimerInventario; 
-        let mostrarProductosEnCero = false; // NUEVA VARIABLE PARA MOSTRAR INVENTARIO 0
+        let mostrarProductosEnCero = false; 
         
-        // NUEVA FUNCIÓN PARA MOSTRAR/OCULTAR INVENTARIO 0
         function toggleMostrarCeros() {
             mostrarProductosEnCero = !mostrarProductosEnCero;
             const btn = document.getElementById('btn-mostrar-ceros');
@@ -672,54 +671,24 @@
 
         function calcularSubtotal(c, cantidad) {
             let pBase = getPrecioActual(c);
-            
-            // 1. MÓDULO FARMACIA
             if(c.categoria === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
                 let blisters = Math.floor(cantidad / c.cant_blister); 
                 let sueltas = cantidad % c.cant_blister;
                 return (blisters * c.precio_blister) + (sueltas * pBase);
             } 
-
-            // 2. MÓDULO PAPELERÍA (NUEVO)
             if((c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA')) && (c.pape_cant > 0 || c.pape_medio > 0 || c.pape_ciento > 0)) {
                 let totalPape = 0;
                 let qty = cantidad;
-
-                // Primero cobramos los cientos (si hay)
-                if (c.pape_ciento > 0 && qty >= 100) {
-                    let cientos = Math.floor(qty / 100);
-                    totalPape += cientos * c.pape_ciento;
-                    qty = qty % 100; // Lo que sobra
-                }
-                // Luego cobramos los medios cientos (si hay)
-                if (c.pape_medio > 0 && qty >= 50) {
-                    let medios = Math.floor(qty / 50);
-                    totalPape += medios * c.pape_medio;
-                    qty = qty % 50; // Lo que sobra
-                }
-                // Luego cobramos las promociones chicas (Ej. 4xQ1)
-                if (c.pape_cant > 0 && c.pape_precio > 0 && qty >= c.pape_cant) {
-                    let promos = Math.floor(qty / c.pape_cant);
-                    totalPape += promos * c.pape_precio;
-                    qty = qty % c.pape_cant; // Lo que sobra
-                }
-                
-                // Finalmente cobramos las hojas sueltas a precio normal
+                if (c.pape_ciento > 0 && qty >= 100) { let cientos = Math.floor(qty / 100); totalPape += cientos * c.pape_ciento; qty = qty % 100; }
+                if (c.pape_medio > 0 && qty >= 50) { let medios = Math.floor(qty / 50); totalPape += medios * c.pape_medio; qty = qty % 50; }
+                if (c.pape_cant > 0 && c.pape_precio > 0 && qty >= c.pape_cant) { let promos = Math.floor(qty / c.pape_cant); totalPape += promos * c.pape_precio; qty = qty % c.pape_cant; }
                 totalPape += qty * pBase;
                 return totalPape;
             }
-
-            // 3. MÓDULO MAYORISTA (Cualquier otra categoría)
             let pDocenaUnitario = parseFloat(c.precio_docena) || 0;
             let pMediaDocenaUnitario = parseFloat(c.precio_media_docena) || 0;
-            if (cantidad >= 12 && pDocenaUnitario > 0) {
-                return cantidad * pDocenaUnitario;
-            }
-            if (cantidad >= 6 && pMediaDocenaUnitario > 0) {
-                return cantidad * pMediaDocenaUnitario;
-            }
-            
-            // 4. MÓDULO NORMAL
+            if (cantidad >= 12 && pDocenaUnitario > 0) return cantidad * pDocenaUnitario;
+            if (cantidad >= 6 && pMediaDocenaUnitario > 0) return cantidad * pMediaDocenaUnitario;
             return pBase * cantidad;
         }
 
@@ -740,7 +709,6 @@
 window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); sincronizarVentasOffline(); });
 if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 };
-
 
         function ejecutarLogin() {
             const u = document.getElementById('login-user').value;
@@ -820,7 +788,6 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             document.getElementById('rol-txt').innerText = isA ? "ADMINISTRADOR (DUEÑO)" : "MODO CAJERO";
             document.getElementById('btn-admin').innerText = isA ? "SALIR" : "🔑 Admin";
             
-            // Textos Dinámicos
             const nombreSucursal1 = (db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA";
             const nombreSucursal2 = (db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL";
 
@@ -877,13 +844,10 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     !String(p.categoria || "").toLowerCase().includes(filtroInv)
                 ) return;
 
-                // 🔥 LÓGICA INTELIGENTE PARA MOSTRAR/OCULTAR PRODUCTOS EN 0 🔥
                 let debeMostrarse = false;
                 if (stockActualTienda > 0) {
-                    debeMostrarse = true; // Siempre mostrar si hay stock
+                    debeMostrarse = true; 
                 } else if (mostrarProductosEnCero) {
-                    // Si el botón está activado, SOLO mostramos los 0 si la OTRA tienda también está en 0.
-                    // (Así ocultamos los productos exclusivos de la otra tienda)
                     if (stockOtraTienda === 0) {
                         debeMostrarse = true;
                     }
@@ -1011,10 +975,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
 
             if(categoriaPreseleccionada) selectCat.value = categoriaPreseleccionada;
 
-            // Activar ventana verde de farmacia
             document.getElementById('div-farma-modal').classList.toggle('hidden', selectCat.value !== 'FARMACIA');
-            
-            // Activar ventana naranja de papelería
             const esPapeleria = selectCat.value.includes('PAPELERIA') || selectCat.value.includes('LIBRERIA');
             document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
         }
@@ -1460,12 +1421,12 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         prods.push(datosGuardar);
                         return prods;
                     }, (error, committed) => {
-                        if (!error && committed) {
+                        if (error || !committed) {
+                            sysAlert("❌ Error de red al crear producto. Intenta de nuevo.");
+                        } else {
                             if (st > 0) registrarIngresoKardex(c, n, st); // GUARDA EL INGRESO EN LA BITÁCORA
                             cerrarModal(); 
                             sysAlert("✅ Nuevo producto creado al instante.");
-                        } else {
-                            sysAlert("❌ Error de red al crear producto. Intenta de nuevo.");
                         }
                     });
                 }
@@ -2247,19 +2208,71 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             setTimeout(() => document.getElementById('p-cod').focus(), 50); 
         }
         
-        // FUNCION PARA ORDENAR LAS FECHAS
-        function getMs(fechaStr) {
-            if(!fechaStr) return 0;
-            let parts = fechaStr.split(', ');
-            if(parts.length !== 2) return new Date(fechaStr).getTime() || 0;
-            let [d, t] = parts;
-            let dParts = d.split('/');
-            if(dParts.length !== 3) return new Date(fechaStr).getTime() || 0;
-            let hParts = t.split(':');
-            return new Date(dParts[2], dParts[1]-1, dParts[0], hParts[0], hParts[1], hParts[2]||0).getTime();
+        function imprimirReporteMaestro() {
+            const fIniStr = document.getElementById('rep-inicio').value; 
+            const fFinStr = document.getElementById('rep-fin').value; 
+            
+            const nom1 = (db.config && db.config.nombre_s1) ? db.config.nombre_s1 : "SOCIO 1";
+            const nom2 = (db.config && db.config.nombre_s2) ? db.config.nombre_s2 : "SOCIO 2";
+            const nombreSucursalImpresa = db.tiendaActual === 'Variedades Maria' 
+                ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA") 
+                : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL");
+
+            const pa = document.getElementById('print-area'); 
+            pa.className = "a4-mode"; 
+            
+            pa.innerHTML = `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+                <div style="text-align:center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+                    <h1 style="margin:0; font-size: 24px;">REPORTE MAESTRO DE LIQUIDACIÓN Y GANANCIAS</h1>
+                    <h2 style="margin:5px 0; color:#555; font-size: 16px;">TIENDA: ${nombreSucursalImpresa.toUpperCase()} | DEL: ${fIniStr} AL: ${fFinStr}</h2>
+                </div>
+                
+                <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">RESUMEN DE SOCIOS</h3>
+                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #1e3a8a; border-radius: 8px;">
+                            <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 ${nom1}</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${document.getElementById('p1-ventas').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${document.getElementById('p1-gastos').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:blue; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${document.getElementById('p1-capital').innerText}</b></div>
+                            <hr style="border:1px solid #1e3a8a; margin: 8px 0;">
+                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${document.getElementById('p1-ganancia').innerText}</span></div>
+                            
+                            <div style="margin-top: 15px; background-color: #eff6ff; padding: 5px; border-radius: 5px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${document.getElementById('p1-efectivo-gen').innerText}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('p1-depositos').innerText}</b></div>
+                                <hr style="border:1px solid #ccc; margin: 4px 0;">
+                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('p1-efectivo-pen').innerText}</span></div>
+                            </div>
+                        </td>
+                        <td style="width:4%;"></td>
+                        <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #831843; border-radius: 8px;">
+                            <h4 style="color:#831843; text-align:center; margin-top:0;">💄 ${nom2}</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${document.getElementById('p2-ventas').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${document.getElementById('p2-gastos').innerText}</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:purple; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${document.getElementById('p2-capital').innerText}</b></div>
+                            <hr style="border:1px solid #831843; margin: 8px 0;">
+                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${document.getElementById('p2-ganancia').innerText}</span></div>
+                            
+                            <div style="margin-top: 15px; background-color: #fdf2f8; padding: 5px; border-radius: 5px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${document.getElementById('p2-efectivo-gen').innerText}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('p2-depositos').innerText}</b></div>
+                                <hr style="border:1px solid #ccc; margin: 4px 0;">
+                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('p2-efectivo-pen').innerText}</span></div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <div style="text-align:center; font-size: 10px; color: #777; margin-top: 30px;">
+                    <p>*Los cálculos ya incluyen la distribución 50/50 de la categoría "Compartido".</p>
+                    <p>Reporte generado el: ${new Date().toLocaleString()}</p>
+                </div>
+            </div>`; 
+            window.print();
         }
 
-        // NUEVO MOTOR DEL KÁRDEX 
+        // NUEVO MOTOR DEL KÁRDEX (A PRUEBA DE ERRORES DE FECHA)
         function verKardex(codigo) {
             const p = db.productos.find(x => x.codigo === codigo);
             if (!p) return;
@@ -2275,10 +2288,10 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             let totalSalidas = 0;
             let totalIngresos = 0;
 
-            // 1. Buscamos todas las salidas (ventas)
+            // 1. Buscamos todas las salidas (ventas) con protección de errores
             let p1 = database.ref('ventas_historial').once('value').then(snap => {
                 snap.forEach(child => {
-                    let v = child.val();
+                    let v = child.val() || {};
                     if(v.tienda === db.tiendaActual && v.det) {
                         const item = v.det.find(i => i.codigo === codigo);
                         if(item) {
@@ -2286,9 +2299,9 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                             if (!isAnulada) totalSalidas += item.cant;
                             
                             eventos.push({
-                                fechaStr: v.fecha,
-                                timestamp: getMs(v.fecha),
-                                ticket: 'TICKET #' + v.ticket,
+                                fechaStr: v.fecha || "---",
+                                timestamp: new Date(v.fecha || 0).getTime() || 0,
+                                ticket: 'TICKET #' + (v.ticket || '0'),
                                 estado: v.estado === 'OK' ? 'VENTA' : 'ANULADA',
                                 cant: item.cant,
                                 tipo: 'SALIDA',
@@ -2297,17 +2310,17 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         }
                     }
                 });
-            });
+            }).catch(() => {});
 
-            // 2. Buscamos todos los ingresos (cuando agregas stock)
+            // 2. Buscamos todos los ingresos con protección de errores
             let p2 = database.ref('kardex_historial').once('value').then(snap => {
                 snap.forEach(child => {
-                    let k = child.val();
+                    let k = child.val() || {};
                     if(k.tienda === db.tiendaActual && k.codigo === codigo) {
                         totalIngresos += k.cant;
                         eventos.push({
-                            fechaStr: k.fecha,
-                            timestamp: k.timestamp || getMs(k.fecha),
+                            fechaStr: k.fecha || "---",
+                            timestamp: k.timestamp || new Date(k.fecha || 0).getTime() || 0,
                             ticket: 'NUEVO STOCK',
                             estado: 'INGRESO',
                             cant: k.cant,
@@ -2316,26 +2329,31 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         });
                     }
                 });
-            });
+            }).catch(() => {});
 
-            // 3. Juntamos todo y lo ordenamos por fecha
+            // 3. Juntamos, ordenamos y dibujamos la tabla
             Promise.all([p1, p2]).then(() => {
                 eventos.sort((a, b) => b.timestamp - a.timestamp); // Ordenar del más nuevo al más viejo
                 
                 let htmlKardex = '';
                 eventos.forEach(ev => {
+                    // Cortamos la fecha de forma ultra segura para que nunca se trabe
+                    let dateParts = String(ev.fechaStr).split(',');
+                    let fPart1 = dateParts[0] || "---";
+                    let fPart2 = dateParts[1] ? dateParts[1].trim() : "";
+
                     if (ev.tipo === 'SALIDA') {
                         const statusClass = ev.isAnulada ? 'text-red-500 line-through' : 'text-red-600';
                         const bgClass = ev.isAnulada ? 'bg-red-50 opacity-60' : '';
                         htmlKardex += `<tr class="uppercase text-[11px] ${bgClass}">
-                            <td class="p-3">${ev.fechaStr.split(',')[0]} <br><span class="text-[9px] text-gray-400">${ev.fechaStr.split(',')[1] || ''}</span></td>
+                            <td class="p-3">${fPart1} <br><span class="text-[9px] text-gray-400">${fPart2}</span></td>
                             <td class="p-3 text-center text-gray-700 font-black">${ev.ticket}</td>
                             <td class="p-3 text-center text-[9px] ${ev.isAnulada ? 'text-red-500' : 'text-gray-500'}">${ev.estado}</td>
                             <td class="p-3 text-center font-black ${statusClass}">${ev.isAnulada ? '0' : '-' + ev.cant}</td>
                         </tr>`;
                     } else {
                         htmlKardex += `<tr class="uppercase text-[11px] bg-green-50 border-l-4 border-green-500">
-                            <td class="p-3">${ev.fechaStr.split(',')[0]} <br><span class="text-[9px] text-green-600/60">${ev.fechaStr.split(',')[1] || ''}</span></td>
+                            <td class="p-3">${fPart1} <br><span class="text-[9px] text-green-600/60">${fPart2}</span></td>
                             <td class="p-3 text-center text-green-700 font-black">${ev.ticket}</td>
                             <td class="p-3 text-center text-[9px] text-green-600">${ev.estado}</td>
                             <td class="p-3 text-center font-black text-green-600 text-lg">+${ev.cant}</td>
@@ -2350,6 +2368,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     <div class="text-green-600">📥 +${totalIngresos} In</div>
                     <div class="text-red-600">📤 -${totalSalidas} Out</div>
                 `;
+            }).catch(err => {
+                document.getElementById('kardex-body').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-500 font-bold">Error al cargar bitácora.</td></tr>';
             });
         }
         
