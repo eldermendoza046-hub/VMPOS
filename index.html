@@ -1377,9 +1377,6 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             
             if(!c || !n) return sysAlert("Código y Nombre son obligatorios");
 
-            // 🚀 MAGIA DE VELOCIDAD: Buscamos el producto localmente
-            const i = db.productos.findIndex(p => p.codigo === c);
-            
             const datosGuardar = {
                 codigo: c, nombre: n, imagen: img, categoria: cat, propietario: prop, venta: vent,
                 precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre,
@@ -1388,36 +1385,43 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             };
             if (db.rol === 'ADMIN') datosGuardar.costo = cost;
 
-            if (i > -1) {
-                // 🔥 SI EL PRODUCTO YA EXISTE: Actualizamos directo en la nube (Tarda milisegundos)
-                if (db.rol !== 'ADMIN') datosGuardar.costo = db.productos[i].costo || 0; 
-                
-                datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? (parseInt(db.productos[i].stock_maria || 0) + st) : parseInt(db.productos[i].stock_maria || 0);
-                datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? (parseInt(db.productos[i].stock_marisol || 0) + st) : parseInt(db.productos[i].stock_marisol || 0);
+            // 🚀 BÚSQUEDA EXACTA EN LA NUBE PARA EVITAR DUPLICADOS Y DESFASES
+            database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(c).once('value').then(snap => {
+                if (snap.exists()) {
+                    // 🔥 SI EL PRODUCTO YA EXISTE: Actualizamos directo en su casilla real
+                    const key = Object.keys(snap.val())[0]; // Sacamos la llave exacta de la nube
+                    const prodOriginal = snap.val()[key];
+                    
+                    if (db.rol !== 'ADMIN') datosGuardar.costo = prodOriginal.costo || 0; 
+                    
+                    datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? (parseInt(prodOriginal.stock_maria || 0) + st) : parseInt(prodOriginal.stock_maria || 0);
+                    datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? (parseInt(prodOriginal.stock_marisol || 0) + st) : parseInt(prodOriginal.stock_marisol || 0);
 
-                database.ref(`tienda_datos/productos/${i}`).update(datosGuardar).then(() => {
-                    cerrarModal(); 
-                    sysAlert("✅ Producto actualizado al instante.");
-                }).catch(err => sysAlert("❌ Error al guardar: " + err));
-            } else {
-                // 🔥 SI ES PRODUCTO NUEVO: Solo lo agregamos al final de la lista de productos
-                datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
-                datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
-
-                database.ref('tienda_datos/productos').transaction(prods => {
-                    if (!prods) prods = [];
-                    else if (!Array.isArray(prods)) prods = Object.values(prods);
-                    prods.push(datosGuardar);
-                    return prods;
-                }, (error, committed) => {
-                    if (error || !committed) {
-                        sysAlert("❌ Error de red al guardar. Intenta de nuevo.");
-                    } else {
+                    database.ref(`tienda_datos/productos/${key}`).update(datosGuardar).then(() => {
                         cerrarModal(); 
-                        sysAlert("✅ Nuevo producto creado al instante.");
-                    }
-                });
-            }
+                        sysAlert("✅ Producto actualizado y stock sumado correctamente.");
+                    }).catch(err => sysAlert("❌ Error al guardar: " + err));
+
+                } else {
+                    // 🔥 SI ES PRODUCTO NUEVO: Lo agregamos al final de la lista
+                    datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
+                    datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
+
+                    database.ref('tienda_datos/productos').transaction(prods => {
+                        if (!prods) prods = [];
+                        else if (!Array.isArray(prods)) prods = Object.values(prods);
+                        prods.push(datosGuardar);
+                        return prods;
+                    }, (error, committed) => {
+                        if (error || !committed) {
+                            sysAlert("❌ Error de red al crear producto. Intenta de nuevo.");
+                        } else {
+                            cerrarModal(); 
+                            sysAlert("✅ Nuevo producto creado al instante.");
+                        }
+                    });
+                }
+            }).catch(err => sysAlert("❌ Error de conexión al buscar: " + err));
         }
 
         function eliminarProductoDefinitivo(codigo) {
