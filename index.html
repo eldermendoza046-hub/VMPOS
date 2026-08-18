@@ -1351,7 +1351,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             }
         });
 
-        function guardarProd() { 
+      function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
             const img = document.getElementById('p-imagen').value.trim(); 
@@ -1376,50 +1376,48 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             const docena = parseFloat(document.getElementById('p-docena').value) || 0;
             
             if(!c || !n) return sysAlert("Código y Nombre son obligatorios");
+
+            // 🚀 MAGIA DE VELOCIDAD: Buscamos el producto localmente
+            const i = db.productos.findIndex(p => p.codigo === c);
             
-            database.ref('tienda_datos').transaction(curr => {
-                if (!curr) return curr;
-                if (!curr.productos) curr.productos = [];
-                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+            const datosGuardar = {
+                codigo: c, nombre: n, imagen: img, categoria: cat, propietario: prop, venta: vent,
+                precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre,
+                pape_cant: papeCant, pape_precio: papePrecio, pape_medio: papeMedio, pape_ciento: papeCiento,
+                precio_media_docena: mediaDocena, precio_docena: docena
+            };
+            if (db.rol === 'ADMIN') datosGuardar.costo = cost;
 
-                const i = curr.productos.findIndex(p => p.codigo === c); 
+            if (i > -1) {
+                // 🔥 SI EL PRODUCTO YA EXISTE: Actualizamos directo en la nube (Tarda milisegundos)
+                if (db.rol !== 'ADMIN') datosGuardar.costo = db.productos[i].costo || 0; 
                 
-                if(i > -1) {
-                    curr.productos[i].nombre = n;
-                    curr.productos[i].imagen = img; 
-                    curr.productos[i].propietario = prop;
-                    curr.productos[i].categoria = cat;
-                    if(db.rol === 'ADMIN') curr.productos[i].costo = cost;
-                    curr.productos[i].venta = vent;
-                    
-                    if(db.rol === 'ADMIN') { 
-                        curr.productos[i].precio_oferta = ofPre; curr.productos[i].oferta_inicio = ofIni; curr.productos[i].oferta_fin = ofFin; 
-                        curr.productos[i].cant_blister = farmaCant; curr.productos[i].precio_blister = farmaPre; 
-                        curr.productos[i].pape_cant = papeCant; curr.productos[i].pape_precio = papePrecio; curr.productos[i].pape_medio = papeMedio; curr.productos[i].pape_ciento = papeCiento;
-                        curr.productos[i].precio_media_docena = mediaDocena; curr.productos[i].precio_docena = docena;
-                    }
+                datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? (parseInt(db.productos[i].stock_maria || 0) + st) : parseInt(db.productos[i].stock_maria || 0);
+                datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? (parseInt(db.productos[i].stock_marisol || 0) + st) : parseInt(db.productos[i].stock_marisol || 0);
 
-                    if(db.tiendaActual === 'Variedades Maria') curr.productos[i].stock_maria = (parseInt(curr.productos[i].stock_maria) || 0) + st;
-                    else curr.productos[i].stock_marisol = (parseInt(curr.productos[i].stock_marisol) || 0) + st;
-                } else {
-                    curr.productos.push({
-                        codigo: c, nombre: n, imagen: img, costo: cost, venta: vent, categoria: cat, propietario: prop,
-                        stock_maria: db.tiendaActual === 'Variedades Maria' ? st : 0,
-                        stock_marisol: db.tiendaActual === 'Marisol' ? st : 0,
-                        precio_oferta: ofPre, oferta_inicio: ofIni, oferta_fin: ofFin, cant_blister: farmaCant, precio_blister: farmaPre,
-                        pape_cant: papeCant, pape_precio: papePrecio, pape_medio: papeMedio, pape_ciento: papeCiento,
-                        precio_media_docena: mediaDocena, precio_docena: docena
-                    });
-                }
-                return curr;
-            }, (error, committed) => {
-                if (error || !committed) {
-                    sysAlert("❌ Error de red al guardar. Intenta de nuevo.");
-                } else {
+                database.ref(`tienda_datos/productos/${i}`).update(datosGuardar).then(() => {
                     cerrarModal(); 
-                    sysAlert("✅ Producto guardado correctamente.");
-                }
-            });
+                    sysAlert("✅ Producto actualizado al instante.");
+                }).catch(err => sysAlert("❌ Error al guardar: " + err));
+            } else {
+                // 🔥 SI ES PRODUCTO NUEVO: Solo lo agregamos al final de la lista de productos
+                datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
+                datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
+
+                database.ref('tienda_datos/productos').transaction(prods => {
+                    if (!prods) prods = [];
+                    else if (!Array.isArray(prods)) prods = Object.values(prods);
+                    prods.push(datosGuardar);
+                    return prods;
+                }, (error, committed) => {
+                    if (error || !committed) {
+                        sysAlert("❌ Error de red al guardar. Intenta de nuevo.");
+                    } else {
+                        cerrarModal(); 
+                        sysAlert("✅ Nuevo producto creado al instante.");
+                    }
+                });
+            }
         }
 
         function eliminarProductoDefinitivo(codigo) {
