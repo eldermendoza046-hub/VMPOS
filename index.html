@@ -51,7 +51,6 @@
 <body class="bg-gray-100 min-h-screen">
     <div id="print-area"></div>
 
-    <!-- MODAL DE LOGIN PERSONALIZADO -->
     <div id="login-modal" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-[9999] backdrop-blur-md">
         <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-sm text-center border-4 border-indigo-500">
             <h2 class="text-2xl font-black mb-6 text-indigo-700 uppercase italic">Iniciar Sesión</h2>
@@ -61,7 +60,6 @@
         </div>
     </div>
 
-    <!-- MODALES PERSONALIZADOS -->
     <div id="sys-msg-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[9999] backdrop-blur-sm">
         <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-4 border-indigo-500">
             <h3 id="sys-msg-title" class="text-xl font-black mb-2 text-gray-800 uppercase italic">Atención</h3>
@@ -82,7 +80,6 @@
         </div>
     </div>
 
-    <!-- MODAL SELECCIÓN TIENDA -->
     <div id="modal-tienda" class="fixed inset-0 bg-gray-900 bg-opacity-90 hidden items-center justify-center z-[999] backdrop-blur-sm">
         <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full border-4 border-indigo-500">
             <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-gray-800">🚨 ATENCIÓN VENDEDOR<br><span class="text-xl font-normal text-gray-500">¿En qué tienda estás trabajando hoy?</span></h2>
@@ -93,7 +90,6 @@
         </div>
     </div>
 
-    <!-- MODAL LOGIN ADMIN -->
     <div id="modal-login-admin" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[9999] backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center border-4 border-yellow-400">
             <div class="text-4xl mb-2">🔑</div>
@@ -131,7 +127,6 @@
 
     <main class="p-4 w-full max-w-[1400px] mx-auto no-print">
         
-        <!-- SECCIÓN VENTAS -->
         <div id="section-ventas" class="contenedor-flexible">
             <div class="zona-busqueda space-y-4">
                <input type="text" id="busqueda" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
@@ -148,12 +143,13 @@
             </div>
         </div>
 
-        <!-- SECCIÓN INVENTARIO -->
         <div id="section-inventario" class="hidden space-y-4">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl shadow gap-4">
                 <h2 class="text-xl font-black uppercase italic">Control de Inventario</h2>
                 <div class="flex flex-wrap gap-2 items-center">
                     <button onclick="imprimirInventarioA4()" class="bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow hover:bg-blue-800 transition-colors">📄 Lista A4</button>
+                    <button onclick="toggleMostrarCeros()" id="btn-mostrar-ceros" class="bg-gray-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow hover:bg-gray-700 transition-colors">👁️ Ver Productos en 0</button>
+                    
                     <button id="btn-descargar-excel" onclick="descargarExcel()" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">⬇️ Bajar Excel</button>
                     <input type="file" id="input-excel" accept=".xlsx, .xls" class="hidden" onchange="cargarExcel(event)">
                     <button id="btn-excel-prod" onclick="document.getElementById('input-excel').click()" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">⬆️ Subir Excel</button>
@@ -182,7 +178,6 @@
             </div>
         </div>
 
-        <!-- SECCIÓN HISTORIAL -->
         <div id="section-historial" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-xl shadow border flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h2 class="text-xl font-black uppercase italic">Historial de Tickets</h2>
@@ -196,7 +191,6 @@
             </div>
         </div>
 
-        <!-- SECCIÓN CIERRE -->
         <div id="section-cierre" class="hidden max-w-2xl mx-auto space-y-6">
             <div class="bg-white p-6 rounded-3xl shadow-xl border text-center">
                 <h2 class="text-xl font-black mb-6 uppercase italic">Cierre del Día</h2>
@@ -227,7 +221,6 @@
             <div id="lista-cierres" class="space-y-3"></div>
         </div>
 
-        <!-- SECCIÓN REPORTES -->
         <div id="section-reportes" class="hidden space-y-6">
             <div class="bg-white p-6 rounded-3xl shadow-xl border">
                 <h2 class="text-2xl font-black mb-4 text-center uppercase italic text-indigo-950">📊 REPORTE MAESTRO DE VENTAS</h2>
@@ -248,11 +241,7 @@
                     </div>
                 </div>
 
-                <!-- ========================================== -->
-                <!-- 1. RESUMEN PRÁCTICO POR SOCIO (GANANCIA Y EFECTIVO) -->
-                <!-- ========================================== -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <!-- BLOQUE SOCIO 1 -->
                     <div class="bg-blue-50 border-4 border-blue-500 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
                         <h3 id="rep-titulo-s1" class="text-2xl font-black text-blue-900 uppercase italic mb-4 text-center border-b-2 border-blue-200 pb-2">👤 Socio 1</h3>
                         <div class="space-y-3 text-lg font-bold">
@@ -263,7 +252,6 @@
                                 <span class="font-black italic">💵 Ganancia Libre:</span><span class="font-black" id="p1-ganancia">Q 0.00</span>
                             </div>
                             
-                            <!-- CUADRE DE CAJA DEL SOCIO 1 -->
                             <div class="bg-white p-3 rounded-xl border-2 border-blue-200 mt-4">
                                 <div class="flex justify-between text-sm text-gray-600"><span>Efectivo Físico Generado:</span><span id="p1-efectivo-gen">Q 0.00</span></div>
                                 <div class="flex justify-between text-sm text-green-600"><span>(-) Depósitos Realizados:</span><span id="p1-depositos">Q 0.00</span></div>
@@ -273,7 +261,6 @@
                         <p class="text-[10px] text-gray-400 mt-4 text-center">*Tus números incluyen el 50% de las ventas de "Compartido".</p>
                     </div>
 
-                    <!-- BLOQUE SOCIO 2 -->
                     <div class="bg-pink-50 border-4 border-pink-500 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
                         <h3 id="rep-titulo-s2" class="text-2xl font-black text-pink-900 uppercase italic mb-4 text-center border-b-2 border-pink-200 pb-2">👤 Socio 2</h3>
                         <div class="space-y-3 text-lg font-bold">
@@ -284,7 +271,6 @@
                                 <span class="font-black italic">💵 Ganancia Libre:</span><span class="font-black" id="p2-ganancia">Q 0.00</span>
                             </div>
                             
-                            <!-- CUADRE DE CAJA DEL SOCIO 2 -->
                             <div class="bg-white p-3 rounded-xl border-2 border-pink-200 mt-4">
                                 <div class="flex justify-between text-sm text-gray-600"><span>Efectivo Físico Generado:</span><span id="p2-efectivo-gen">Q 0.00</span></div>
                                 <div class="flex justify-between text-sm text-green-600"><span>(-) Depósitos Realizados:</span><span id="p2-depositos">Q 0.00</span></div>
@@ -295,11 +281,7 @@
                     </div>
                 </div>
 
-                <!-- ========================================== -->
-                <!-- 2. FORMULARIOS DE REGISTRO (DEPÓSITOS Y GASTOS) -->
-                <!-- ========================================== -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <!-- REGISTRO DE DEPÓSITOS -->
                     <div class="bg-white p-5 rounded-2xl border-2 border-green-200 shadow-md">
                         <h3 class="text-md font-black uppercase mb-4 text-green-800 italic">📥 Ingresar Nuevo Depósito</h3>
                         <div class="space-y-3 text-xs font-bold">
@@ -314,7 +296,6 @@
                         </div>
                     </div>
 
-                    <!-- REGISTRO DE GASTOS -->
                     <div class="bg-white p-5 rounded-2xl border-2 border-red-200 shadow-md">
                         <h3 class="text-md font-black uppercase mb-4 text-red-800 italic">💸 Pago de Gastos Físicos</h3>
                         <div class="space-y-3 text-xs font-bold">
@@ -331,7 +312,6 @@
                     </div>
                 </div>
 
-                <!-- TABLAS DE HISTORIALES (DEPÓSITOS Y GASTOS JUNTOS) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="bg-white p-4 rounded-2xl border flex flex-col h-[280px]">
                         <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Depósitos</h3>
@@ -343,7 +323,6 @@
                     </div>
                 </div>
 
-                <!-- HISTORIAL DE VENTAS -->
                 <div class="mt-6 border-t pt-4">
                     <h3 class="text-sm font-black uppercase mb-2 text-gray-700 italic">Historial de Ventas (Tickets del Rango)</h3>
                     <div class="overflow-x-auto max-h-[300px] overflow-y-auto text-xs rounded-xl border"><table class="w-full text-center font-bold"><thead class="bg-gray-100 uppercase border-b sticky top-0 z-10"><tr><th class="p-3">Fecha</th><th class="p-3">Ticket</th><th id="th-rep-s1" class="p-3 text-blue-800">Socio 1</th><th id="th-rep-s2" class="p-3 text-pink-800">Socio 2</th><th class="p-3 text-gray-600">Compartido</th><th class="p-3 bg-gray-200">Total</th><th class="p-3 bg-green-100 text-green-800">Ganancia</th></tr></thead><tbody id="rep-ventas-body" class="divide-y"></tbody></table></div>
@@ -352,13 +331,11 @@
         </div>
     </main>
 
-    <!-- MODAL DE CONFIGURACIÓN DEL SISTEMA -->
     <div id="modal-config" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-[9999] backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl overflow-y-auto max-h-[90vh] border-4 border-gray-800">
             <h2 class="text-2xl font-black mb-4 italic uppercase text-gray-800">⚙️ Configuración General</h2>
             
             <div class="space-y-4 font-bold text-xs">
-                <!-- Datos del Ticket -->
                 <div class="p-4 bg-gray-50 rounded-xl border-2">
                     <h3 class="text-sm font-black uppercase text-indigo-700 mb-2">Datos del Ticket / Factura</h3>
                     <label class="text-[10px] text-gray-500 uppercase">Nombre del Negocio (Encabezado):</label>
@@ -383,7 +360,6 @@
                     <input type="text" id="conf-banner3" class="w-full p-2 border rounded-lg mb-2 outline-none text-xs" placeholder="Link de imagen 3">
                 </div>
 
-                <!-- Datos de Socios y Categorías -->
                 <div class="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
                     <h3 class="text-sm font-black uppercase text-blue-700 mb-2">Socio 1</h3>
                     <input type="text" id="conf-s1-nombre" placeholder="Nombre (Ej. Elder)" class="w-full p-2 border rounded-lg mb-2 outline-none uppercase">
@@ -406,7 +382,6 @@
         </div>
     </div>
 
-    <!-- MODAL AJUSTE FINANCIERO -->
     <div id="modal-ajuste" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[400] backdrop-blur-sm">
         <div class="bg-white w-full max-w-md p-8 rounded-[2rem] shadow-2xl border-4 border-yellow-400">
             <h2 class="text-xl font-black mb-2 text-yellow-600 uppercase italic">🛠️ Ajuste Financiero</h2>
@@ -444,7 +419,6 @@
         </div>
     </div>
 
-    <!-- MODAL PRODUCTO -->
     <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
             <h2 class="text-xl font-black mb-4 italic uppercase">Producto</h2>
@@ -462,8 +436,7 @@
                     <div class="w-1/2">
                         <label class="text-[9px] text-gray-500 uppercase font-black">Categoría</label>
                         <select id="p-cat" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black outline-none focus:border-indigo-500">
-                            <!-- Se llena automáticamente con JS -->
-                        </select>
+                            </select>
                     </div>
                 </div>
 
@@ -478,7 +451,6 @@
                 <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
                 <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
                 
-                <!-- NUEVO: SECCIÓN PAPELERÍA -->
                 <div id="div-papeleria-modal" class="hidden border-2 border-orange-400 p-3 rounded-xl bg-orange-50 mt-3">
                     <label class="text-[10px] text-orange-800 uppercase font-black">📄 Precios Especiales Papelería (Hojas)</label>
                     <div class="flex gap-2 mt-2">
@@ -517,7 +489,6 @@
                     </div>
                 </div>
 
-                <!-- PRECIOS MAYORISTAS -->
                 <div id="div-mayorista-modal" class="border-2 border-blue-400 p-3 rounded-xl bg-blue-50 mt-3">
                     <label class="text-[10px] text-blue-800 uppercase font-black">📦 Precios Mayorista (Precio c/u)</label>
                     <div class="flex gap-2 mt-2">
@@ -550,12 +521,10 @@
         </div>
     </div>
 
-    <!-- MODAL DE MOVIMIENTO -->
     <div id="modal-movimiento" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-[200] backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"><div class="p-6 bg-indigo-900 text-white flex justify-between items-center"><div><h2 class="text-xl font-black uppercase italic">Movimientos</h2><p id="mov-fecha" class="text-xs opacity-70"></p></div><button type="button" onclick="cerrarMovimiento()" class="text-2xl font-black hover:text-red-400 transition-colors">✕</button></div><div class="p-4 overflow-y-auto"><table class="w-full text-left text-sm font-bold"><tbody id="mov-body" class="divide-y"></tbody></table></div><div class="p-6 bg-gray-50 border-t flex justify-between items-center"><span class="font-black italic">Total Jornada:</span><span id="mov-total" class="text-2xl font-black text-indigo-700">Q 0.00</span></div></div>
     </div>
 
-    <!-- MODAL KARDEX / TRACKING -->
     <div id="modal-kardex" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-[300] backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
             <div class="p-6 bg-indigo-900 text-white flex justify-between items-center">
@@ -585,10 +554,24 @@
         </div>
     </div>
 
-    <!-- SCRIPT PRINCIPAL -->
     <script>
         let db = { tiendaActual: 'Variedades Maria', rol: 'VENDEDOR', productos: [], ventas: [], cMaria: 1, cMarisol: 1, admin_pin: '1892' };
         let cart = []; let debounceTimerInventario; 
+        let mostrarProductosEnCero = false; // NUEVA VARIABLE PARA MOSTRAR INVENTARIO 0
+        
+        // NUEVA FUNCIÓN PARA MOSTRAR/OCULTAR INVENTARIO 0
+        function toggleMostrarCeros() {
+            mostrarProductosEnCero = !mostrarProductosEnCero;
+            const btn = document.getElementById('btn-mostrar-ceros');
+            if (mostrarProductosEnCero) {
+                btn.innerText = "🙈 Ocultar Productos en 0";
+                btn.classList.replace('bg-gray-600', 'bg-red-500');
+            } else {
+                btn.innerText = "👁️ Ver Productos en 0";
+                btn.classList.replace('bg-red-500', 'bg-gray-600');
+            }
+            render(); 
+        }
 
         function sysAlert(text, title = "Atención") {
             document.getElementById('sys-msg-title').innerText = title;
@@ -857,7 +840,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     !String(p.categoria || "").toLowerCase().includes(filtroInv)
                 ) return;
 
-                if(stockActualTienda > 0) {
+                // 🔥 AQUÍ SE APLICA EL NUEVO FILTRO PARA VER LOS PRODUCTOS EN CERO 🔥
+                if(stockActualTienda > 0 || mostrarProductosEnCero) {
                     const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
                     let propColor = 'text-gray-400';
@@ -1351,7 +1335,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             }
         });
 
-      function guardarProd() { 
+        // 🔥 FUNCION GUARDAR PROD BLINDADA (ANTIDUPLICADOS Y VELOZ) 🔥
+        function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
             const img = document.getElementById('p-imagen').value.trim(); 
@@ -2310,3 +2295,4 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
     </script>
 </body>
 </html>
+
