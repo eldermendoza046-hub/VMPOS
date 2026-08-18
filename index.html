@@ -706,9 +706,9 @@
             document.getElementById('login-modal').style.display = 'flex';
 
             window.addEventListener('offline', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🔴 OFFLINE - COBRO LOCAL ACTIVO"; b.classList.replace('bg-green-500', 'bg-red-600'); b.classList.add('animate-pulse'); });
-window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); sincronizarVentasOffline(); });
-if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
-};
+            window.addEventListener('online', () => { const b = document.getElementById('estado-red'); b.innerHTML = "🟢 ONLINE"; b.classList.replace('bg-red-600', 'bg-green-500'); b.classList.remove('animate-pulse'); persistir(); sincronizarVentasOffline(); });
+            if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
+        };
 
         function ejecutarLogin() {
             const u = document.getElementById('login-user').value;
@@ -1347,13 +1347,14 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
         // 🔥 FUNCIÓN PARA CREAR EL REGISTRO DEL INGRESO 🔥
         function registrarIngresoKardex(codigo, nombre, cantidad) {
             if (cantidad <= 0) return;
+            const ahora = new Date();
             database.ref('kardex_historial').push({
-                codigo: codigo,
+                codigo: String(codigo).trim().toUpperCase(),
                 nombre: nombre,
-                cant: cantidad,
+                cant: parseInt(cantidad),
                 tienda: db.tiendaActual,
-                fecha: new Date().toLocaleString(),
-                timestamp: Date.now()
+                fecha: ahora.toLocaleString(),
+                timestamp: ahora.getTime()
             });
         }
 
@@ -1392,11 +1393,9 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             };
             if (db.rol === 'ADMIN') datosGuardar.costo = cost;
 
-            // 🚀 BÚSQUEDA EXACTA EN LA NUBE PARA EVITAR DUPLICADOS Y DESFASES
             database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(c).once('value').then(snap => {
                 if (snap.exists()) {
-                    // 🔥 SI EL PRODUCTO YA EXISTE: Actualizamos directo en su casilla real
-                    const key = Object.keys(snap.val())[0]; // Sacamos la llave exacta de la nube
+                    const key = Object.keys(snap.val())[0];
                     const prodOriginal = snap.val()[key];
                     
                     if (db.rol !== 'ADMIN') datosGuardar.costo = prodOriginal.costo || 0; 
@@ -1405,13 +1404,12 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? (parseInt(prodOriginal.stock_marisol || 0) + st) : parseInt(prodOriginal.stock_marisol || 0);
 
                     database.ref(`tienda_datos/productos/${key}`).update(datosGuardar).then(() => {
-                        if (st > 0) registrarIngresoKardex(c, n, st); // GUARDA EL INGRESO EN LA BITÁCORA
+                        if (st > 0) registrarIngresoKardex(c, n, st);
                         cerrarModal(); 
                         sysAlert("✅ Producto actualizado y stock sumado correctamente.");
                     }).catch(err => sysAlert("❌ Error al guardar: " + err));
 
                 } else {
-                    // 🔥 SI ES PRODUCTO NUEVO: Lo agregamos al final de la lista
                     datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
 
@@ -1421,12 +1419,12 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         prods.push(datosGuardar);
                         return prods;
                     }, (error, committed) => {
-                        if (error || !committed) {
-                            sysAlert("❌ Error de red al crear producto. Intenta de nuevo.");
-                        } else {
-                            if (st > 0) registrarIngresoKardex(c, n, st); // GUARDA EL INGRESO EN LA BITÁCORA
+                        if (!error && committed) {
+                            if (st > 0) registrarIngresoKardex(c, n, st);
                             cerrarModal(); 
                             sysAlert("✅ Nuevo producto creado al instante.");
+                        } else {
+                            sysAlert("❌ Error de red al crear producto. Intenta de nuevo.");
                         }
                     });
                 }
@@ -2146,7 +2144,7 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             pa.className = "ticket-mode"; 
             pa.innerHTML = `<div style="text-align:center;"><b style="font-size:16px">${nombreNegocio}</b><br>${nombreSucursalImpresa.toUpperCase()}<br>TEL: ${telefonoNegocio}<br>#${v.ticket} | ${v.fecha.split(',')[0]}</div><hr style="border:1px dashed #000; margin:8px 0">${v.det.map(d => `<div style="margin-bottom:4px"><div style="display:flex; justify-content:space-between"><span>${d.nombre.substring(0,22)}</span><span>Q${(d.cant*d.pre).toFixed(2)}</span></div><div style="font-size:9px; color:#555">${d.cant} x Q${d.pre.toFixed(2)}</div></div>`).join('')}<hr style="border:1px dashed #000; margin:8px 0"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px"><span>TOTAL:</span><span>Q${v.total.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px; margin-top:4px"><span>Efectivo:</span><span>Q${v.pago.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px"><span>Cambio:</span><span>Q${(v.pago - v.total).toFixed(2)}</span></div><br><center>${mensajeGracias}</center>`; 
             window.print(); 
-}
+        }
 
         function setTab(t) { ['ventas','inventario','historial','cierre','reportes'].forEach(s => { const element = document.getElementById(`section-${s}`); if (element) element.classList.add('hidden'); }); const currentSection = document.getElementById(`section-${t}`); if (currentSection) currentSection.classList.remove('hidden'); ['tab-ventas','tab-inventario','tab-historial','tab-cierre','tab-reportes'].forEach(s => { const tabElement = document.getElementById(s); if (tabElement) tabElement.classList.remove('tab-active'); }); const activeTab = document.getElementById(`tab-${t}`); if (activeTab) activeTab.classList.add('tab-active'); }
         
@@ -2272,11 +2270,12 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             window.print();
         }
 
-        // NUEVO MOTOR DEL KÁRDEX (A PRUEBA DE ERRORES DE FECHA)
+        // 🔥 NUEVO MOTOR DEL KÁRDEX CON COMPATIBILIDAD TOTAL 🔥
         function verKardex(codigo) {
             const p = db.productos.find(x => x.codigo === codigo);
             if (!p) return;
             
+            const codBuscado = String(codigo).trim().toUpperCase();
             document.getElementById('kardex-prod-nombre').innerText = `${p.codigo} - ${p.nombre}`;
             const body = document.getElementById('kardex-body');
             body.innerHTML = '<tr><td colspan="4" class="text-center py-4 font-bold text-gray-500">Cargando bitácora...</td></tr>';
@@ -2288,22 +2287,29 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
             let totalSalidas = 0;
             let totalIngresos = 0;
 
-            // 1. Buscamos todas las salidas (ventas) con protección de errores
+            const esMismaTienda = (t1, t2) => {
+                if (!t1 || !t2) return true;
+                const a = String(t1).toUpperCase();
+                const b = String(t2).toUpperCase();
+                return a.includes(b) || b.includes(a);
+            };
+
+            // 1. Salidas (Ventas)
             let p1 = database.ref('ventas_historial').once('value').then(snap => {
                 snap.forEach(child => {
                     let v = child.val() || {};
-                    if(v.tienda === db.tiendaActual && v.det) {
-                        const item = v.det.find(i => i.codigo === codigo);
+                    if(esMismaTienda(v.tienda, db.tiendaActual) && v.det) {
+                        const item = v.det.find(i => String(i.codigo).trim().toUpperCase() === codBuscado);
                         if(item) {
                             const isAnulada = v.estado === 'ANULADA';
-                            if (!isAnulada) totalSalidas += item.cant;
+                            if (!isAnulada) totalSalidas += parseInt(item.cant || 0);
                             
                             eventos.push({
                                 fechaStr: v.fecha || "---",
-                                timestamp: new Date(v.fecha || 0).getTime() || 0,
+                                timestamp: v.timestamp || new Date(v.fecha || 0).getTime() || 0,
                                 ticket: 'TICKET #' + (v.ticket || '0'),
                                 estado: v.estado === 'OK' ? 'VENTA' : 'ANULADA',
-                                cant: item.cant,
+                                cant: parseInt(item.cant || 0),
                                 tipo: 'SALIDA',
                                 isAnulada: isAnulada
                             });
@@ -2312,18 +2318,19 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 });
             }).catch(() => {});
 
-            // 2. Buscamos todos los ingresos con protección de errores
+            // 2. Ingresos (Stock añadido)
             let p2 = database.ref('kardex_historial').once('value').then(snap => {
                 snap.forEach(child => {
                     let k = child.val() || {};
-                    if(k.tienda === db.tiendaActual && k.codigo === codigo) {
-                        totalIngresos += k.cant;
+                    if(esMismaTienda(k.tienda, db.tiendaActual) && String(k.codigo).trim().toUpperCase() === codBuscado) {
+                        const cantIngresada = parseInt(k.cant || 0);
+                        totalIngresos += cantIngresada;
                         eventos.push({
                             fechaStr: k.fecha || "---",
                             timestamp: k.timestamp || new Date(k.fecha || 0).getTime() || 0,
                             ticket: 'NUEVO STOCK',
                             estado: 'INGRESO',
-                            cant: k.cant,
+                            cant: cantIngresada,
                             tipo: 'INGRESO',
                             isAnulada: false
                         });
@@ -2331,13 +2338,11 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                 });
             }).catch(() => {});
 
-            // 3. Juntamos, ordenamos y dibujamos la tabla
             Promise.all([p1, p2]).then(() => {
-                eventos.sort((a, b) => b.timestamp - a.timestamp); // Ordenar del más nuevo al más viejo
+                eventos.sort((a, b) => b.timestamp - a.timestamp);
                 
                 let htmlKardex = '';
                 eventos.forEach(ev => {
-                    // Cortamos la fecha de forma ultra segura para que nunca se trabe
                     let dateParts = String(ev.fechaStr).split(',');
                     let fPart1 = dateParts[0] || "---";
                     let fPart2 = dateParts[1] ? dateParts[1].trim() : "";
@@ -2355,8 +2360,8 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
                         htmlKardex += `<tr class="uppercase text-[11px] bg-green-50 border-l-4 border-green-500">
                             <td class="p-3">${fPart1} <br><span class="text-[9px] text-green-600/60">${fPart2}</span></td>
                             <td class="p-3 text-center text-green-700 font-black">${ev.ticket}</td>
-                            <td class="p-3 text-center text-[9px] text-green-600">${ev.estado}</td>
-                            <td class="p-3 text-center font-black text-green-600 text-lg">+${ev.cant}</td>
+                            <td class="p-3 text-center text-[9px] text-green-600 font-bold">${ev.estado}</td>
+                            <td class="p-3 text-center font-black text-green-600 text-base">+${ev.cant}</td>
                         </tr>`;
                     }
                 });
@@ -2380,4 +2385,5 @@ if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
     </script>
 </body>
 </html>
+
 
