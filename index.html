@@ -1344,17 +1344,23 @@
             }
         });
 
-        // 🔥 FUNCIÓN PARA CREAR EL REGISTRO DEL INGRESO 🔥
+        // 🔥 REGISTRO DE INGRESO ROBUSTO 🔥
         function registrarIngresoKardex(codigo, nombre, cantidad) {
             if (cantidad <= 0) return;
             const ahora = new Date();
-            database.ref('kardex_historial').push({
+            
+            const registro = {
                 codigo: String(codigo).trim().toUpperCase(),
                 nombre: nombre,
                 cant: parseInt(cantidad),
                 tienda: db.tiendaActual,
                 fecha: ahora.toLocaleString(),
                 timestamp: ahora.getTime()
+            };
+
+            // Guardamos DENTRO de tienda_datos para asegurar que tenga permisos de escritura en la base de datos
+            database.ref('tienda_datos/kardex_historial').push(registro).catch(err => {
+                console.error("Error guardando kárdex:", err);
             });
         }
 
@@ -1393,9 +1399,11 @@
             };
             if (db.rol === 'ADMIN') datosGuardar.costo = cost;
 
+            // 🚀 BÚSQUEDA EXACTA EN LA NUBE PARA EVITAR DUPLICADOS Y DESFASES
             database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(c).once('value').then(snap => {
                 if (snap.exists()) {
-                    const key = Object.keys(snap.val())[0];
+                    // 🔥 SI EL PRODUCTO YA EXISTE: Actualizamos directo en su casilla real
+                    const key = Object.keys(snap.val())[0]; // Sacamos la llave exacta de la nube
                     const prodOriginal = snap.val()[key];
                     
                     if (db.rol !== 'ADMIN') datosGuardar.costo = prodOriginal.costo || 0; 
@@ -1404,12 +1412,13 @@
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? (parseInt(prodOriginal.stock_marisol || 0) + st) : parseInt(prodOriginal.stock_marisol || 0);
 
                     database.ref(`tienda_datos/productos/${key}`).update(datosGuardar).then(() => {
-                        if (st > 0) registrarIngresoKardex(c, n, st);
+                        if (st > 0) registrarIngresoKardex(c, n, st); // GUARDA EL INGRESO EN LA BITÁCORA
                         cerrarModal(); 
                         sysAlert("✅ Producto actualizado y stock sumado correctamente.");
                     }).catch(err => sysAlert("❌ Error al guardar: " + err));
 
                 } else {
+                    // 🔥 SI ES PRODUCTO NUEVO: Lo agregamos al final de la lista
                     datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
 
@@ -1420,7 +1429,7 @@
                         return prods;
                     }, (error, committed) => {
                         if (!error && committed) {
-                            if (st > 0) registrarIngresoKardex(c, n, st);
+                            if (st > 0) registrarIngresoKardex(c, n, st); // GUARDA EL INGRESO EN LA BITÁCORA
                             cerrarModal(); 
                             sysAlert("✅ Nuevo producto creado al instante.");
                         } else {
@@ -2206,71 +2215,7 @@
             setTimeout(() => document.getElementById('p-cod').focus(), 50); 
         }
         
-        function imprimirReporteMaestro() {
-            const fIniStr = document.getElementById('rep-inicio').value; 
-            const fFinStr = document.getElementById('rep-fin').value; 
-            
-            const nom1 = (db.config && db.config.nombre_s1) ? db.config.nombre_s1 : "SOCIO 1";
-            const nom2 = (db.config && db.config.nombre_s2) ? db.config.nombre_s2 : "SOCIO 2";
-            const nombreSucursalImpresa = db.tiendaActual === 'Variedades Maria' 
-                ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA") 
-                : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL");
-
-            const pa = document.getElementById('print-area'); 
-            pa.className = "a4-mode"; 
-            
-            pa.innerHTML = `
-            <div style="font-family: Arial, sans-serif; color: #333;">
-                <div style="text-align:center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
-                    <h1 style="margin:0; font-size: 24px;">REPORTE MAESTRO DE LIQUIDACIÓN Y GANANCIAS</h1>
-                    <h2 style="margin:5px 0; color:#555; font-size: 16px;">TIENDA: ${nombreSucursalImpresa.toUpperCase()} | DEL: ${fIniStr} AL: ${fFinStr}</h2>
-                </div>
-                
-                <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">RESUMEN DE SOCIOS</h3>
-                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
-                    <tr>
-                        <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #1e3a8a; border-radius: 8px;">
-                            <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 ${nom1}</h4>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${document.getElementById('p1-ventas').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${document.getElementById('p1-gastos').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:blue; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${document.getElementById('p1-capital').innerText}</b></div>
-                            <hr style="border:1px solid #1e3a8a; margin: 8px 0;">
-                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${document.getElementById('p1-ganancia').innerText}</span></div>
-                            
-                            <div style="margin-top: 15px; background-color: #eff6ff; padding: 5px; border-radius: 5px;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${document.getElementById('p1-efectivo-gen').innerText}</b></div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('p1-depositos').innerText}</b></div>
-                                <hr style="border:1px solid #ccc; margin: 4px 0;">
-                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('p1-efectivo-pen').innerText}</span></div>
-                            </div>
-                        </td>
-                        <td style="width:4%;"></td>
-                        <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #831843; border-radius: 8px;">
-                            <h4 style="color:#831843; text-align:center; margin-top:0;">💄 ${nom2}</h4>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${document.getElementById('p2-ventas').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${document.getElementById('p2-gastos').innerText}</b></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:purple; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${document.getElementById('p2-capital').innerText}</b></div>
-                            <hr style="border:1px solid #831843; margin: 8px 0;">
-                            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${document.getElementById('p2-ganancia').innerText}</span></div>
-                            
-                            <div style="margin-top: 15px; background-color: #fdf2f8; padding: 5px; border-radius: 5px;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${document.getElementById('p2-efectivo-gen').innerText}</b></div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${document.getElementById('p2-depositos').innerText}</b></div>
-                                <hr style="border:1px solid #ccc; margin: 4px 0;">
-                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${document.getElementById('p2-efectivo-pen').innerText}</span></div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-                <div style="text-align:center; font-size: 10px; color: #777; margin-top: 30px;">
-                    <p>*Los cálculos ya incluyen la distribución 50/50 de la categoría "Compartido".</p>
-                    <p>Reporte generado el: ${new Date().toLocaleString()}</p>
-                </div>
-            </div>`; 
-            window.print();
-        }
-
-        // 🔥 NUEVO MOTOR DEL KÁRDEX CON COMPATIBILIDAD TOTAL 🔥
+        // 🔥 LECTURA DEL KÁRDEX CON COMPATIBILIDAD TOTAL 🔥
         function verKardex(codigo) {
             const p = db.productos.find(x => x.codigo === codigo);
             if (!p) return;
@@ -2286,6 +2231,7 @@
             let eventos = [];
             let totalSalidas = 0;
             let totalIngresos = 0;
+            let procesados = new Set(); // Para evitar duplicados
 
             const esMismaTienda = (t1, t2) => {
                 if (!t1 || !t2) return true;
@@ -2318,9 +2264,12 @@
                 });
             }).catch(() => {});
 
-            // 2. Ingresos (Stock añadido)
-            let p2 = database.ref('kardex_historial').once('value').then(snap => {
+            // 2. Ingresos (Buscamos en la nueva ruta segura)
+            let p2 = database.ref('tienda_datos/kardex_historial').once('value').then(snap => {
                 snap.forEach(child => {
+                    if (procesados.has(child.key)) return;
+                    procesados.add(child.key);
+                    
                     let k = child.val() || {};
                     if(esMismaTienda(k.tienda, db.tiendaActual) && String(k.codigo).trim().toUpperCase() === codBuscado) {
                         const cantIngresada = parseInt(k.cant || 0);
@@ -2338,7 +2287,30 @@
                 });
             }).catch(() => {});
 
-            Promise.all([p1, p2]).then(() => {
+            // 3. Por si acaso hay ingresos atrapados en la ruta vieja
+            let p3 = database.ref('kardex_historial').once('value').then(snap => {
+                snap.forEach(child => {
+                    if (procesados.has(child.key)) return;
+                    procesados.add(child.key);
+                    
+                    let k = child.val() || {};
+                    if(esMismaTienda(k.tienda, db.tiendaActual) && String(k.codigo).trim().toUpperCase() === codBuscado) {
+                        const cantIngresada = parseInt(k.cant || 0);
+                        totalIngresos += cantIngresada;
+                        eventos.push({
+                            fechaStr: k.fecha || "---",
+                            timestamp: k.timestamp || new Date(k.fecha || 0).getTime() || 0,
+                            ticket: 'NUEVO STOCK',
+                            estado: 'INGRESO',
+                            cant: cantIngresada,
+                            tipo: 'INGRESO',
+                            isAnulada: false
+                        });
+                    }
+                });
+            }).catch(() => {});
+
+            Promise.all([p1, p2, p3]).then(() => {
                 eventos.sort((a, b) => b.timestamp - a.timestamp);
                 
                 let htmlKardex = '';
@@ -2373,11 +2345,9 @@
                     <div class="text-green-600">📥 +${totalIngresos} In</div>
                     <div class="text-red-600">📤 -${totalSalidas} Out</div>
                 `;
-            }).catch(err => {
-                document.getElementById('kardex-body').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-500 font-bold">Error al cargar bitácora.</td></tr>';
             });
         }
-        
+
         function cerrarKardex() {
             document.getElementById('modal-kardex').classList.add('hidden');
             document.getElementById('modal-kardex').classList.remove('flex');
@@ -2385,5 +2355,3 @@
     </script>
 </body>
 </html>
-
-
