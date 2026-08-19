@@ -154,9 +154,7 @@
                 <h2 class="text-xl font-black uppercase italic">Control de Inventario</h2>
                 <div class="flex flex-wrap gap-2 items-center">
                     <button onclick="imprimirInventarioA4()" class="bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow hover:bg-blue-800 transition-colors">📄 Lista A4</button>
-                    <!-- BOTÓN DE INVENTARIO A CERO -->
                     <button onclick="toggleMostrarCeros()" id="btn-mostrar-ceros" class="bg-gray-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow hover:bg-gray-700 transition-colors">👁️ Ver Productos en 0</button>
-                    
                     <button id="btn-descargar-excel" onclick="descargarExcel()" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">⬇️ Bajar Excel</button>
                     <input type="file" id="input-excel" accept=".xlsx, .xls" class="hidden" onchange="cargarExcel(event)">
                     <button id="btn-excel-prod" onclick="document.getElementById('input-excel').click()" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow transition-colors">⬆️ Subir Excel</button>
@@ -711,7 +709,6 @@
         };
 
         // 🔥 INICIO DE SESIÓN ESCALABLE 🔥
-        // Ya no descarga toda la carpeta, solo se suscribe a lo necesario
         function ejecutarLogin() {
             const u = document.getElementById('login-user').value;
             const p = document.getElementById('login-pass').value;
@@ -1098,6 +1095,7 @@
             procesarCola(0);
         }
 
+        // 🔥 MOTOR DE VENTAS ULTRA RÁPIDO 🔥
         function procesarVenta() { 
             const t = parseFloat(document.getElementById('total-txt').innerText); 
             if(!cart.length || t <= 0) return; 
@@ -1126,8 +1124,10 @@
                 return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.categoria || 'OTROS', propietario: c.propietario || 'OTROS' }; 
             });
 
+            let isMaria = tiendaLocal === 'Variedades Maria';
+            let num = isMaria ? parseInt(db.cMaria || 1) : parseInt(db.cMarisol || 1);
+
             const nuevaVenta = {
-                id_offline: idUnicoOffline,
                 fecha: new Date().toLocaleString(),
                 fecha_filtro: fechaFiltro,
                 total: t,
@@ -1135,11 +1135,13 @@
                 tienda: tiendaLocal,
                 estado: 'OK',
                 jornada_abierta: true,
-                det: detallesVenta
+                det: detallesVenta,
+                ticket: num
             };
 
             if (!navigator.onLine) {
                 nuevaVenta.ticket = "PENDIENTE";
+                nuevaVenta.id_offline = idUnicoOffline;
                 
                 let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
                 pendientes.push(nuevaVenta);
@@ -1171,57 +1173,55 @@
                 return;
             }
 
-            database.ref('tienda_datos').transaction(curr => {
-                if (!curr) return curr;
-                if (!curr.productos) curr.productos = [];
-                else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
+            // 🔥 ACTUALIZACIÓN MULTI-RUTA DIRECTA 🔥
+            let updatesPromise = cart.map(item => {
+                return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snap => {
+                    if (snap.exists()) {
+                        const key = Object.keys(snap.val())[0];
+                        const prod = snap.val()[key];
+                        return {
+                            key: key,
+                            nuevoStock: isMaria ? (parseInt(prod.stock_maria || 0) - item.cant) : (parseInt(prod.stock_marisol || 0) - item.cant)
+                        };
+                    }
+                    return null;
+                });
+            });
 
-                for (let item of cart) {
-                    const p = curr.productos.find(x => x.codigo === item.codigo);
-                    if (!p) return; 
-                    const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
-                    if (item.cant > stockDisp) return; 
-                }
-
-                let isMaria = tiendaLocal === 'Variedades Maria';
-                let num = isMaria ? parseInt(curr.cMaria || 1) : parseInt(curr.cMarisol || 1);
+            Promise.all(updatesPromise).then(resultados => {
+                let actualizaciones = {};
                 
-                nuevaVenta.ticket = num;
-                delete nuevaVenta.id_offline; 
+                if(isMaria) actualizaciones['tienda_datos/cMaria'] = num + 1; 
+                else actualizaciones['tienda_datos/cMarisol'] = num + 1;
 
-                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
-
-                cart.forEach(item => { 
-                    const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
-                    if(pIdx > -1) { 
-                        if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0); 
-                        else curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) - parseInt(item.cant || 0); 
-                    } 
+                resultados.forEach(res => {
+                    if(res) {
+                        if(isMaria) actualizaciones[`tienda_datos/productos/${res.key}/stock_maria`] = res.nuevoStock;
+                        else actualizaciones[`tienda_datos/productos/${res.key}/stock_marisol`] = res.nuevoStock;
+                    }
                 });
 
-                return curr;
-            }, (error, committed) => {
-                if (!error && committed) {
-                    database.ref('ventas_historial').push(nuevaVenta).then(() => {
-                        btnCobrar.innerText = "COBRAR";
-                        btnCobrar.disabled = false;
+                let idNuevaVenta = database.ref('ventas_historial').push().key;
+                actualizaciones[`ventas_historial/${idNuevaVenta}`] = nuevaVenta;
 
-                        cart = []; 
-                        document.getElementById('pago-txt').value = ''; 
-                        renderCart(); 
-                        render();
-
-                        setTimeout(() => {
-                            sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                                imprimirTicket(nuevaVenta);
-                            }, "Venta Exitosa");
-                        }, 100);
-                    });
-                } else {
+                database.ref().update(actualizaciones).then(() => {
                     btnCobrar.innerText = "COBRAR";
                     btnCobrar.disabled = false;
-                    sysAlert("❌ Venta cancelada. Revisa el stock o tu conexión a internet.");
-                }
+                    cart = []; 
+                    document.getElementById('pago-txt').value = ''; 
+                    renderCart(); 
+                    render();
+
+                    setTimeout(() => {
+                        sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                            imprimirTicket(nuevaVenta);
+                        }, "Venta Exitosa");
+                    }, 100);
+                }).catch(err => {
+                    btnCobrar.innerText = "COBRAR";
+                    btnCobrar.disabled = false;
+                    sysAlert("❌ Error al guardar en la nube. " + err);
+                });
             });
         }
 
@@ -1338,7 +1338,6 @@
             }
         });
 
-        // 🔥 REGISTRO DE INGRESO ROBUSTO 🔥
         function registrarIngresoKardex(codigo, nombre, cantidad) {
             if (cantidad <= 0) return;
             const ahora = new Date();
@@ -1357,7 +1356,6 @@
             });
         }
 
-        // 🔥 FUNCION GUARDAR PROD BLINDADA (CON REGISTRO DE INGRESO) 🔥
         function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
@@ -1392,7 +1390,6 @@
             };
             if (db.rol === 'ADMIN') datosGuardar.costo = cost;
 
-            // 🚀 BÚSQUEDA EXACTA EN LA NUBE PARA EVITAR DUPLICADOS Y DESFASES
             database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(c).once('value').then(snap => {
                 if (snap.exists()) {
                     const key = Object.keys(snap.val())[0]; 
@@ -1532,7 +1529,6 @@
             let vLib = 0, vMaq = 0, vOtr = 0; let gLib = 0, gMaq = 0, gOtr = 0;
             const rb = document.getElementById('rep-ventas-body'); let htmlRepVentas = ''; 
 
-            // 🔥 OPTIMIZACIÓN: Solo traemos las ventas y gastos de la fecha seleccionada usando Firebase Queries 🔥
             database.ref('ventas_historial').orderByChild('fecha_filtro').startAt(fIniStr).endAt(fFinStr).once('value').then(snapVentas => {
                 snapVentas.forEach(child => {
                     let v = child.val();
@@ -2218,7 +2214,7 @@
             setTimeout(() => document.getElementById('p-cod').focus(), 50); 
         }
 
-        // 🔥 LECTURA DEL KÁRDEX SÚPER RÁPIDA (Optimizada para 10,000+ productos) 🔥
+        // 🔥 LECTURA DEL KÁRDEX SÚPER RÁPIDA (Optimizada) 🔥
         function verKardex(codigo) {
             const p = db.productos.find(x => x.codigo === codigo);
             if (!p) return;
