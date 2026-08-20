@@ -1096,7 +1096,7 @@
         }
 
         // 🔥 MOTOR DE VENTAS ULTRA RÁPIDO 🔥
-        function procesarVenta() { 
+       function procesarVenta() { 
             const t = parseFloat(document.getElementById('total-txt').innerText); 
             if(!cart.length || t <= 0) return; 
             const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
@@ -1124,9 +1124,6 @@
                 return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.categoria || 'OTROS', propietario: c.propietario || 'OTROS' }; 
             });
 
-            let isMaria = tiendaLocal === 'Variedades Maria';
-            let num = isMaria ? parseInt(db.cMaria || 1) : parseInt(db.cMarisol || 1);
-
             const nuevaVenta = {
                 fecha: new Date().toLocaleString(),
                 fecha_filtro: fechaFiltro,
@@ -1135,8 +1132,7 @@
                 tienda: tiendaLocal,
                 estado: 'OK',
                 jornada_abierta: true,
-                det: detallesVenta,
-                ticket: num
+                det: detallesVenta
             };
 
             if (!navigator.onLine) {
@@ -1173,54 +1169,58 @@
                 return;
             }
 
-            // 🔥 ACTUALIZACIÓN MULTI-RUTA DIRECTA 🔥
-            let updatesPromise = cart.map(item => {
-                return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snap => {
-                    if (snap.exists()) {
-                        const key = Object.keys(snap.val())[0];
-                        const prod = snap.val()[key];
-                        return {
-                            key: key,
-                            nuevoStock: isMaria ? (parseInt(prod.stock_maria || 0) - item.cant) : (parseInt(prod.stock_marisol || 0) - item.cant)
-                        };
-                    }
-                    return null;
-                });
-            });
+            // 🚀 BÚSQUEDA Y ACTUALIZACIÓN ULTRA RÁPIDA ONLINE
+            let isMaria = tiendaLocal === 'Variedades Maria';
+            let refContador = isMaria ? database.ref('tienda_datos/cMaria') : database.ref('tienda_datos/cMarisol');
 
-            Promise.all(updatesPromise).then(resultados => {
+            // 1. Obtenemos el número de ticket rapidísimo de la nube
+            refContador.transaction(actual => (actual || 1) + 1, (err, committed, snap) => {
+                if (err || !committed) {
+                    btnCobrar.innerText = "COBRAR";
+                    btnCobrar.disabled = false;
+                    return sysAlert("❌ Error de conexión al generar ticket.");
+                }
+
+                nuevaVenta.ticket = snap.val() - 1;
+
+                // 2. Preparamos el paquete de actualizaciones directas
                 let actualizaciones = {};
-                
-                if(isMaria) actualizaciones['tienda_datos/cMaria'] = num + 1; 
-                else actualizaciones['tienda_datos/cMarisol'] = num + 1;
-
-                resultados.forEach(res => {
-                    if(res) {
-                        if(isMaria) actualizaciones[`tienda_datos/productos/${res.key}/stock_maria`] = res.nuevoStock;
-                        else actualizaciones[`tienda_datos/productos/${res.key}/stock_marisol`] = res.nuevoStock;
-                    }
-                });
-
-                let idNuevaVenta = database.ref('ventas_historial').push().key;
+                const idNuevaVenta = database.ref('ventas_historial').push().key;
                 actualizaciones[`ventas_historial/${idNuevaVenta}`] = nuevaVenta;
 
-                database.ref().update(actualizaciones).then(() => {
-                    btnCobrar.innerText = "COBRAR";
-                    btnCobrar.disabled = false;
-                    cart = []; 
-                    document.getElementById('pago-txt').value = ''; 
-                    renderCart(); 
-                    render();
+                // Buscamos las casillas exactas de los productos vendidos
+                let promesasBusqueda = cart.map(item => {
+                    return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                        if(snapProd.exists()) {
+                            const key = Object.keys(snapProd.val())[0];
+                            const prodOriginal = snapProd.val()[key];
+                            const stockRestante = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) - parseInt(item.cant);
+                            actualizaciones[`tienda_datos/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`] = stockRestante;
+                        }
+                    });
+                });
 
-                    setTimeout(() => {
-                        sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                            imprimirTicket(nuevaVenta);
-                        }, "Venta Exitosa");
-                    }, 100);
-                }).catch(err => {
-                    btnCobrar.innerText = "COBRAR";
-                    btnCobrar.disabled = false;
-                    sysAlert("❌ Error al guardar en la nube. " + err);
+                // 3. Subimos todo a la nube de un solo golpe (Tarda milisegundos)
+                Promise.all(promesasBusqueda).then(() => {
+                    database.ref().update(actualizaciones).then(() => {
+                        btnCobrar.innerText = "COBRAR";
+                        btnCobrar.disabled = false;
+                        
+                        cart = []; 
+                        document.getElementById('pago-txt').value = ''; 
+                        renderCart(); 
+                        render();
+                        
+                        setTimeout(() => {
+                            sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                                imprimirTicket(nuevaVenta);
+                            }, "Venta Exitosa");
+                        }, 100);
+                    }).catch(err => {
+                        btnCobrar.innerText = "COBRAR";
+                        btnCobrar.disabled = false;
+                        sysAlert("❌ Error al descontar stock: " + err);
+                    });
                 });
             });
         }
