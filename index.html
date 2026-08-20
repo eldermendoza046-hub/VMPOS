@@ -2316,6 +2316,85 @@
             document.getElementById('modal-kardex').classList.add('hidden');
             document.getElementById('modal-kardex').classList.remove('flex');
         }
+        // 🔥 VERSIÓN BLINDADA DEL REPORTE MAESTRO 🔥
+        function imprimirReporteMaestro() {
+            try {
+                const fIniStr = document.getElementById('rep-inicio') ? document.getElementById('rep-inicio').value : ""; 
+                const fFinStr = document.getElementById('rep-fin') ? document.getElementById('rep-fin').value : ""; 
+                
+                const nom1 = (db.config && db.config.nombre_s1) ? db.config.nombre_s1 : "SOCIO 1";
+                const nom2 = (db.config && db.config.nombre_s2) ? db.config.nombre_s2 : "SOCIO 2";
+                const nombreSucursalImpresa = db.tiendaActual === 'Variedades Maria' 
+                    ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA") 
+                    : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL");
+
+                const pa = document.getElementById('print-area'); 
+                if(!pa) return sysAlert("Error: No se encontró el área de impresión.");
+
+                pa.className = "a4-mode"; 
+                
+                // Extrae los textos de forma segura para que no se congele el botón
+                const getText = (id) => document.getElementById(id) ? document.getElementById(id).innerText : "Q 0.00";
+
+                pa.innerHTML = `
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                    <div style="text-align:center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">
+                        <h1 style="margin:0; font-size: 24px;">REPORTE MAESTRO DE LIQUIDACIÓN Y GANANCIAS</h1>
+                        <h2 style="margin:5px 0; color:#555; font-size: 16px;">TIENDA: ${nombreSucursalImpresa.toUpperCase()} | DEL: ${fIniStr} AL: ${fFinStr}</h2>
+                    </div>
+                    
+                    <h3 style="background-color: #f3f4f6; padding: 8px; text-align: center; border-radius: 4px; font-size: 14px;">RESUMEN DE SOCIOS</h3>
+                    <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <tr>
+                            <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #1e3a8a; border-radius: 8px;">
+                                <h4 style="color:#1e3a8a; text-align:center; margin-top:0;">📘 ${nom1}</h4>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${getText('p1-ventas')}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${getText('p1-gastos')}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:blue; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${getText('p1-capital')}</b></div>
+                                <hr style="border:1px solid #1e3a8a; margin: 8px 0;">
+                                <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${getText('p1-ganancia')}</span></div>
+                                
+                                <div style="margin-top: 15px; background-color: #eff6ff; padding: 5px; border-radius: 5px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${getText('p1-efectivo-gen')}</b></div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${getText('p1-depositos')}</b></div>
+                                    <hr style="border:1px solid #ccc; margin: 4px 0;">
+                                    <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${getText('p1-efectivo-pen')}</span></div>
+                                </div>
+                            </td>
+                            <td style="width:4%;"></td>
+                            <td style="width:48%; vertical-align:top; padding: 10px; border: 2px solid #831843; border-radius: 8px;">
+                                <h4 style="color:#831843; text-align:center; margin-top:0;">💄 ${nom2}</h4>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Total Vendido:</span> <b>${getText('p2-ventas')}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:red; font-size: 12px;"><span>(-) Gastos (Propios+Mitad):</span> <b>${getText('p2-gastos')}</b></div>
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:purple; font-size: 12px;"><span>📦 Capital (Re-Invertir):</span> <b>${getText('p2-capital')}</b></div>
+                                <hr style="border:1px solid #831843; margin: 8px 0;">
+                                <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: bold; color:green;"><span>💵 GANANCIA LIBRE:</span> <span>${getText('p2-ganancia')}</span></div>
+                                
+                                <div style="margin-top: 15px; background-color: #fdf2f8; padding: 5px; border-radius: 5px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 12px;"><span>Efectivo Físico Generado:</span> <b>${getText('p2-efectivo-gen')}</b></div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:green; font-size: 12px;"><span>(-) Depósitos Registrados:</span> <b>${getText('p2-depositos')}</b></div>
+                                    <hr style="border:1px solid #ccc; margin: 4px 0;">
+                                    <div style="display:flex; justify-content:space-between; font-size:12px; font-weight: bold;"><span>EFECTIVO PENDIENTE:</span> <span>${getText('p2-efectivo-pen')}</span></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    <div style="text-align:center; font-size: 10px; color: #777; margin-top: 30px;">
+                        <p>*Los cálculos ya incluyen la distribución 50/50 de la categoría "Compartido".</p>
+                        <p>Reporte generado el: ${new Date().toLocaleString()}</p>
+                    </div>
+                </div>`; 
+                
+                // Le damos 300 milisegundos a Chrome para procesar antes de forzar la ventana
+                setTimeout(() => {
+                    window.print();
+                }, 300);
+
+            } catch (err) {
+                console.error(err);
+                sysAlert("Hubo un error al preparar la hoja. Inténtalo de nuevo.");
+            }
+        }
     </script>
 </body>
 </html>
