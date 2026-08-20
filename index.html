@@ -971,37 +971,32 @@
             document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
         }
 
-        function anularVentaNube(idVenta) { 
+      function anularVentaNube(idVenta) { 
             sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
                 database.ref('ventas_historial/' + idVenta).once('value').then(snap => {
                     const v = snap.val();
                     if(!v || v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada.");
                     
-                    database.ref('ventas_historial/' + idVenta + '/estado').set('ANULADA').then(() => {
-                        database.ref('tienda_datos').transaction(curr => {
-                            if (!curr || !curr.productos) return curr;
-                            if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
-                            
-                            v.det.forEach(i => {
-                                const pIdx = curr.productos.findIndex(x => x.codigo === i.codigo);
-                                if(pIdx > -1) {
-                                    if(v.tienda === 'Variedades Maria') {
-                                        curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) + parseInt(i.cant || 0);
-                                    } else {
-                                        curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) + parseInt(i.cant || 0);
-                                    }
-                                }
-                            });
-                            return curr;
-                        }, (error, committed) => {
-                            if(committed) {
-                                sysAlert("✅ Venta anulada. Stock devuelto.", "Éxito");
-                                render();
-                            } else {
-                                sysAlert("❌ Error al devolver el stock.");
+                    let isMaria = v.tienda === 'Variedades Maria';
+                    
+                    // Busca directo los productos y les devuelve el stock sin descargar toda la base
+                    let promesasDevolucion = v.det.map(item => {
+                        return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                            if(snapProd.exists()) {
+                                const key = Object.keys(snapProd.val())[0];
+                                const prodOriginal = snapProd.val()[key];
+                                const stockDevuelto = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) + parseInt(item.cant);
+                                return database.ref(`tienda_datos/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
                             }
                         });
                     });
+
+                    Promise.all(promesasDevolucion).then(() => {
+                        database.ref('ventas_historial/' + idVenta + '/estado').set('ANULADA').then(() => {
+                            sysAlert("✅ Venta anulada. Stock devuelto al instante.", "Éxito");
+                            render();
+                        });
+                    }).catch(() => sysAlert("❌ Error al devolver el stock."));
                 });
             });
         }
@@ -1012,34 +1007,31 @@
                     const v = snap.val();
                     if(!v) return;
                     
-                    database.ref('ventas_historial/' + idVenta).remove().then(() => {
-                        if (v.estado !== 'ANULADA') {
-                            database.ref('tienda_datos').transaction(curr => {
-                                if (!curr || !curr.productos) return curr;
-                                if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
-                                
-                                v.det.forEach(i => {
-                                    const pIdx = curr.productos.findIndex(x => x.codigo === i.codigo);
-                                    if(pIdx > -1) {
-                                        if(v.tienda === 'Variedades Maria') {
-                                            curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) + parseInt(i.cant || 0);
-                                        } else {
-                                            curr.productos[pIdx].stock_marisol = parseInt(curr.productos[pIdx].stock_marisol || 0) + parseInt(i.cant || 0);
-                                        }
-                                    }
-                                });
-                                return curr;
-                            }, (error, committed) => {
-                                if(committed) {
-                                    sysAlert("✅ Registro eliminado y stock devuelto.");
-                                    render();
+                    if (v.estado !== 'ANULADA') {
+                        let isMaria = v.tienda === 'Variedades Maria';
+                        let promesasDevolucion = v.det.map(item => {
+                            return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                                if(snapProd.exists()) {
+                                    const key = Object.keys(snapProd.val())[0];
+                                    const prodOriginal = snapProd.val()[key];
+                                    const stockDevuelto = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) + parseInt(item.cant);
+                                    return database.ref(`tienda_datos/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
                                 }
                             });
-                        } else {
+                        });
+
+                        Promise.all(promesasDevolucion).then(() => {
+                            database.ref('ventas_historial/' + idVenta).remove().then(() => {
+                                sysAlert("✅ Registro eliminado y stock devuelto.");
+                                render();
+                            });
+                        });
+                    } else {
+                        database.ref('ventas_historial/' + idVenta).remove().then(() => {
                             sysAlert("✅ Registro eliminado.");
                             render();
-                        }
-                    });
+                        });
+                    }
                 });
             });
         }
@@ -1356,7 +1348,7 @@
             });
         }
 
-        function guardarProd() { 
+       function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
             const img = document.getElementById('p-imagen').value.trim(); 
@@ -1392,6 +1384,7 @@
 
             database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(c).once('value').then(snap => {
                 if (snap.exists()) {
+                    // SI YA EXISTE: Actualiza directo
                     const key = Object.keys(snap.val())[0]; 
                     const prodOriginal = snap.val()[key];
                     
@@ -1407,46 +1400,41 @@
                     }).catch(err => sysAlert("❌ Error al guardar: " + err));
 
                 } else {
+                    // 🔥 CUELLO DE BOTELLA ELIMINADO: Creación directa y rápida sin transaction
                     datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
 
-                    database.ref('tienda_datos/productos').transaction(prods => {
-                        if (!prods) prods = [];
-                        else if (!Array.isArray(prods)) prods = Object.values(prods);
-                        prods.push(datosGuardar);
-                        return prods;
-                    }, (error, committed) => {
-                        if (!error && committed) {
-                            if (st > 0) registrarIngresoKardex(c, n, st); 
-                            cerrarModal(); 
-                            sysAlert("✅ Nuevo producto creado al instante.");
-                        } else {
-                            sysAlert("❌ Error de red al crear producto. Intenta de nuevo.");
-                        }
-                    });
+                    database.ref('tienda_datos/productos').push(datosGuardar).then(() => {
+                        if (st > 0) registrarIngresoKardex(c, n, st); 
+                        cerrarModal(); 
+                        sysAlert("✅ Nuevo producto creado al instante.");
+                    }).catch(err => sysAlert("❌ Error de red al crear producto. Intenta de nuevo."));
                 }
             }).catch(err => sysAlert("❌ Error de conexión al buscar: " + err));
         }
 
-        function eliminarProductoDefinitivo(codigo) {
+       function eliminarProductoDefinitivo(codigo) {
             sysConfirm("¿Eliminar stock de este producto en " + db.tiendaActual + "?", () => {
-                database.ref('tienda_datos').transaction(curr => {
-                    if (!curr || !curr.productos) return curr;
-                    if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
-                    const pIdx = curr.productos.findIndex(x => x.codigo === codigo);
-                    if(pIdx > -1) {
-                        if(db.tiendaActual === 'Variedades Maria') curr.productos[pIdx].stock_maria = 0;
-                        else curr.productos[pIdx].stock_marisol = 0;
+                database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(codigo).once('value').then(snap => {
+                    if(snap.exists()) {
+                        const key = Object.keys(snap.val())[0];
+                        const p = snap.val()[key];
+                        let updates = {};
+                        
+                        if(db.tiendaActual === 'Variedades Maria') updates['stock_maria'] = 0;
+                        else updates['stock_marisol'] = 0;
 
-                        if((curr.productos[pIdx].stock_maria || 0) === 0 && (curr.productos[pIdx].stock_marisol || 0) === 0) {
-                            curr.productos.splice(pIdx, 1);
+                        let stockMaria = db.tiendaActual === 'Variedades Maria' ? 0 : (p.stock_maria || 0);
+                        let stockMarisol = db.tiendaActual === 'Marisol' ? 0 : (p.stock_marisol || 0);
+
+                        // Si ya está en cero en las dos tiendas, lo borra físico de la nube
+                        if(stockMaria === 0 && stockMarisol === 0) {
+                            database.ref(`tienda_datos/productos/${key}`).remove().then(() => sysAlert("✅ Producto eliminado definitivamente de la base de datos."));
+                        } else {
+                            database.ref(`tienda_datos/productos/${key}`).update(updates).then(() => sysAlert("✅ Stock eliminado correctamente en esta tienda."));
                         }
                     }
-                    return curr;
-                }, (error, committed) => {
-                    if(!error && committed) sysAlert("✅ Stock eliminado correctamente.");
-                    else sysAlert("❌ Error al eliminar producto.");
-                });
+                }).catch(() => sysAlert("❌ Error al eliminar producto."));
             });
         }
 
