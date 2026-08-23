@@ -148,13 +148,19 @@
         let intervaloCarrusel;
         let numBanners = 0;
 
-        auth.signInAnonymously().then(() => {
-            console.log("Conectado como cliente anónimo");
-            cargarDatos();
-        }).catch((error) => {
-            document.getElementById('spinner').classList.add('hidden');
-            document.getElementById('loader-text').innerHTML = `<span class="text-red-500 font-black">Error de conexión</span>`;
-            document.getElementById('loader-text').classList.remove('animate-pulse');
+        // 🔥 ESCUCHADOR DE SESIÓN INTELIGENTE 🔥
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Si el dueño o un visitante anónimo previo ya están conectados, respetamos la sesión
+                cargarDatos();
+            } else {
+                // Solo creamos sesión de visitante si no hay absolutamente nadie conectado
+                auth.signInAnonymously().catch((error) => {
+                    document.getElementById('spinner').classList.add('hidden');
+                    document.getElementById('loader-text').innerHTML = `<span class="text-red-500 font-black">Error de conexión</span>`;
+                    document.getElementById('loader-text').classList.remove('animate-pulse');
+                });
+            }
         });
 
         function cargarDatos() {
