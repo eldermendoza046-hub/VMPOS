@@ -39,7 +39,7 @@
         @media print {
             .no-print { display: none !important; }
             #print-area { display: block !important; color: #000 !important; background: white; }
-            .ticket-mode { width: 72mm; font-family: 'Arial', sans-serif; font-size: 11px; padding: 2mm; }
+            .ticket-mode { margin: 0 auto; font-family: 'Arial', sans-serif; font-size: 11px; padding: 2mm; }
             .a4-mode { width: 210mm; padding: 10mm; font-family: 'Verdana', sans-serif; }
             .a4-mode table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             .a4-mode th, .a4-mode td { border: 1px solid #000; padding: 8px; text-align: left; font-size: 12px; }
@@ -57,7 +57,7 @@
             <h2 class="text-2xl font-black mb-6 text-indigo-700 uppercase italic">Iniciar Sesión</h2>
             <input type="email" id="login-user" placeholder="Correo electrónico" class="w-full p-4 bg-gray-100 rounded-xl mb-4 outline-none focus:ring-2 ring-indigo-500 font-bold">
             <input type="password" id="login-pass" placeholder="Contraseña" class="w-full p-4 bg-gray-100 rounded-xl mb-6 outline-none focus:ring-2 ring-indigo-500 font-bold" onkeypress="if(event.key==='Enter') ejecutarLogin()">
-            <button onclick="ejecutarLogin()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 uppercase">Entrar al Sistema</button>
+            <button onclick="ejecutarLogin()" id="btn-login-principal" class="w-full bg-indigo-600 text-white font-black py-4 rounded-xl hover:bg-indigo-700 shadow-lg transition-transform active:scale-95 uppercase">Entrar al Sistema</button>
         </div>
     </div>
 
@@ -141,7 +141,10 @@
                 </div>
             </div>
             <div id="cobro-card" class="zona-cobro text-white p-6 md:p-8 rounded-3xl shadow-2xl transition-colors">
-                <div class="text-5xl md:text-6xl font-black text-center mb-6 text-yellow-400">Q <span id="total-txt">0.00</span></div>
+                <div class="text-5xl md:text-6xl font-black text-center mb-2 text-yellow-400">Q <span id="total-txt">0.00</span></div>
+                
+                <div id="desc-info-container" class="mt-2 mb-4"></div>
+
                 <input type="number" id="pago-txt" class="w-full p-4 rounded-2xl bg-black/20 text-3xl text-center border-2 border-white/20 outline-none font-black" placeholder="PAGO Q" oninput="calcVuelto()">
                 <div class="text-2xl md:text-3xl font-bold text-green-400 text-center my-4 italic">Cambio: Q <span id="vuelto-txt">0.00</span></div>
                 <button id="btn-cobrar" onclick="procesarVenta()" class="w-full bg-green-500 hover:bg-green-600 py-6 rounded-2xl font-black text-3xl shadow-lg transition-transform active:scale-95 uppercase border-b-8 border-green-800">COBRAR</button>
@@ -359,6 +362,37 @@
             <h2 class="text-2xl font-black mb-4 italic uppercase text-gray-800">⚙️ Configuración General</h2>
             
             <div class="space-y-4 font-bold text-xs">
+                
+                <!-- 🔥 NUEVO: SECCIÓN DE IMPRESIÓN Y DESCUENTOS (100% EDITABLES) 🔥 -->
+                <div class="p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                    <h3 class="text-sm font-black uppercase text-green-700 mb-2">🎓 Descuento Temporada (Sólo Papelería)</h3>
+                    <div class="flex gap-2 mb-2">
+                        <div class="flex-1">
+                            <label class="text-[9px] text-gray-500 uppercase font-black">Activar Oferta:</label>
+                            <select id="conf-desc-activo" class="w-full p-2 border rounded-lg outline-none uppercase font-bold text-xs bg-white focus:border-green-500 border-2">
+                                <option value="NO">NO (Apagado)</option>
+                                <option value="SI">SÍ (Encendido)</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[9px] text-gray-500 uppercase font-black">% Descuento:</label>
+                            <input type="number" id="conf-desc-porc" class="w-full p-2 border rounded-lg outline-none font-bold text-xs bg-white focus:border-green-500 border-2" placeholder="Ej. 10">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[9px] text-gray-500 uppercase font-black">Mín. Productos:</label>
+                            <input type="number" id="conf-desc-min" class="w-full p-2 border rounded-lg outline-none font-bold text-xs bg-white focus:border-green-500 border-2" placeholder="Ej. 15">
+                        </div>
+                    </div>
+
+                    <h3 class="text-sm font-black uppercase text-green-700 mb-2 border-t border-green-200 pt-2 mt-2">🖨️ Formato de Impresión (Ticket)</h3>
+                    <label class="text-[9px] text-gray-500 uppercase font-black">Ancho de papel de la impresora:</label>
+                    <select id="conf-ticket-size" class="w-full p-2 border rounded-lg outline-none uppercase font-bold text-xs bg-white focus:border-green-500 border-2">
+                        <option value="58mm">58mm (Pequeño - Tipo POS Bac/Visa)</option>
+                        <option value="72mm">80mm / 72mm (Mediano - Estándar)</option>
+                        <option value="100%">Página Completa (Tamaño Carta/A4)</option>
+                    </select>
+                </div>
+
                 <!-- Datos del Ticket -->
                 <div class="p-4 bg-gray-50 rounded-xl border-2">
                     <h3 class="text-sm font-black uppercase text-indigo-700 mb-2">Datos del Ticket / Factura</h3>
@@ -479,9 +513,8 @@
                 <div id="div-costo-modal" class="hidden"><input type="number" id="p-costo" class="w-full p-3 border-2 border-red-200 rounded-xl outline-none" placeholder="Costo Q"></div>
                 <input type="number" id="p-venta" placeholder="Precio Unidad Q (Normal)" class="w-full p-3 border-2 rounded-xl text-indigo-600 font-black outline-none focus:border-indigo-500">
                 
-                <!-- NUEVO: SECCIÓN PAPELERÍA -->
                 <div id="div-papeleria-modal" class="hidden border-2 border-orange-400 p-3 rounded-xl bg-orange-50 mt-3">
-                    <label class="text-[10px] text-orange-800 uppercase font-black">📄 Precios Especiales Papelería (Hojas)</label>
+                    <label class="text-[10px] text-orange-800 uppercase font-black">📄 Precios Especial Papelería (Hojas)</label>
                     <div class="flex gap-2 mt-2">
                         <div class="w-1/2">
                             <label class="text-[9px] text-gray-500 uppercase">Promo Trae (Ej. 4):</label>
@@ -518,7 +551,6 @@
                     </div>
                 </div>
 
-                <!-- PRECIOS MAYORISTAS -->
                 <div id="div-mayorista-modal" class="border-2 border-blue-400 p-3 rounded-xl bg-blue-50 mt-3">
                     <label class="text-[10px] text-blue-800 uppercase font-black">📦 Precios Mayorista (Precio c/u)</label>
                     <div class="flex gap-2 mt-2">
@@ -588,7 +620,19 @@
 
     <!-- SCRIPT PRINCIPAL -->
     <script>
-        let db = { tiendaActual: 'Variedades Maria', rol: 'VENDEDOR', productos: [], ventas: [], cMaria: 1, cMarisol: 1, admin_pin: '1892' };
+        // 🔥 VARIABLES GLOBALES CON RUTAS DINÁMICAS (Multi-Tenant) 🔥
+        let db = { 
+            tiendaActual: 'Variedades Maria', 
+            rol: 'VENDEDOR', 
+            productos: [], 
+            ventas: [], 
+            cMaria: 1, 
+            cMarisol: 1, 
+            admin_pin: '1892',
+            ruta_datos: 'tienda_datos',
+            ruta_historial: ''
+        };
+        
         let cart = []; let debounceTimerInventario; 
         let mostrarProductosEnCero = false; 
         
@@ -708,28 +752,57 @@
             if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
         };
 
-        // 🔥 INICIO DE SESIÓN ESCALABLE 🔥
+        // 🔥 INICIO DE SESIÓN MULTI-TENANT (SaaS) 🔥
         function ejecutarLogin() {
-            const u = document.getElementById('login-user').value;
-            const p = document.getElementById('login-pass').value;
+            const u = document.getElementById('login-user').value.trim();
+            const p = document.getElementById('login-pass').value.trim();
+            const btn = document.getElementById('btn-login-principal');
+            
+            if(!u || !p) return sysAlert("Ingresa tu correo y contraseña.");
+
+            btn.innerText = "VERIFICANDO...";
+            btn.disabled = true;
+
             firebase.auth().signInWithEmailAndPassword(u, p)
-                .then(() => { 
-                    document.getElementById('login-modal').style.display = 'none';
-                    sysAlert("¡Inicio de sesión correcto! Conectando a la base de datos...", "Bienvenido"); 
+                .then((userCred) => { 
+                    const emailLogueado = userCred.user.email;
                     
-                    database.ref('tienda_datos/productos').on('value', snap => {
-                        db.productos = snap.val() || [];
-                        if(!Array.isArray(db.productos)) db.productos = Object.values(db.productos);
-                        localStorage.setItem('backup_pos', JSON.stringify(db)); 
-                        render();
+                    // 1. Preguntamos a Firebase si este correo es de un Cliente / Franquicia
+                    database.ref('suscripciones').orderByChild('email').equalTo(emailLogueado).once('value')
+                    .then(snap => {
+                        if (snap.exists()) {
+                            // ES UN CLIENTE
+                            const idCliente = Object.keys(snap.val())[0];
+                            const datosCliente = snap.val()[idCliente];
+                            
+                            // Bloqueo por falta de pago
+                            if(datosCliente.estado === 'BLOQUEADO') {
+                                firebase.auth().signOut();
+                                sysAlert("🚨 SISTEMA SUSPENDIDO POR FALTA DE PAGO.\n\nPor favor comuníquese con el administrador para reactivar el servicio.", "Acceso Denegado");
+                                btn.innerText = "ENTRAR AL SISTEMA";
+                                btn.disabled = false;
+                                return;
+                            }
+                            
+                            // Enrutamos al cliente a sus carpetas privadas
+                            db.ruta_datos = 'clientes_datos/' + idCliente;
+                            db.ruta_historial = 'clientes_datos/' + idCliente + '/';
+                            
+                        } else {
+                            // ERES TÚ (El Súper Admin original)
+                            db.ruta_datos = 'tienda_datos';
+                            db.ruta_historial = '';
+                        }
+                        
+                        document.getElementById('login-modal').style.display = 'none';
+                        sysAlert("¡Inicio de sesión correcto! Conectando a tu base de datos...", "Bienvenido"); 
+                        
+                        cargarBaseDeDatos();
+                    }).catch(err => {
+                        sysAlert("Error al verificar tu negocio: " + err.message);
+                        btn.innerText = "ENTRAR AL SISTEMA";
+                        btn.disabled = false;
                     });
-                    database.ref('tienda_datos/config').on('value', snap => {
-                        db.config = snap.val() || null;
-                        render();
-                    });
-                    database.ref('tienda_datos/admin_pin').on('value', snap => { db.admin_pin = snap.val() || '1892'; });
-                    database.ref('tienda_datos/cMaria').on('value', snap => { db.cMaria = snap.val() || 1; });
-                    database.ref('tienda_datos/cMarisol').on('value', snap => { db.cMarisol = snap.val() || 1; });
                 })
                 .catch(() => {
                     if (!navigator.onLine && localStorage.getItem('backup_pos')) {
@@ -737,8 +810,27 @@
                         sysAlert("⚠️ ESTÁS SIN INTERNET. Se cargará la copia de seguridad local.");
                     } else {
                         sysAlert("Usuario/contraseña incorrectos o error de red. Intenta de nuevo.", "Error");
+                        btn.innerText = "ENTRAR AL SISTEMA";
+                        btn.disabled = false;
                     }
                 });
+        }
+        
+        function cargarBaseDeDatos() {
+            database.ref(`${db.ruta_datos}/productos`).on('value', snap => {
+                let data = snap.val() || [];
+                let listaObj = Array.isArray(data) ? data : Object.values(data);
+                db.productos = listaObj.filter(p => p !== null && p !== undefined);
+                localStorage.setItem('backup_pos', JSON.stringify(db)); 
+                render();
+            });
+            database.ref(`${db.ruta_datos}/config`).on('value', snap => {
+                db.config = snap.val() || null;
+                render();
+            });
+            database.ref(`${db.ruta_datos}/admin_pin`).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
+            database.ref(`${db.ruta_datos}/cMaria`).on('value', snap => { db.cMaria = snap.val() || 1; });
+            database.ref(`${db.ruta_datos}/cMarisol`).on('value', snap => { db.cMarisol = snap.val() || 1; });
         }
 
         function persistir() { 
@@ -762,15 +854,16 @@
         function render() {
             if(!db.config) {
                 db.config = {
-                    nombre_tienda: "VARIEDADES M&M",
-                    telefono: "38301196",
-                    nombre_s1: "ELDER",
-                    cat_s1: "TECNOLOGIA, GENERAL",
-                    nombre_s2: "MARISOL",
-                    cat_s2: "MAQUILLAJE, GENERAL",
-                    sucursal_1: "VARIEDADES MARIA",
-                    sucursal_2: "MARISOL",
-                    mensaje_ticket: "¡GRACIAS POR SU COMPRA!"
+                    nombre_tienda: "MI TIENDA",
+                    telefono: "00000000",
+                    nombre_s1: "SOCIO 1",
+                    cat_s1: "GENERAL",
+                    nombre_s2: "SOCIO 2",
+                    cat_s2: "GENERAL",
+                    sucursal_1: "SUCURSAL A",
+                    sucursal_2: "SUCURSAL B",
+                    mensaje_ticket: "¡GRACIAS POR SU COMPRA!",
+                    desc_activo: "NO", desc_porcentaje: 10, desc_minimo: 15, tamano_ticket: "72mm"
                 };
             }
 
@@ -779,27 +872,30 @@
             document.getElementById('rol-txt').innerText = isA ? "ADMINISTRADOR (DUEÑO)" : "MODO CAJERO";
             document.getElementById('btn-admin').innerText = isA ? "SALIR" : "🔑 Admin";
             
-            const nombreSucursal1 = (db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA";
-            const nombreSucursal2 = (db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL";
+            const nombreSucursal1 = (db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "SUCURSAL A";
+            const nombreSucursal2 = (db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "SUCURSAL B";
 
             document.getElementById('tienda-txt').innerText = db.tiendaActual === 'Variedades Maria' ? nombreSucursal1 : nombreSucursal2;
             
             if(document.getElementById('btn-sel-suc1')) document.getElementById('btn-sel-suc1').innerText = "🏪 " + nombreSucursal1;
             if(document.getElementById('btn-sel-suc2')) document.getElementById('btn-sel-suc2').innerText = "🏬 " + nombreSucursal2;
 
-            document.getElementById('c-lbl-s1').innerText = db.config.nombre_s1.substring(0, 10);
-            document.getElementById('c-lbl-s2').innerText = db.config.nombre_s2.substring(0, 10);
-            if(document.getElementById('rep-titulo-s1')) document.getElementById('rep-titulo-s1').innerText = "👤 Socio 1: " + db.config.nombre_s1;
-            if(document.getElementById('rep-titulo-s2')) document.getElementById('rep-titulo-s2').innerText = "👤 Socio 2: " + db.config.nombre_s2;
-            if(document.getElementById('th-rep-s1')) document.getElementById('th-rep-s1').innerText = db.config.nombre_s1;
-            if(document.getElementById('th-rep-s2')) document.getElementById('th-rep-s2').innerText = db.config.nombre_s2;
+            // 🔥 SOLUCIÓN A LA FALLA DEL CORTOCIRCUITO (Se le agregaron amortiguadores) 🔥
+            document.getElementById('c-lbl-s1').innerText = (db.config.nombre_s1 || "SOCIO 1").substring(0, 10);
+            document.getElementById('c-lbl-s2').innerText = (db.config.nombre_s2 || "SOCIO 2").substring(0, 10);
+            if(document.getElementById('rep-titulo-s1')) document.getElementById('rep-titulo-s1').innerText = "👤 Socio 1: " + (db.config.nombre_s1 || "SOCIO 1");
+            if(document.getElementById('rep-titulo-s2')) document.getElementById('rep-titulo-s2').innerText = "👤 Socio 2: " + (db.config.nombre_s2 || "SOCIO 2");
+            if(document.getElementById('th-rep-s1')) document.getElementById('th-rep-s1').innerText = (db.config.nombre_s1 || "SOCIO 1");
+            if(document.getElementById('th-rep-s2')) document.getElementById('th-rep-s2').innerText = (db.config.nombre_s2 || "SOCIO 2");
             
-            if(document.getElementById('dep-opt-s1')) document.getElementById('dep-opt-s1').innerText = "A CUENTA DE " + db.config.nombre_s1;
-            if(document.getElementById('dep-opt-s2')) document.getElementById('dep-opt-s2').innerText = "A CUENTA DE " + db.config.nombre_s2;
-            if(document.getElementById('gas-opt-s1')) document.getElementById('gas-opt-s1').innerText = "SOLO " + db.config.nombre_s1;
-            if(document.getElementById('gas-opt-s2')) document.getElementById('gas-opt-s2').innerText = "SOLO " + db.config.nombre_s2;
-            if(document.getElementById('aju-opt-s1')) document.getElementById('aju-opt-s1').innerText = "CUENTA " + db.config.nombre_s1;
-            if(document.getElementById('aju-opt-s2')) document.getElementById('aju-opt-s2').innerText = "CUENTA " + db.config.nombre_s2;
+            if(document.getElementById('dep-opt-s1')) document.getElementById('dep-opt-s1').innerText = "A CUENTA DE " + (db.config.nombre_s1 || "SOCIO 1");
+            if(document.getElementById('dep-opt-s2')) document.getElementById('dep-opt-s2').innerText = "A CUENTA DE " + (db.config.nombre_s2 || "SOCIO 2");
+            if(document.getElementById('gas-opt-s1')) document.getElementById('gas-opt-s1').innerText = "SOLO " + (db.config.nombre_s1 || "SOCIO 1");
+            if(document.getElementById('gas-opt-s2')) document.getElementById('gas-opt-s2').innerText = "SOLO " + (db.config.nombre_s2 || "SOCIO 2");
+            
+            // 🔥 AQUÍ ESTABA EL ERROR. ESTÁ CORREGIDO 100% 🔥
+            if(document.getElementById('aju-opt-s1')) document.getElementById('aju-opt-s1').innerText = "CUENTA " + (db.config.nombre_s1 || "SOCIO 1");
+            if(document.getElementById('aju-opt-s2')) document.getElementById('aju-opt-s2').innerText = "CUENTA " + (db.config.nombre_s2 || "SOCIO 2");
 
             ['tab-inventario','tab-historial','tab-cierre'].forEach(id => document.getElementById(id).classList.remove('hidden'));
             document.getElementById('tab-reportes').classList.toggle('hidden', !isA); if (!isA && !document.getElementById('section-reportes').classList.contains('hidden')) setTab('ventas');
@@ -849,8 +945,8 @@
                     const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
                     let propColor = 'text-gray-400';
                     let propText = 'COMPARTIDO';
-                    if(p.propietario === 'S1') { propColor = 'text-blue-500'; propText = db.config.nombre_s1; }
-                    if(p.propietario === 'S2') { propColor = 'text-pink-500'; propText = db.config.nombre_s2; }
+                    if(p.propietario === 'S1') { propColor = 'text-blue-500'; propText = (db.config.nombre_s1 || "SOCIO 1"); }
+                    if(p.propietario === 'S2') { propColor = 'text-pink-500'; propText = (db.config.nombre_s2 || "SOCIO 2"); }
 
                     const imgThumb = p.imagen ? `<img src="${p.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
                     htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black"><div class="flex items-center gap-2">${imgThumb}<div>${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span> <span class="${propColor} text-[8px]">[${propText}]</span></div></div></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="verKardex('${p.codigo}')" class="text-indigo-500 hover:text-indigo-700 transition-colors" title="Kárdex / Historial">📊</button>` : ''} ${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
@@ -867,7 +963,7 @@
             const fechaFiltro = document.getElementById('filtro-fecha-ticket') ? document.getElementById('filtro-fecha-ticket').value : '';
 
             if (fechaFiltro) {
-                database.ref('ventas_historial').orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
+                database.ref(`${db.ruta_historial}ventas_historial`).orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
                     let htmlHistorial = ''; let tL=0, tM=0, tO=0, tT=0;
                     
                     let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
@@ -903,12 +999,13 @@
         }
 
         function abrirConfiguracion() {
-            if(!db.config) db.config = { nombre_tienda: "VARIEDADES M&M", telefono: "38301196", nombre_s1: "ELDER", cat_s1: "TECNOLOGIA, GENERAL", nombre_s2: "MARISOL", cat_s2: "MAQUILLAJE, GENERAL", sucursal_1: "VARIEDADES MARIA", sucursal_2: "MARISOL", mensaje_ticket: "¡GRACIAS POR SU COMPRA!" };
+            if(!db.config) db.config = { nombre_tienda: "MI TIENDA", telefono: "00000000", nombre_s1: "SOCIO 1", cat_s1: "GENERAL", nombre_s2: "SOCIO 2", cat_s2: "GENERAL", sucursal_1: "SUCURSAL A", sucursal_2: "SUCURSAL B", mensaje_ticket: "¡GRACIAS POR SU COMPRA!", desc_activo: "NO", desc_porcentaje: 10, desc_minimo: 15, tamano_ticket: "72mm" };
+            
             document.getElementById('conf-tienda').value = db.config.nombre_tienda || "";
             document.getElementById('conf-tel').value = db.config.telefono || "";
             document.getElementById('conf-mensaje').value = db.config.mensaje_ticket || "¡GRACIAS POR SU COMPRA!";
-            document.getElementById('conf-suc1').value = db.config.sucursal_1 || "VARIEDADES MARIA";
-            document.getElementById('conf-suc2').value = db.config.sucursal_2 || "MARISOL";
+            document.getElementById('conf-suc1').value = db.config.sucursal_1 || "SUCURSAL A";
+            document.getElementById('conf-suc2').value = db.config.sucursal_2 || "SUCURSAL B";
             document.getElementById('conf-s1-nombre').value = db.config.nombre_s1 || "SOCIO 1";
             document.getElementById('conf-s1-cat').value = db.config.cat_s1 || "";
             document.getElementById('conf-s2-nombre').value = db.config.nombre_s2 || "SOCIO 2";
@@ -917,6 +1014,11 @@
             document.getElementById('conf-banner1').value = db.config.banner_1 || "";
             document.getElementById('conf-banner2').value = db.config.banner_2 || "";
             document.getElementById('conf-banner3').value = db.config.banner_3 || "";
+
+            document.getElementById('conf-desc-activo').value = db.config.desc_activo || "NO";
+            document.getElementById('conf-desc-porc').value = db.config.desc_porcentaje || "10";
+            document.getElementById('conf-desc-min').value = db.config.desc_minimo || "15";
+            document.getElementById('conf-ticket-size').value = db.config.tamano_ticket || "72mm";
             
             document.getElementById('modal-config').classList.replace('hidden', 'flex');
         }
@@ -934,13 +1036,18 @@
                 cat_s2: document.getElementById('conf-s2-cat').value.trim().toUpperCase(),
                 banner_1: document.getElementById('conf-banner1').value.trim(),
                 banner_2: document.getElementById('conf-banner2').value.trim(),
-                banner_3: document.getElementById('conf-banner3').value.trim()
+                banner_3: document.getElementById('conf-banner3').value.trim(),
+                desc_activo: document.getElementById('conf-desc-activo').value,
+                desc_porcentaje: parseFloat(document.getElementById('conf-desc-porc').value) || 10,
+                desc_minimo: parseInt(document.getElementById('conf-desc-min').value) || 15,
+                tamano_ticket: document.getElementById('conf-ticket-size').value
             };
 
-            database.ref('tienda_datos/config').set(nuevaConfig).then(() => {
+            database.ref(`${db.ruta_datos}/config`).set(nuevaConfig).then(() => {
                 db.config = nuevaConfig;
                 document.getElementById('modal-config').classList.replace('flex', 'hidden');
                 sysAlert("✅ Configuraciones guardadas correctamente.");
+                renderCart(); 
                 render(); 
             }).catch(err => sysAlert("Error al guardar: " + err));
         }
@@ -948,16 +1055,16 @@
         function cargarCategoriasDinamicas(categoriaPreseleccionada = "") {
             if(!db.config) return;
             
-            document.getElementById('opt-s1').innerText = db.config.nombre_s1;
-            document.getElementById('opt-s2').innerText = db.config.nombre_s2;
+            document.getElementById('opt-s1').innerText = db.config.nombre_s1 || "SOCIO 1";
+            document.getElementById('opt-s2').innerText = db.config.nombre_s2 || "SOCIO 2";
 
             const propietario = document.getElementById('p-propietario').value;
             const selectCat = document.getElementById('p-cat');
             selectCat.innerHTML = ''; 
 
             let arrayCategorias = [];
-            if(propietario === 'S1') arrayCategorias = db.config.cat_s1.split(',').map(c => c.trim());
-            else if(propietario === 'S2') arrayCategorias = db.config.cat_s2.split(',').map(c => c.trim());
+            if(propietario === 'S1') arrayCategorias = (db.config.cat_s1 || "GENERAL").split(',').map(c => c.trim());
+            else if(propietario === 'S2') arrayCategorias = (db.config.cat_s2 || "GENERAL").split(',').map(c => c.trim());
             else arrayCategorias = ['OTROS', 'FARMACIA'];
 
             arrayCategorias.forEach(cat => {
@@ -973,26 +1080,25 @@
 
       function anularVentaNube(idVenta) { 
             sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
-                database.ref('ventas_historial/' + idVenta).once('value').then(snap => {
+                database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
                     const v = snap.val();
                     if(!v || v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada.");
                     
                     let isMaria = v.tienda === 'Variedades Maria';
                     
-                    // Busca directo los productos y les devuelve el stock sin descargar toda la base
                     let promesasDevolucion = v.det.map(item => {
-                        return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                        return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                             if(snapProd.exists()) {
                                 const key = Object.keys(snapProd.val())[0];
                                 const prodOriginal = snapProd.val()[key];
                                 const stockDevuelto = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) + parseInt(item.cant);
-                                return database.ref(`tienda_datos/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
+                                return database.ref(`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
                             }
                         });
                     });
 
                     Promise.all(promesasDevolucion).then(() => {
-                        database.ref('ventas_historial/' + idVenta + '/estado').set('ANULADA').then(() => {
+                        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}/estado`).set('ANULADA').then(() => {
                             sysAlert("✅ Venta anulada. Stock devuelto al instante.", "Éxito");
                             render();
                         });
@@ -1003,31 +1109,31 @@
 
         function eliminarVentaNube(idVenta) { 
             sysConfirm("⚠️ ¿ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
-                database.ref('ventas_historial/' + idVenta).once('value').then(snap => {
+                database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
                     const v = snap.val();
                     if(!v) return;
                     
                     if (v.estado !== 'ANULADA') {
                         let isMaria = v.tienda === 'Variedades Maria';
                         let promesasDevolucion = v.det.map(item => {
-                            return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                            return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                                 if(snapProd.exists()) {
                                     const key = Object.keys(snapProd.val())[0];
                                     const prodOriginal = snapProd.val()[key];
                                     const stockDevuelto = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) + parseInt(item.cant);
-                                    return database.ref(`tienda_datos/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
+                                    return database.ref(`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
                                 }
                             });
                         });
 
                         Promise.all(promesasDevolucion).then(() => {
-                            database.ref('ventas_historial/' + idVenta).remove().then(() => {
+                            database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).remove().then(() => {
                                 sysAlert("✅ Registro eliminado y stock devuelto.");
                                 render();
                             });
                         });
                     } else {
-                        database.ref('ventas_historial/' + idVenta).remove().then(() => {
+                        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).remove().then(() => {
                             sysAlert("✅ Registro eliminado.");
                             render();
                         });
@@ -1055,7 +1161,7 @@
                 let ventaFinal = { ...ventaPendiente };
                 delete ventaFinal.id_offline; 
 
-                database.ref('tienda_datos').transaction(curr => {
+                database.ref(db.ruta_datos).transaction(curr => {
                     if (!curr || !curr.productos) return curr;
                     if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
 
@@ -1073,7 +1179,7 @@
                     return curr;
                 }, (error, committed) => {
                     if (committed) {
-                        database.ref('ventas_historial').push(ventaFinal).then(() => {
+                        database.ref(`${db.ruta_historial}ventas_historial`).push(ventaFinal).then(() => {
                             let cola = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
                             cola = cola.filter(v => v.id_offline !== ventaPendiente.id_offline);
                             localStorage.setItem('ventas_offline', JSON.stringify(cola));
@@ -1087,7 +1193,6 @@
             procesarCola(0);
         }
 
-        // 🔥 MOTOR DE VENTAS ULTRA RÁPIDO 🔥
        function procesarVenta() { 
             const t = parseFloat(document.getElementById('total-txt').innerText); 
             if(!cart.length || t <= 0) return; 
@@ -1111,9 +1216,33 @@
             const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
             const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
 
+            let descActivo = (db.config && db.config.desc_activo === 'SI');
+            let descPorc = parseFloat(db.config && db.config.desc_porcentaje ? db.config.desc_porcentaje : 10);
+            let descMin = parseInt(db.config && db.config.desc_minimo ? db.config.desc_minimo : 15);
+            let totalUnidades = 0;
+            cart.forEach(c => totalUnidades += parseInt(c.cant));
+            let aplicaDescuento = (descActivo && totalUnidades >= descMin);
+
+            let ahorroTotalFactura = 0;
+
             const detallesVenta = cart.map(c => { 
                 let sub = calcularSubtotal(c, c.cant); 
-                return { codigo: c.codigo, nombre: c.nombre, cant: parseInt(c.cant), pre: sub / c.cant, costo_uni: (c.costo || 0), cat: c.categoria || 'OTROS', propietario: c.propietario || 'OTROS' }; 
+                let subOriginal = sub;
+                if (aplicaDescuento && c.categoria && (c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA'))) {
+                    let ahorroItem = sub * (descPorc / 100);
+                    sub = sub - ahorroItem;
+                    ahorroTotalFactura += ahorroItem;
+                }
+                return { 
+                    codigo: c.codigo, 
+                    nombre: c.nombre, 
+                    cant: parseInt(c.cant), 
+                    pre: sub / c.cant, 
+                    pre_original: subOriginal / c.cant,
+                    costo_uni: (c.costo || 0), 
+                    cat: c.categoria || 'OTROS', 
+                    propietario: c.propietario || 'OTROS' 
+                }; 
             });
 
             const nuevaVenta = {
@@ -1121,6 +1250,7 @@
                 fecha_filtro: fechaFiltro,
                 total: t,
                 pago: pago,
+                ahorro_escolar: ahorroTotalFactura,
                 tienda: tiendaLocal,
                 estado: 'OK',
                 jornada_abierta: true,
@@ -1161,11 +1291,9 @@
                 return;
             }
 
-            // 🚀 BÚSQUEDA Y ACTUALIZACIÓN ULTRA RÁPIDA ONLINE
             let isMaria = tiendaLocal === 'Variedades Maria';
-            let refContador = isMaria ? database.ref('tienda_datos/cMaria') : database.ref('tienda_datos/cMarisol');
+            let refContador = isMaria ? database.ref(`${db.ruta_datos}/cMaria`) : database.ref(`${db.ruta_datos}/cMarisol`);
 
-            // 1. Obtenemos el número de ticket rapidísimo de la nube
             refContador.transaction(actual => (actual || 1) + 1, (err, committed, snap) => {
                 if (err || !committed) {
                     btnCobrar.innerText = "COBRAR";
@@ -1175,24 +1303,21 @@
 
                 nuevaVenta.ticket = snap.val() - 1;
 
-                // 2. Preparamos el paquete de actualizaciones directas
                 let actualizaciones = {};
-                const idNuevaVenta = database.ref('ventas_historial').push().key;
-                actualizaciones[`ventas_historial/${idNuevaVenta}`] = nuevaVenta;
+                const idNuevaVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
+                actualizaciones[`${db.ruta_historial}ventas_historial/${idNuevaVenta}`] = nuevaVenta;
 
-                // Buscamos las casillas exactas de los productos vendidos
                 let promesasBusqueda = cart.map(item => {
-                    return database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                    return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                         if(snapProd.exists()) {
                             const key = Object.keys(snapProd.val())[0];
                             const prodOriginal = snapProd.val()[key];
                             const stockRestante = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) - parseInt(item.cant);
-                            actualizaciones[`tienda_datos/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`] = stockRestante;
+                            actualizaciones[`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`] = stockRestante;
                         }
                     });
                 });
 
-                // 3. Subimos todo a la nube de un solo golpe (Tarda milisegundos)
                 Promise.all(promesasBusqueda).then(() => {
                     database.ref().update(actualizaciones).then(() => {
                         btnCobrar.innerText = "COBRAR";
@@ -1250,7 +1375,7 @@
                 det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: 'AJUSTE', propietario: catSocio }] 
             }; 
 
-            database.ref('tienda_datos').transaction(curr => {
+            database.ref(db.ruta_datos).transaction(curr => {
                 if(!curr) return curr;
                 let isMaria = tiendaDestino === 'Variedades Maria';
                 let num = isMaria ? (curr.cMaria || 1) : (curr.cMarisol || 1);
@@ -1259,7 +1384,7 @@
                 return curr;
             }, (error, committed) => {
                 if(committed) {
-                    database.ref('ventas_historial').push(ventaFantasma).then(() => {
+                    database.ref(`${db.ruta_historial}ventas_historial`).push(ventaFantasma).then(() => {
                         sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${catSocio}. El stock no fue modificado.`, "Éxito");
                         document.getElementById('modal-ajuste').classList.add('hidden');
                         cargarReportePorFechas();
@@ -1343,7 +1468,7 @@
                 timestamp: ahora.getTime()
             };
 
-            database.ref('tienda_datos/kardex_historial').push(registro).catch(err => {
+            database.ref(`${db.ruta_datos}/kardex_historial`).push(registro).catch(err => {
                 console.error("Error guardando kárdex:", err);
             });
         }
@@ -1382,7 +1507,7 @@
             };
             if (db.rol === 'ADMIN') datosGuardar.costo = cost;
 
-            database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(c).once('value').then(snap => {
+            database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(c).once('value').then(snap => {
                 if (snap.exists()) {
                     // SI YA EXISTE: Actualiza directo
                     const key = Object.keys(snap.val())[0]; 
@@ -1393,7 +1518,7 @@
                     datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? (parseInt(prodOriginal.stock_maria || 0) + st) : parseInt(prodOriginal.stock_maria || 0);
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? (parseInt(prodOriginal.stock_marisol || 0) + st) : parseInt(prodOriginal.stock_marisol || 0);
 
-                    database.ref(`tienda_datos/productos/${key}`).update(datosGuardar).then(() => {
+                    database.ref(`${db.ruta_datos}/productos/${key}`).update(datosGuardar).then(() => {
                         if (st > 0) registrarIngresoKardex(c, n, st); 
                         cerrarModal(); 
                         sysAlert("✅ Producto actualizado y stock sumado correctamente.");
@@ -1404,7 +1529,7 @@
                     datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
 
-                    database.ref('tienda_datos/productos').push(datosGuardar).then(() => {
+                    database.ref(`${db.ruta_datos}/productos`).push(datosGuardar).then(() => {
                         if (st > 0) registrarIngresoKardex(c, n, st); 
                         cerrarModal(); 
                         sysAlert("✅ Nuevo producto creado al instante.");
@@ -1415,7 +1540,7 @@
 
        function eliminarProductoDefinitivo(codigo) {
             sysConfirm("¿Eliminar stock de este producto en " + db.tiendaActual + "?", () => {
-                database.ref('tienda_datos/productos').orderByChild('codigo').equalTo(codigo).once('value').then(snap => {
+                database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(codigo).once('value').then(snap => {
                     if(snap.exists()) {
                         const key = Object.keys(snap.val())[0];
                         const p = snap.val()[key];
@@ -1429,9 +1554,9 @@
 
                         // Si ya está en cero en las dos tiendas, lo borra físico de la nube
                         if(stockMaria === 0 && stockMarisol === 0) {
-                            database.ref(`tienda_datos/productos/${key}`).remove().then(() => sysAlert("✅ Producto eliminado definitivamente de la base de datos."));
+                            database.ref(`${db.ruta_datos}/productos/${key}`).remove().then(() => sysAlert("✅ Producto eliminado definitivamente de la base de datos."));
                         } else {
-                            database.ref(`tienda_datos/productos/${key}`).update(updates).then(() => sysAlert("✅ Stock eliminado correctamente en esta tienda."));
+                            database.ref(`${db.ruta_datos}/productos/${key}`).update(updates).then(() => sysAlert("✅ Stock eliminado correctamente en esta tienda."));
                         }
                     }
                 }).catch(() => sysAlert("❌ Error al eliminar producto."));
@@ -1470,7 +1595,7 @@
             document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
         }
 
-        function limpiarCierresPasados() { sysConfirm(`¿BORRAR HISTORIAL?`, () => { database.ref('cierres_historial').once('value', snap => { const d = snap.val(); if(d) Object.keys(d).forEach(k => { if(d[k].tienda === db.tiendaActual) database.ref(`cierres_historial/${k}`).remove(); }); render(); }); }); }
+        function limpiarCierresPasados() { sysConfirm(`¿BORRAR HISTORIAL?`, () => { database.ref(`${db.ruta_historial}cierres_historial`).once('value', snap => { const d = snap.val(); if(d) Object.keys(d).forEach(k => { if(d[k].tienda === db.tiendaActual) database.ref(`${db.ruta_historial}cierres_historial/${k}`).remove(); }); render(); }); }); }
         
         function imprimirInventarioA4() { 
             const filtroInv = document.getElementById('busqueda-inventario') ? document.getElementById('busqueda-inventario').value.trim().toLowerCase() : '';
@@ -1507,7 +1632,10 @@
 
             const pa = document.getElementById('print-area'); 
             pa.className = "ticket-mode"; 
-            pa.innerHTML = `<div style="text-align:center;"><b>CIERRE DE CAJA</b><br>${nombreSucursalImpresa.toUpperCase()}<br>${c.fecha}</div><hr style="border:1px dashed #000; margin:8px 0">${nom1}: Q${c.lib.toFixed(2)}<br>${nom2}: Q${c.maq.toFixed(2)}<br>OTR: Q${c.otr.toFixed(2)}<hr style="border:1px dashed #000; margin:8px 0"><div style="text-align:center; font-size:16px"><b>TOTAL: Q${c.total.toFixed(2)}</b></div>`; window.print(); }
+            
+            let anchoPapel = (db.config && db.config.tamano_ticket) ? db.config.tamano_ticket : '72mm';
+
+            pa.innerHTML = `<div style="width: ${anchoPapel}; margin: 0 auto; font-family: 'Arial', sans-serif; font-size: 11px; padding: 2mm; color: #000; text-transform: uppercase;"><div style="text-align:center;"><b>CIERRE DE CAJA</b><br>${nombreSucursalImpresa.toUpperCase()}<br>${c.fecha}</div><hr style="border:1px dashed #000; margin:8px 0">${nom1}: Q${c.lib.toFixed(2)}<br>${nom2}: Q${c.maq.toFixed(2)}<br>OTR: Q${c.otr.toFixed(2)}<hr style="border:1px dashed #000; margin:8px 0"><div style="text-align:center; font-size:16px"><b>TOTAL: Q${c.total.toFixed(2)}</b></div></div>`; window.print(); }
 
         function cargarReportePorFechas() {
             const fIniStr = document.getElementById('rep-inicio').value; 
@@ -1517,7 +1645,7 @@
             let vLib = 0, vMaq = 0, vOtr = 0; let gLib = 0, gMaq = 0, gOtr = 0;
             const rb = document.getElementById('rep-ventas-body'); let htmlRepVentas = ''; 
 
-            database.ref('ventas_historial').orderByChild('fecha_filtro').startAt(fIniStr).endAt(fFinStr).once('value').then(snapVentas => {
+            database.ref(`${db.ruta_historial}ventas_historial`).orderByChild('fecha_filtro').startAt(fIniStr).endAt(fFinStr).once('value').then(snapVentas => {
                 snapVentas.forEach(child => {
                     let v = child.val();
                     if(v.tienda !== db.tiendaActual || v.estado === 'ANULADA') return; 
@@ -1535,7 +1663,7 @@
                 
                 if (rb) rb.innerHTML = htmlRepVentas;
 
-                database.ref('gastos_historial').orderByChild('fecha_filtro').startAt(fIniStr).endAt(fFinStr).once('value').then(snap => {
+                database.ref(`${db.ruta_historial}gastos_historial`).orderByChild('fecha_filtro').startAt(fIniStr).endAt(fFinStr).once('value').then(snap => {
                     let gastosDirectosLib = 0; let gastosDirectosMaq = 0; let gastosCompartidosTotal = 0; 
                     let depLib = 0; let depMaq = 0;
                     
@@ -1549,14 +1677,14 @@
                             if(item.is_deposito) {
                                 if(item.area === 'S1') depLib += item.monto; else if(item.area === 'S2') depMaq += item.monto;
                                 let colorBadge = item.area === "S1" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800";
-                                let nombreBadge = item.area === "S1" ? db.config.nombre_s1 : db.config.nombre_s2;
+                                let nombreBadge = item.area === "S1" ? (db.config.nombre_s1 || "SOCIO 1") : (db.config.nombre_s2 || "SOCIO 2");
                                 htmlDepositos += `<tr><td class="p-2 text-gray-500">${item.fechaRegistro.split(',')[0]}</td><td class="p-2"><span class="px-2 py-0.5 rounded font-black text-[9px] ${colorBadge}">${nombreBadge}</span></td><td class="p-2 uppercase font-semibold text-gray-700">${item.referencia}</td><td class="p-2 text-right text-green-600 font-bold">Q ${item.monto.toFixed(2)}</td><td class="p-2 text-center"><button onclick="eliminarDeposito('${child.key}')" class="text-red-500 hover:text-red-700 font-black">✕</button></td></tr>`;
                             } else {
                                 const asign = item.asignacion || 'COMPARTIDO'; if(asign === 'S1') gastosDirectosLib += item.monto; else if(asign === 'S2') gastosDirectosMaq += item.monto; else gastosCompartidosTotal += item.monto;
                                 let colorBadge = "bg-gray-200 text-gray-800"; 
                                 let nombreBadge = "COMPARTIDO";
-                                if(asign === "S1") { colorBadge = "bg-blue-100 text-blue-800"; nombreBadge = db.config.nombre_s1; }
-                                if(asign === "S2") { colorBadge = "bg-pink-100 text-pink-800"; nombreBadge = db.config.nombre_s2; }
+                                if(asign === "S1") { colorBadge = "bg-blue-100 text-blue-800"; nombreBadge = (db.config.nombre_s1 || "SOCIO 1"); }
+                                if(asign === "S2") { colorBadge = "bg-pink-100 text-pink-800"; nombreBadge = (db.config.nombre_s2 || "SOCIO 2"); }
                                 htmlGastos += `<tr><td class="p-2 text-gray-500">${item.fechaRegistro.split(',')[0]}</td><td class="p-2"><span class="px-2 py-0.5 rounded font-black text-[9px] ${colorBadge}">${nombreBadge}</span></td><td class="p-2 uppercase font-semibold text-gray-700">${item.descripcion}</td><td class="p-2 text-right text-red-600 font-bold">Q ${item.monto.toFixed(2)}</td><td class="p-2 text-center"><button type="button" onclick="eliminarGasto('${child.key}')" class="text-red-500 hover:text-red-700 font-black">✕</button></td></tr>`;
                             }
                         }
@@ -1634,7 +1762,7 @@
             
             if(btn) { btn.disabled = true; btn.innerText = "GUARDANDO..."; }
             
-            database.ref('gastos_historial').push(nuevoGasto).then(() => { 
+            database.ref(`${db.ruta_historial}gastos_historial`).push(nuevoGasto).then(() => { 
                 document.getElementById('gasto-desc').value = ''; 
                 document.getElementById('gasto-monto').value = ''; 
                 if(btn) { btn.disabled = false; btn.innerText = "GUARDAR GASTO"; }
@@ -1645,7 +1773,7 @@
             });
         }
         
-        function eliminarGasto(key) { sysConfirm("¿Eliminar este registro de gasto?", () => database.ref(`gastos_historial/${key}`).remove().then(() => cargarReportePorFechas())); }
+        function eliminarGasto(key) { sysConfirm("¿Eliminar este registro de gasto?", () => database.ref(`${db.ruta_historial}gastos_historial/${key}`).remove().then(() => cargarReportePorFechas())); }
 
         function guardarDeposito(btn) {
             const area = document.getElementById('dep-area').value;
@@ -1674,7 +1802,7 @@
             
             if(btn) { btn.disabled = true; btn.innerText = "GUARDANDO..."; }
 
-            database.ref('gastos_historial').push(nuevoDeposito).then(() => { 
+            database.ref(`${db.ruta_historial}gastos_historial`).push(nuevoDeposito).then(() => { 
                 document.getElementById('dep-ref').value = ''; 
                 document.getElementById('dep-monto').value = ''; 
                 if(btn) { btn.disabled = false; btn.innerText = "REGISTRAR DEPÓSITO"; }
@@ -1688,7 +1816,7 @@
         
         function eliminarDeposito(key) { 
             sysConfirm("⚠️ ¿Estás seguro de eliminar este registro de depósito?", () => {
-                database.ref(`gastos_historial/${key}`).remove().then(() => cargarReportePorFechas()); 
+                database.ref(`${db.ruta_historial}gastos_historial/${key}`).remove().then(() => cargarReportePorFechas()); 
             });
         }
 
@@ -1733,7 +1861,7 @@
             sysPrompt("Introduce el NUEVO PIN numérico para el Administrador (mínimo 4 dígitos):", (nuevoPin) => {
                 if (nuevoPin && nuevoPin.trim().length >= 4) { 
                     db.admin_pin = nuevoPin.trim(); 
-                    database.ref('tienda_datos/admin_pin').set(db.admin_pin).then(() => { sysAlert("✅ PIN de Administrador actualizado correctamente en la nube."); }); 
+                    database.ref(`${db.ruta_datos}/admin_pin`).set(db.admin_pin).then(() => { sysAlert("✅ PIN de Administrador actualizado correctamente en la nube."); }); 
                 } else { 
                     sysAlert("❌ Operación cancelada. El PIN debe tener al menos 4 números."); 
                 }
@@ -1742,13 +1870,13 @@
 
         function migrarTicketsViejos() {
             sysConfirm("¿Mover tickets antiguos al nuevo sistema? Haz esto SOLO UNA VEZ.", () => {
-                database.ref('tienda_datos/ventas').once('value').then(snap => {
+                database.ref(`${db.ruta_datos}/ventas`).once('value').then(snap => {
                     let viejas = snap.val();
                     if(!viejas) return sysAlert("No se encontraron tickets antiguos guardados.");
                     let actualizacionesVentas = {}; let conteo = 0;
                     const procesarVenta = (v) => {
                         if(v && v.ticket) {
-                            let idVenta = database.ref('ventas_historial').push().key;
+                            let idVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
                             actualizacionesVentas[idVenta] = v;
                             conteo++;
                         }
@@ -1756,8 +1884,8 @@
                     if(Array.isArray(viejas)) viejas.forEach(procesarVenta);
                     else Object.values(viejas).forEach(procesarVenta);
                     
-                    database.ref('ventas_historial').update(actualizacionesVentas).then(() => {
-                        return database.ref('tienda_datos/ventas').remove();
+                    database.ref(`${db.ruta_historial}ventas_historial`).update(actualizacionesVentas).then(() => {
+                        return database.ref(`${db.ruta_datos}/ventas`).remove();
                     }).then(() => {
                         sysAlert(`✅ Éxito. Se movieron ${conteo} tickets antiguos al nuevo sistema.`);
                         render();
@@ -1775,7 +1903,7 @@
             const f = new Date(); 
             const fechaFiltro = fIniStr || `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
             
-            database.ref('ventas_historial').orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
+            database.ref(`${db.ruta_historial}ventas_historial`).orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
                 let ventasHoy = [];
                 let actualizaciones = {};
                 
@@ -1783,7 +1911,7 @@
                     let v = child.val();
                     if (v.tienda === tiendaLocal && v.jornada_abierta && v.estado === 'OK') {
                         ventasHoy.push(v);
-                        actualizaciones['/ventas_historial/' + child.key + '/jornada_abierta'] = false;
+                        actualizaciones[`/${db.ruta_historial}ventas_historial/${child.key}/jornada_abierta`] = false;
                     }
                 });
                 
@@ -1802,7 +1930,7 @@
 
                 sysConfirm(`¿ESTÁS SEGURO DE CERRAR LA JORNADA?\n\nTotal a entregar en caja: Q ${tT.toFixed(2)}`, () => {
                     database.ref().update(actualizaciones).then(() => {
-                        database.ref('cierres_historial').push(cierre);
+                        database.ref(`${db.ruta_historial}cierres_historial`).push(cierre);
                         setTimeout(() => {
                             sysConfirm(`✅ JORNADA CERRADA EXITOSAMENTE.\n\nTotal Entregado: Q ${cierre.total.toFixed(2)}\n${nom1}: Q ${cierre.lib.toFixed(2)}\n${nom2}: Q ${cierre.maq.toFixed(2)}\n\nEl sistema está en 0 para el nuevo turno.\n\n¿Deseas IMPRIMIR el comprobante de cierre?`, () => {
                                 imprimirTicketCierre(cierre);
@@ -1818,7 +1946,7 @@
             sysConfirm("¿Seguro que deseas eliminar ventas con productos de 'PRUEBA' de la base de datos central?", () => {
                 const tiendaLocal = db.tiendaActual;
                 
-                database.ref('ventas_historial').once('value').then(snap => {
+                database.ref(`${db.ruta_historial}ventas_historial`).once('value').then(snap => {
                     let hayBorrados = false;
                     
                     snap.forEach(child => {
@@ -1827,8 +1955,8 @@
                             if(v.det && v.det.some(d => String(d.nombre).includes("PRUEBA") || String(d.codigo).includes("PRUEBA"))) { 
                                 hayBorrados = true;
                                 
-                                database.ref('ventas_historial/' + child.key).remove().then(() => {
-                                    database.ref('tienda_datos').transaction(curr => {
+                                database.ref(`${db.ruta_historial}ventas_historial/${child.key}`).remove().then(() => {
+                                    database.ref(db.ruta_datos).transaction(curr => {
                                         if (!curr || !curr.productos) return curr;
                                         if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
                                         
@@ -1933,7 +2061,7 @@
             
             let resImportados = 0; let resActualizados = 0; let resIgnorados = 0;
 
-            database.ref('tienda_datos').transaction(curr => {
+            database.ref(db.ruta_datos).transaction(curr => {
                 if (!curr) return curr;
                 if (!curr.productos) curr.productos = [];
                 else if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
@@ -2019,7 +2147,7 @@
                 if (palabra && palabra.trim().toUpperCase() === "BORRAR") { 
                     const tiendaLocal = db.tiendaActual;
                     
-                    database.ref('tienda_datos').transaction(curr => {
+                    database.ref(db.ruta_datos).transaction(curr => {
                         if (!curr || !curr.productos) return curr;
                         if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
 
@@ -2051,7 +2179,7 @@
                 sysPrompt(`Escribe ELIMINAR para borrar cierres y ventas del año ${anioBorrar}:`, (palabra) => {
                     if (palabra !== "ELIMINAR") return; 
                     
-                    database.ref('cierres_historial').once('value', snap => { 
+                    database.ref(`${db.ruta_historial}cierres_historial`).once('value', snap => { 
                         snap.forEach(child => { 
                             const c = child.val(); 
                             if (c.fecha && c.fecha.split('/')[2].split(',')[0].trim() === anioBorrar && c.tienda === db.tiendaActual) { 
@@ -2060,12 +2188,12 @@
                         }); 
                     }); 
                     
-                    database.ref('ventas_historial').once('value', snap => { 
+                    database.ref(`${db.ruta_historial}ventas_historial`).once('value', snap => { 
                         let actualizaciones = {};
                         snap.forEach(child => { 
                             const v = child.val(); 
                             if (v.tienda === db.tiendaActual && v.fecha && v.fecha.split('/')[2].split(',')[0].trim() === anioBorrar) { 
-                                actualizaciones['/ventas_historial/' + child.key] = null;
+                                actualizaciones[`/${db.ruta_historial}ventas_historial/${child.key}`] = null;
                             } 
                         }); 
                         database.ref().update(actualizaciones).then(() => {
@@ -2101,32 +2229,90 @@
             renderCart(); 
         }
 
+        // 🔥 FUNCIÓN CON DESCUENTO INTELIGENTE (SÓLO PAPELERÍA) 🔥
         function renderCart() { 
-            const b = document.getElementById('cart-body'); let htmlCarrito = ''; let t = 0; 
+            const b = document.getElementById('cart-body'); let htmlCarrito = ''; 
+            let tFinal = 0; let totalUnidades = 0; let tBrutoSinDescuento = 0;
+
+            let descActivo = (db.config && db.config.desc_activo === 'SI');
+            let descPorc = parseFloat(db.config && db.config.desc_porcentaje ? db.config.desc_porcentaje : 10);
+            let descMin = parseInt(db.config && db.config.desc_minimo ? db.config.desc_minimo : 15);
+
+            cart.forEach(c => totalUnidades += parseInt(c.cant));
+            let aplicaDescuento = (descActivo && totalUnidades >= descMin);
+            
+            let ahorroTotal = 0;
+
             cart.forEach((c, i) => { 
-                let subtotalItem = calcularSubtotal(c, c.cant); t += subtotalItem; const medIcon = c.categoria === 'FARMACIA' ? '💊 ' : '';
-                let precioUnitarioMostrado = (subtotalItem / c.cant).toFixed(2);
+                let subtotalOriginal = calcularSubtotal(c, c.cant); 
+                tBrutoSinDescuento += subtotalOriginal;
+                
+                let subtotalCobrado = subtotalOriginal;
+                
+                // Solo le hace descuento a la Papelería/Librería
+                if (aplicaDescuento && c.categoria && (c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA'))) {
+                    let ahorroItem = subtotalOriginal * (descPorc / 100);
+                    subtotalCobrado = subtotalOriginal - ahorroItem;
+                    ahorroTotal += ahorroItem;
+                }
+                
+                tFinal += subtotalCobrado;
+
+                const medIcon = c.categoria === 'FARMACIA' ? '💊 ' : '';
+                let precioUnitarioMostrado = (subtotalCobrado / c.cant).toFixed(2);
                 let propColor = c.propietario === 'S1' ? 'text-blue-500' : (c.propietario === 'S2' ? 'text-pink-500' : 'text-gray-400');
                 const miniImgCart = c.imagen ? `<img src="${c.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
-                htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3 flex items-center gap-2">${miniImgCart} <span class="${propColor}">■</span> <span>${medIcon}${c.nombre}</span></td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right text-gray-500">Q${precioUnitarioMostrado} c/u</td><td class="text-right">Q${subtotalItem.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
+                
+                let clasePrecio = (subtotalCobrado < subtotalOriginal) ? 'text-green-600 font-black' : 'text-gray-500';
+
+                htmlCarrito += `<tr class="border-b uppercase text-[11px] font-black"><td class="py-3 flex items-center gap-2">${miniImgCart} <span class="${propColor}">■</span> <span>${medIcon}${c.nombre}</span></td><td class="px-2"><input type="number" min="1" value="${c.cant}" class="w-12 border rounded text-center" onchange="actualizarCantidadCart(${i}, this.value)"></td><td class="text-right ${clasePrecio}">Q${precioUnitarioMostrado} c/u</td><td class="text-right">Q${subtotalCobrado.toFixed(2)}</td><td onclick="cart.splice(${i},1);renderCart()" class="text-red-500 pl-2 cursor-pointer font-bold">✕</td></tr>`; 
             }); 
-            b.innerHTML = htmlCarrito; document.getElementById('total-txt').innerText = t.toFixed(2); calcVuelto(); 
+            
+            let htmlDescuentoInfo = '';
+            if (aplicaDescuento && ahorroTotal > 0) {
+                htmlDescuentoInfo = `<div class="bg-green-100 text-green-800 p-2 rounded-xl text-center font-black text-[10px] mb-2 border border-green-300">🎓 DESCUENTO TEMPORADA (-${descPorc}%) APLICADO A PAPELERÍA</div>`;
+            } else if (descActivo && totalUnidades > 0 && totalUnidades < descMin) {
+                htmlDescuentoInfo = `<div class="bg-orange-50 text-orange-600 p-2 rounded-xl text-center font-bold text-[10px] mb-2 border border-orange-200">Faltan ${descMin - totalUnidades} útiles para descuento</div>`;
+            }
+            
+            const descContainer = document.getElementById('desc-info-container');
+            if(descContainer) descContainer.innerHTML = htmlDescuentoInfo;
+            
+            b.innerHTML = htmlCarrito; 
+            document.getElementById('total-txt').innerText = tFinal.toFixed(2); 
+            calcVuelto(); 
         }
 
         function actualizarCantidadCart(index, valor) { let cant = parseInt(valor) || 1; if(cant < 1) cant = 1; const p = db.productos.find(x => x.codigo === cart[index].codigo); if(p) { const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); if(cant > sMax) { sysAlert("Solo hay " + sMax + " en stock."); cant = sMax; } } cart[index].cant = cant; renderCart(); }
         
+        // 🔥 FUNCIÓN DE IMPRESIÓN CON FORMATO DINÁMICO DESDE AJUSTES 🔥
         function imprimirTicket(v) { 
-            const nombreNegocio = (db.config && db.config.nombre_tienda) ? db.config.nombre_tienda : "VARIEDADES M&M";
-            const telefonoNegocio = (db.config && db.config.telefono) ? db.config.telefono : "38301196";
+            const nombreNegocio = (db.config && db.config.nombre_tienda) ? db.config.nombre_tienda : "MI TIENDA";
+            const telefonoNegocio = (db.config && db.config.telefono) ? db.config.telefono : "00000000";
             const mensajeGracias = (db.config && db.config.mensaje_ticket) ? db.config.mensaje_ticket : "¡GRACIAS POR SU COMPRA!";
             
             const nombreSucursalImpresa = v.tienda === 'Variedades Maria' 
-                ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA") 
-                : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL");
+                ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "SUCURSAL A") 
+                : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "SUCURSAL B");
 
             const pa = document.getElementById('print-area'); 
             pa.className = "ticket-mode"; 
-            pa.innerHTML = `<div style="text-align:center;"><b style="font-size:16px">${nombreNegocio}</b><br>${nombreSucursalImpresa.toUpperCase()}<br>TEL: ${telefonoNegocio}<br>#${v.ticket} | ${v.fecha.split(',')[0]}</div><hr style="border:1px dashed #000; margin:8px 0">${v.det.map(d => `<div style="margin-bottom:4px"><div style="display:flex; justify-content:space-between"><span>${d.nombre.substring(0,22)}</span><span>Q${(d.cant*d.pre).toFixed(2)}</span></div><div style="font-size:9px; color:#555">${d.cant} x Q${d.pre.toFixed(2)}</div></div>`).join('')}<hr style="border:1px dashed #000; margin:8px 0"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px"><span>TOTAL:</span><span>Q${v.total.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px; margin-top:4px"><span>Efectivo:</span><span>Q${v.pago.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px"><span>Cambio:</span><span>Q${(v.pago - v.total).toFixed(2)}</span></div><br><center>${mensajeGracias}</center>`; 
+            
+            let detallesHTML = v.det.map(d => {
+                let sub = d.cant * d.pre;
+                return `<div style="margin-bottom:4px"><div style="display:flex; justify-content:space-between"><span>${d.nombre.substring(0,22)}</span><span>Q${sub.toFixed(2)}</span></div><div style="font-size:9px; color:#555">${d.cant} x Q${d.pre.toFixed(2)}</div></div>`;
+            }).join('');
+
+            let htmlDescuento = '';
+            if(v.ahorro_escolar && v.ahorro_escolar > 0) {
+                htmlDescuento = `<div style="display:flex; justify-content:space-between; font-size:11px; font-weight:bold; margin-top:4px; color:#000;"><span>Desc. Papelería Ahorrado:</span><span>-Q${v.ahorro_escolar.toFixed(2)}</span></div>`;
+            }
+
+            let anchoPapel = (db.config && db.config.tamano_ticket) ? db.config.tamano_ticket : '72mm';
+
+            pa.innerHTML = `<div style="width: ${anchoPapel}; margin: 0 auto; font-family: 'Arial', sans-serif; font-size: 11px; padding: 2mm; color: #000; text-transform: uppercase;">
+                <div style="text-align:center;"><b style="font-size:16px">${nombreNegocio}</b><br>${nombreSucursalImpresa.toUpperCase()}<br>TEL: ${telefonoNegocio}<br>#${v.ticket} | ${v.fecha.split(',')[0]}</div><hr style="border:1px dashed #000; margin:8px 0">${detallesHTML}<hr style="border:1px dashed #000; margin:8px 0">${htmlDescuento}<div style="display:flex; justify-content:space-between; font-weight:black; font-size:14px; margin-top:4px;"><span>TOTAL PAGADO:</span><span>Q${v.total.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px; margin-top:4px"><span>Efectivo:</span><span>Q${v.pago.toFixed(2)}</span></div><div style="display:flex; justify-content:space-between; font-size:10px"><span>Cambio:</span><span>Q${(v.pago - v.total).toFixed(2)}</span></div><br><center>${mensajeGracias}</center>
+            </div>`; 
             window.print(); 
         }
 
@@ -2134,22 +2320,41 @@
         
         function cambiarTienda() { document.getElementById('modal-tienda').classList.replace('hidden', 'flex'); }
         
-        function seleccionarTienda(nombreTienda, boton) { document.querySelectorAll('#modal-tienda button').forEach(b => { b.classList.remove('ring-4', 'ring-yellow-400', 'scale-110'); }); if(boton) boton.classList.add('ring-4', 'ring-yellow-400', 'scale-110'); db.tiendaActual = nombreTienda; cart = []; renderCart(); render(); setTimeout(() => { document.getElementById('modal-tienda').classList.replace('flex', 'hidden'); }, 350); }
+        function seleccionarTienda(nombreTienda, boton) { 
+            try {
+                document.querySelectorAll('#modal-tienda button').forEach(b => { 
+                    b.classList.remove('ring-4', 'ring-yellow-400', 'scale-110'); 
+                }); 
+                if(boton) boton.classList.add('ring-4', 'ring-yellow-400', 'scale-110'); 
+                
+                db.tiendaActual = nombreTienda; 
+                cart = []; 
+                
+                if(db.productos) db.productos = db.productos.filter(p => p !== null && p !== undefined);
+
+                renderCart(); 
+                render(); 
+            } catch (error) {
+                console.error("Error cargando tienda:", error);
+            } finally {
+                setTimeout(() => { document.getElementById('modal-tienda').classList.replace('flex', 'hidden'); }, 350); 
+            }
+        }
         
         function calcVuelto() { const t = parseFloat(document.getElementById('total-txt').innerText); const p = parseFloat(document.getElementById('pago-txt').value) || 0; document.getElementById('vuelto-txt').innerText = Math.max(0, p - t).toFixed(2); }
 
         let cierresGlobalData = null;
         function cargarCierres() { 
             const filtroFecha = document.getElementById('filtro-fecha-cierre') ? document.getElementById('filtro-fecha-cierre').value : '';
-            database.ref('cierres_historial').off(); 
+            database.ref(`${db.ruta_historial}cierres_historial`).off(); 
             
             if (filtroFecha) {
-                database.ref('cierres_historial').orderByChild('fecha_filtro').equalTo(filtroFecha).on('value', snap => { 
+                database.ref(`${db.ruta_historial}cierres_historial`).orderByChild('fecha_filtro').equalTo(filtroFecha).on('value', snap => { 
                     cierresGlobalData = snap.val(); 
                     aplicarFiltroCierresUI(); 
                 }); 
             } else {
-                database.ref('cierres_historial').limitToLast(20).on('value', snap => { 
+                database.ref(`${db.ruta_historial}cierres_historial`).limitToLast(20).on('value', snap => { 
                     cierresGlobalData = snap.val(); 
                     aplicarFiltroCierresUI(); 
                 });
@@ -2178,7 +2383,7 @@
 
         function aplicarFiltroCierres() { cargarCierres(); }
 
-        function eliminarCierreIndividual(key) { sysConfirm("⚠️ ¿Estás seguro de ELIMINAR SÓLO ESTE CIERRE?", () => database.ref(`cierres_historial/${key}`).remove()); }
+        function eliminarCierreIndividual(key) { sysConfirm("⚠️ ¿Estás seguro de ELIMINAR SÓLO ESTE CIERRE?", () => database.ref(`${db.ruta_historial}cierres_historial/${key}`).remove()); }
         function verMovimiento(c) { document.getElementById('mov-fecha').innerText = c.fecha; document.getElementById('mov-total').innerText = `Q ${c.total.toFixed(2)}`; const body = document.getElementById('mov-body'); let htmlMovimiento = ''; let consolidado = {}; c.movimientos.forEach(v => v.det.forEach(i => { if(!consolidado[i.nombre]) consolidado[i.nombre] = { cant: 0, sub: 0 }; consolidado[i.nombre].cant += i.cant; consolidado[i.nombre].sub += (i.cant * i.pre); })); for(let p in consolidado) htmlMovimiento += `<tr class="uppercase text-[11px]"><td class="py-2">${p}</td><td class="text-center">x${consolidado[p].cant}</td><td class="text-right">Q${consolidado[p].sub.toFixed(2)}</td></tr>`; body.innerHTML = htmlMovimiento; document.getElementById('modal-movimiento').classList.remove('hidden'); }
         function cerrarMovimiento() { document.getElementById('modal-movimiento').classList.add('hidden'); }
         
@@ -2202,7 +2407,6 @@
             setTimeout(() => document.getElementById('p-cod').focus(), 50); 
         }
 
-        // 🔥 LECTURA DEL KÁRDEX SÚPER RÁPIDA (Optimizada) 🔥
         function verKardex(codigo) {
             const p = db.productos.find(x => x.codigo === codigo);
             if (!p) return;
@@ -2227,8 +2431,7 @@
                 return a.includes(b) || b.includes(a);
             };
 
-            // 1. Salidas (Ventas)
-            let p1 = database.ref('ventas_historial').once('value').then(snap => {
+            let p1 = database.ref(`${db.ruta_historial}ventas_historial`).once('value').then(snap => {
                 snap.forEach(child => {
                     let v = child.val() || {};
                     if(esMismaTienda(v.tienda, db.tiendaActual) && v.det) {
@@ -2251,8 +2454,7 @@
                 });
             }).catch(() => {});
 
-            // 2. Ingresos (Búsqueda Directa Escalable)
-            let p2 = database.ref('tienda_datos/kardex_historial').orderByChild('codigo').equalTo(codBuscado).once('value').then(snap => {
+            let p2 = database.ref(`${db.ruta_datos}/kardex_historial`).orderByChild('codigo').equalTo(codBuscado).once('value').then(snap => {
                 snap.forEach(child => {
                     if (procesados.has(child.key)) return;
                     procesados.add(child.key);
@@ -2316,7 +2518,7 @@
             document.getElementById('modal-kardex').classList.add('hidden');
             document.getElementById('modal-kardex').classList.remove('flex');
         }
-        // 🔥 VERSIÓN BLINDADA DEL REPORTE MAESTRO 🔥
+
         function imprimirReporteMaestro() {
             try {
                 const fIniStr = document.getElementById('rep-inicio') ? document.getElementById('rep-inicio').value : ""; 
@@ -2325,15 +2527,14 @@
                 const nom1 = (db.config && db.config.nombre_s1) ? db.config.nombre_s1 : "SOCIO 1";
                 const nom2 = (db.config && db.config.nombre_s2) ? db.config.nombre_s2 : "SOCIO 2";
                 const nombreSucursalImpresa = db.tiendaActual === 'Variedades Maria' 
-                    ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "VARIEDADES MARIA") 
-                    : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "MARISOL");
+                    ? ((db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "SUCURSAL A") 
+                    : ((db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "SUCURSAL B");
 
                 const pa = document.getElementById('print-area'); 
                 if(!pa) return sysAlert("Error: No se encontró el área de impresión.");
 
                 pa.className = "a4-mode"; 
                 
-                // Extrae los textos de forma segura para que no se congele el botón
                 const getText = (id) => document.getElementById(id) ? document.getElementById(id).innerText : "Q 0.00";
 
                 pa.innerHTML = `
@@ -2385,7 +2586,6 @@
                     </div>
                 </div>`; 
                 
-                // Le damos 300 milisegundos a Chrome para procesar antes de forzar la ventana
                 setTimeout(() => {
                     window.print();
                 }, 300);
@@ -2395,7 +2595,155 @@
                 sysAlert("Hubo un error al preparar la hoja. Inténtalo de nuevo.");
             }
         }
+
+       function procesarVenta() { 
+            const t = parseFloat(document.getElementById('total-txt').innerText); 
+            if(!cart.length || t <= 0) return; 
+            const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
+            if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
+
+            const tiendaLocal = db.tiendaActual;
+            
+            for (let item of cart) { 
+                const p = db.productos.find(x => x.codigo === item.codigo); 
+                if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
+                const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
+                if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
+            }
+
+            const btnCobrar = document.getElementById('btn-cobrar');
+            btnCobrar.innerText = "COBRANDO...";
+            btnCobrar.disabled = true;
+
+            const f = new Date(); 
+            const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+            const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
+
+            let descActivo = (db.config && db.config.desc_activo === 'SI');
+            let descPorc = parseFloat(db.config && db.config.desc_porcentaje ? db.config.desc_porcentaje : 10);
+            let descMin = parseInt(db.config && db.config.desc_minimo ? db.config.desc_minimo : 15);
+            let totalUnidades = 0;
+            cart.forEach(c => totalUnidades += parseInt(c.cant));
+            let aplicaDescuento = (descActivo && totalUnidades >= descMin);
+
+            let ahorroTotalFactura = 0;
+
+            const detallesVenta = cart.map(c => { 
+                let sub = calcularSubtotal(c, c.cant); 
+                let subOriginal = sub;
+                if (aplicaDescuento && c.categoria && (c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA'))) {
+                    let ahorroItem = sub * (descPorc / 100);
+                    sub = sub - ahorroItem;
+                    ahorroTotalFactura += ahorroItem;
+                }
+                return { 
+                    codigo: c.codigo, 
+                    nombre: c.nombre, 
+                    cant: parseInt(c.cant), 
+                    pre: sub / c.cant, 
+                    pre_original: subOriginal / c.cant,
+                    costo_uni: (c.costo || 0), 
+                    cat: c.categoria || 'OTROS', 
+                    propietario: c.propietario || 'OTROS' 
+                }; 
+            });
+
+            const nuevaVenta = {
+                fecha: new Date().toLocaleString(),
+                fecha_filtro: fechaFiltro,
+                total: t,
+                pago: pago,
+                ahorro_escolar: ahorroTotalFactura,
+                tienda: tiendaLocal,
+                estado: 'OK',
+                jornada_abierta: true,
+                det: detallesVenta
+            };
+
+            if (!navigator.onLine) {
+                nuevaVenta.ticket = "PENDIENTE";
+                nuevaVenta.id_offline = idUnicoOffline;
+                
+                let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+                pendientes.push(nuevaVenta);
+                localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
+
+                cart.forEach(item => { 
+                    const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
+                    if(pIdx > -1) { 
+                        if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
+                        else db.productos[pIdx].stock_marisol -= item.cant; 
+                    } 
+                });
+                
+                persistir(); 
+
+                cart = []; 
+                document.getElementById('pago-txt').value = ''; 
+                renderCart(); 
+                render();
+
+                btnCobrar.innerText = "COBRAR";
+                btnCobrar.disabled = false;
+
+                setTimeout(() => {
+                    sysConfirm(`⚠️ VENTA REGISTRADA SIN INTERNET.\nSe guardó en la sala de espera y se subirá al volver la conexión.\n\n¿Desea IMPRIMIR el comprobante temporal?`, () => {
+                        imprimirTicket(nuevaVenta);
+                    }, "Cobro Local Activo");
+                }, 100);
+                return;
+            }
+
+            let isMaria = tiendaLocal === 'Variedades Maria';
+            let refContador = isMaria ? database.ref(`${db.ruta_datos}/cMaria`) : database.ref(`${db.ruta_datos}/cMarisol`);
+
+            refContador.transaction(actual => (actual || 1) + 1, (err, committed, snap) => {
+                if (err || !committed) {
+                    btnCobrar.innerText = "COBRAR";
+                    btnCobrar.disabled = false;
+                    return sysAlert("❌ Error de conexión al generar ticket.");
+                }
+
+                nuevaVenta.ticket = snap.val() - 1;
+
+                let actualizaciones = {};
+                const idNuevaVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
+                actualizaciones[`${db.ruta_historial}ventas_historial/${idNuevaVenta}`] = nuevaVenta;
+
+                let promesasBusqueda = cart.map(item => {
+                    return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                        if(snapProd.exists()) {
+                            const key = Object.keys(snapProd.val())[0];
+                            const prodOriginal = snapProd.val()[key];
+                            const stockRestante = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) - parseInt(item.cant);
+                            actualizaciones[`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`] = stockRestante;
+                        }
+                    });
+                });
+
+                Promise.all(promesasBusqueda).then(() => {
+                    database.ref().update(actualizaciones).then(() => {
+                        btnCobrar.innerText = "COBRAR";
+                        btnCobrar.disabled = false;
+                        
+                        cart = []; 
+                        document.getElementById('pago-txt').value = ''; 
+                        renderCart(); 
+                        render();
+                        
+                        setTimeout(() => {
+                            sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
+                                imprimirTicket(nuevaVenta);
+                            }, "Venta Exitosa");
+                        }, 100);
+                    }).catch(err => {
+                        btnCobrar.innerText = "COBRAR";
+                        btnCobrar.disabled = false;
+                        sysAlert("❌ Error al descontar stock: " + err);
+                    });
+                });
+            });
+        }
     </script>
 </body>
 </html>
-
