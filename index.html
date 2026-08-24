@@ -28,6 +28,11 @@
     </script>
 
     <style>
+               /* 🔥 BLOQUEA EL DESLIZAR PARA ACTUALIZAR EN CELULARES 🔥 */
+        body, html {
+            overscroll-behavior-y: none;
+        }
+ 
         .tab-active { border-bottom: 4px solid currentColor; font-weight: bold; color: white !important; }
         .hidden { display: none !important; }
         .contenedor-flexible { display: flex; flex-direction: column; gap: 20px; }
