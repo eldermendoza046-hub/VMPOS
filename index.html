@@ -134,6 +134,14 @@
         <!-- SECCIÓN VENTAS -->
         <div id="section-ventas" class="contenedor-flexible">
             <div class="zona-busqueda space-y-4">
+
+                <!-- 🔥 BOTÓN DE SERVICIO COMODÍN 🔥 -->
+<div class="mb-4">
+    <button onclick="abrirModalServicio()" class="w-full bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-2xl font-black text-sm uppercase shadow-md transition-transform active:scale-95 border-b-4 border-purple-800 flex items-center justify-center gap-2">
+        ➕ Servicio / Cobro Extra
+    </button>
+</div>
+
                <input type="text" id="busqueda" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
                 <div id="res-busqueda" class="bg-white divide-y shadow-xl rounded-xl overflow-hidden border"></div>
                 <div class="bg-white p-4 rounded-2xl shadow-md min-h-[300px] border">
@@ -479,6 +487,23 @@
         </div>
     </div>
 
+    <!-- 🔥 MODAL SERVICIO COMODÍN 🔥 -->
+<div id="modal-servicio" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[400] backdrop-blur-sm">
+    <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl border-4 border-purple-500 text-center">
+        <h3 class="text-lg font-black mb-2 text-purple-700 uppercase italic">Cobro Extra / Servicio</h3>
+        <p class="text-[10px] text-gray-500 font-bold uppercase mb-4">Copias, redacción, envolturas, mano de obra, etc.</p>
+        
+        <input type="text" id="input-desc-servicio" placeholder="Descripción (Ej. 45 Copias Color)" class="w-full p-3 border-2 rounded-xl text-center text-sm font-bold text-gray-700 outline-none focus:border-purple-500 mb-3 uppercase">
+        
+        <input type="number" id="input-monto-servicio" placeholder="Monto Q 0.00" class="w-full p-4 border-2 rounded-xl text-center text-3xl font-black text-purple-600 outline-none focus:border-purple-500 mb-4">
+        
+        <div class="flex gap-2">
+            <button onclick="document.getElementById('modal-servicio').classList.replace('flex', 'hidden')" class="flex-1 bg-gray-200 py-3 rounded-xl font-black uppercase text-xs text-gray-600 hover:bg-gray-300">Cancelar</button>
+            <button onclick="guardarServicioDinamico()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black uppercase text-xs shadow-lg">Añadir al Carrito</button>
+        </div>
+    </div>
+</div>
+
     <!-- MODAL PRODUCTO -->
     <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
@@ -712,6 +737,8 @@
         }
 
         function calcularSubtotal(c, cantidad) {
+            if(c.es_servicio) return c.venta * cantidad; // Si es un servicio, precio normal por cantidad
+
             let pBase = getPrecioActual(c);
             if(c.categoria === 'FARMACIA' && c.cant_blister > 0 && c.precio_blister > 0) {
                 let blisters = Math.floor(cantidad / c.cant_blister); 
@@ -880,7 +907,6 @@
             if(document.getElementById('btn-sel-suc1')) document.getElementById('btn-sel-suc1').innerText = "🏪 " + nombreSucursal1;
             if(document.getElementById('btn-sel-suc2')) document.getElementById('btn-sel-suc2').innerText = "🏬 " + nombreSucursal2;
 
-            // 🔥 SOLUCIÓN A LA FALLA DEL CORTOCIRCUITO (Se le agregaron amortiguadores) 🔥
             document.getElementById('c-lbl-s1').innerText = (db.config.nombre_s1 || "SOCIO 1").substring(0, 10);
             document.getElementById('c-lbl-s2').innerText = (db.config.nombre_s2 || "SOCIO 2").substring(0, 10);
             if(document.getElementById('rep-titulo-s1')) document.getElementById('rep-titulo-s1').innerText = "👤 Socio 1: " + (db.config.nombre_s1 || "SOCIO 1");
@@ -893,7 +919,6 @@
             if(document.getElementById('gas-opt-s1')) document.getElementById('gas-opt-s1').innerText = "SOLO " + (db.config.nombre_s1 || "SOCIO 1");
             if(document.getElementById('gas-opt-s2')) document.getElementById('gas-opt-s2').innerText = "SOLO " + (db.config.nombre_s2 || "SOCIO 2");
             
-            // 🔥 AQUÍ ESTABA EL ERROR. ESTÁ CORREGIDO 100% 🔥
             if(document.getElementById('aju-opt-s1')) document.getElementById('aju-opt-s1').innerText = "CUENTA " + (db.config.nombre_s1 || "SOCIO 1");
             if(document.getElementById('aju-opt-s2')) document.getElementById('aju-opt-s2').innerText = "CUENTA " + (db.config.nombre_s2 || "SOCIO 2");
 
@@ -1087,6 +1112,7 @@
                     let isMaria = v.tienda === 'Variedades Maria';
                     
                     let promesasDevolucion = v.det.map(item => {
+                        if (item.es_servicio) return Promise.resolve(); // No devuelve stock de servicios
                         return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                             if(snapProd.exists()) {
                                 const key = Object.keys(snapProd.val())[0];
@@ -1116,6 +1142,7 @@
                     if (v.estado !== 'ANULADA') {
                         let isMaria = v.tienda === 'Variedades Maria';
                         let promesasDevolucion = v.det.map(item => {
+                            if (item.es_servicio) return Promise.resolve(); // No devuelve stock de servicios
                             return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                                 if(snapProd.exists()) {
                                     const key = Object.keys(snapProd.val())[0];
@@ -1170,6 +1197,7 @@
                     if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
 
                     ventaFinal.det.forEach(item => {
+                        if (item.es_servicio) return; // Evita descontar si es copia/edición
                         const pIdx = curr.productos.findIndex(x => x.codigo === item.codigo);
                         if(pIdx > -1) {
                             if(isMaria) curr.productos[pIdx].stock_maria = parseInt(curr.productos[pIdx].stock_maria || 0) - parseInt(item.cant || 0);
@@ -1193,154 +1221,36 @@
             procesarCola(0);
         }
 
-       function procesarVenta() { 
-            const t = parseFloat(document.getElementById('total-txt').innerText); 
-            if(!cart.length || t <= 0) return; 
-            const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
-            if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
+       // 🔥 FUNCIONES DE SERVICIO COMODÍN 🔥
+function abrirModalServicio() {
+    document.getElementById('input-desc-servicio').value = '';
+    document.getElementById('input-monto-servicio').value = '';
+    document.getElementById('modal-servicio').classList.replace('hidden', 'flex');
+    setTimeout(() => document.getElementById('input-monto-servicio').focus(), 100);
+}
 
-            const tiendaLocal = db.tiendaActual;
-            
-            for (let item of cart) { 
-                const p = db.productos.find(x => x.codigo === item.codigo); 
-                if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
-                const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
-                if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
-            }
+function guardarServicioDinamico() {
+    const monto = parseFloat(document.getElementById('input-monto-servicio').value) || 0;
+    let desc = document.getElementById('input-desc-servicio').value.trim().toUpperCase();
+    
+    if (monto <= 0) return sysAlert("Introduce un monto válido.");
+    if (desc === '') desc = "SERVICIO / COBRO EXTRA";
 
-            const btnCobrar = document.getElementById('btn-cobrar');
-            btnCobrar.innerText = "COBRANDO...";
-            btnCobrar.disabled = true;
+    const idUnico = "SERV_" + Date.now();
 
-            const f = new Date(); 
-            const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
-            const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
+    cart.unshift({
+        codigo: idUnico,
+        nombre: desc,
+        venta: monto,
+        cant: 1,
+        categoria: 'SERVICIOS',
+        propietario: 'S1', // Se registra a la caja del Socio 1 (caja principal)
+        es_servicio: true
+    });
 
-            let descActivo = (db.config && db.config.desc_activo === 'SI');
-            let descPorc = parseFloat(db.config && db.config.desc_porcentaje ? db.config.desc_porcentaje : 10);
-            let descMin = parseInt(db.config && db.config.desc_minimo ? db.config.desc_minimo : 15);
-            let totalUnidades = 0;
-            cart.forEach(c => totalUnidades += parseInt(c.cant));
-            let aplicaDescuento = (descActivo && totalUnidades >= descMin);
-
-            let ahorroTotalFactura = 0;
-
-            const detallesVenta = cart.map(c => { 
-                let sub = calcularSubtotal(c, c.cant); 
-                let subOriginal = sub;
-                if (aplicaDescuento && c.categoria && (c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA'))) {
-                    let ahorroItem = sub * (descPorc / 100);
-                    sub = sub - ahorroItem;
-                    ahorroTotalFactura += ahorroItem;
-                }
-                return { 
-                    codigo: c.codigo, 
-                    nombre: c.nombre, 
-                    cant: parseInt(c.cant), 
-                    pre: sub / c.cant, 
-                    pre_original: subOriginal / c.cant,
-                    costo_uni: (c.costo || 0), 
-                    cat: c.categoria || 'OTROS', 
-                    propietario: c.propietario || 'OTROS' 
-                }; 
-            });
-
-            const nuevaVenta = {
-                fecha: new Date().toLocaleString(),
-                fecha_filtro: fechaFiltro,
-                total: t,
-                pago: pago,
-                ahorro_escolar: ahorroTotalFactura,
-                tienda: tiendaLocal,
-                estado: 'OK',
-                jornada_abierta: true,
-                det: detallesVenta
-            };
-
-            if (!navigator.onLine) {
-                nuevaVenta.ticket = "PENDIENTE";
-                nuevaVenta.id_offline = idUnicoOffline;
-                
-                let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
-                pendientes.push(nuevaVenta);
-                localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
-
-                cart.forEach(item => { 
-                    const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
-                    if(pIdx > -1) { 
-                        if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
-                        else db.productos[pIdx].stock_marisol -= item.cant; 
-                    } 
-                });
-                
-                persistir(); 
-
-                cart = []; 
-                document.getElementById('pago-txt').value = ''; 
-                renderCart(); 
-                render();
-
-                btnCobrar.innerText = "COBRAR";
-                btnCobrar.disabled = false;
-
-                setTimeout(() => {
-                    sysConfirm(`⚠️ VENTA REGISTRADA SIN INTERNET.\nSe guardó en la sala de espera y se subirá al volver la conexión.\n\n¿Desea IMPRIMIR el comprobante temporal?`, () => {
-                        imprimirTicket(nuevaVenta);
-                    }, "Cobro Local Activo");
-                }, 100);
-                return;
-            }
-
-            let isMaria = tiendaLocal === 'Variedades Maria';
-            let refContador = isMaria ? database.ref(`${db.ruta_datos}/cMaria`) : database.ref(`${db.ruta_datos}/cMarisol`);
-
-            refContador.transaction(actual => (actual || 1) + 1, (err, committed, snap) => {
-                if (err || !committed) {
-                    btnCobrar.innerText = "COBRAR";
-                    btnCobrar.disabled = false;
-                    return sysAlert("❌ Error de conexión al generar ticket.");
-                }
-
-                nuevaVenta.ticket = snap.val() - 1;
-
-                let actualizaciones = {};
-                const idNuevaVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
-                actualizaciones[`${db.ruta_historial}ventas_historial/${idNuevaVenta}`] = nuevaVenta;
-
-                let promesasBusqueda = cart.map(item => {
-                    return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
-                        if(snapProd.exists()) {
-                            const key = Object.keys(snapProd.val())[0];
-                            const prodOriginal = snapProd.val()[key];
-                            const stockRestante = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) - parseInt(item.cant);
-                            actualizaciones[`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`] = stockRestante;
-                        }
-                    });
-                });
-
-                Promise.all(promesasBusqueda).then(() => {
-                    database.ref().update(actualizaciones).then(() => {
-                        btnCobrar.innerText = "COBRAR";
-                        btnCobrar.disabled = false;
-                        
-                        cart = []; 
-                        document.getElementById('pago-txt').value = ''; 
-                        renderCart(); 
-                        render();
-                        
-                        setTimeout(() => {
-                            sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                                imprimirTicket(nuevaVenta);
-                            }, "Venta Exitosa");
-                        }, 100);
-                    }).catch(err => {
-                        btnCobrar.innerText = "COBRAR";
-                        btnCobrar.disabled = false;
-                        sysAlert("❌ Error al descontar stock: " + err);
-                    });
-                });
-            });
-        }
+    document.getElementById('modal-servicio').classList.replace('flex', 'hidden');
+    renderCart();
+}
 
         function abrirModalAjuste() {
             if(db.rol !== 'ADMIN') return sysAlert("Solo el administrador puede usar esta función.");
@@ -1372,7 +1282,7 @@
                 estado: 'OK', 
                 jornada_abierta: false, 
                 is_ajuste: true,
-                det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: 'AJUSTE', propietario: catSocio }] 
+                det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: 'AJUSTE', propietario: catSocio, es_servicio: true }] 
             }; 
 
             database.ref(db.ruta_datos).transaction(curr => {
@@ -1509,7 +1419,6 @@
 
             database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(c).once('value').then(snap => {
                 if (snap.exists()) {
-                    // SI YA EXISTE: Actualiza directo
                     const key = Object.keys(snap.val())[0]; 
                     const prodOriginal = snap.val()[key];
                     
@@ -1525,7 +1434,6 @@
                     }).catch(err => sysAlert("❌ Error al guardar: " + err));
 
                 } else {
-                    // 🔥 CUELLO DE BOTELLA ELIMINADO: Creación directa y rápida sin transaction
                     datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
                     datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
 
@@ -1552,7 +1460,6 @@
                         let stockMaria = db.tiendaActual === 'Variedades Maria' ? 0 : (p.stock_maria || 0);
                         let stockMarisol = db.tiendaActual === 'Marisol' ? 0 : (p.stock_marisol || 0);
 
-                        // Si ya está en cero en las dos tiendas, lo borra físico de la nube
                         if(stockMaria === 0 && stockMarisol === 0) {
                             database.ref(`${db.ruta_datos}/productos/${key}`).remove().then(() => sysAlert("✅ Producto eliminado definitivamente de la base de datos."));
                         } else {
@@ -1874,15 +1781,15 @@
                     let viejas = snap.val();
                     if(!viejas) return sysAlert("No se encontraron tickets antiguos guardados.");
                     let actualizacionesVentas = {}; let conteo = 0;
-                    const procesarVenta = (v) => {
+                    const procesarVentaViejos = (v) => {
                         if(v && v.ticket) {
                             let idVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
                             actualizacionesVentas[idVenta] = v;
                             conteo++;
                         }
                     };
-                    if(Array.isArray(viejas)) viejas.forEach(procesarVenta);
-                    else Object.values(viejas).forEach(procesarVenta);
+                    if(Array.isArray(viejas)) viejas.forEach(procesarVentaViejos);
+                    else Object.values(viejas).forEach(procesarVentaViejos);
                     
                     database.ref(`${db.ruta_historial}ventas_historial`).update(actualizacionesVentas).then(() => {
                         return database.ref(`${db.ruta_datos}/ventas`).remove();
@@ -1961,6 +1868,7 @@
                                         if (!Array.isArray(curr.productos)) curr.productos = Object.values(curr.productos);
                                         
                                         v.det.forEach(i => { 
+                                            if (i.es_servicio) return; // Evitar stock fantasma
                                             const pIdx = curr.productos.findIndex(x => x.codigo === i.codigo); 
                                             if(pIdx > -1) { 
                                                 if(tiendaLocal === 'Variedades Maria') {
@@ -2283,7 +2191,18 @@
             calcVuelto(); 
         }
 
-        function actualizarCantidadCart(index, valor) { let cant = parseInt(valor) || 1; if(cant < 1) cant = 1; const p = db.productos.find(x => x.codigo === cart[index].codigo); if(p) { const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); if(cant > sMax) { sysAlert("Solo hay " + sMax + " en stock."); cant = sMax; } } cart[index].cant = cant; renderCart(); }
+        function actualizarCantidadCart(index, valor) { 
+            let cant = parseInt(valor) || 1; 
+            if(cant < 1) cant = 1; 
+            if (!cart[index].es_servicio) {
+                const p = db.productos.find(x => x.codigo === cart[index].codigo); 
+                if(p) { 
+                    const sMax = db.tiendaActual === 'Variedades Maria' ? (p.stock_maria || 0) : (p.stock_marisol || 0); 
+                    if(cant > sMax) { sysAlert("Solo hay " + sMax + " en stock."); cant = sMax; } 
+                } 
+            }
+            cart[index].cant = cant; renderCart(); 
+        }
         
         // 🔥 FUNCIÓN DE IMPRESIÓN CON FORMATO DINÁMICO DESDE AJUSTES 🔥
         function imprimirTicket(v) { 
@@ -2605,6 +2524,7 @@
             const tiendaLocal = db.tiendaActual;
             
             for (let item of cart) { 
+                if (item.es_servicio) continue; // 🔥 EVITA BUSCAR INVENTARIO PARA SERVICIOS O COPIAS 🔥
                 const p = db.productos.find(x => x.codigo === item.codigo); 
                 if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
                 const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
@@ -2644,7 +2564,8 @@
                     pre_original: subOriginal / c.cant,
                     costo_uni: (c.costo || 0), 
                     cat: c.categoria || 'OTROS', 
-                    propietario: c.propietario || 'OTROS' 
+                    propietario: c.propietario || 'OTROS',
+                    es_servicio: c.es_servicio || false
                 }; 
             });
 
@@ -2669,6 +2590,7 @@
                 localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
 
                 cart.forEach(item => { 
+                    if (item.es_servicio) return; // 🔥 NO RESTAR INVENTARIO OFFLINE 🔥
                     const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
                     if(pIdx > -1) { 
                         if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
@@ -2710,7 +2632,8 @@
                 const idNuevaVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
                 actualizaciones[`${db.ruta_historial}ventas_historial/${idNuevaVenta}`] = nuevaVenta;
 
-                let promesasBusqueda = cart.map(item => {
+                // 🔥 FILTRAMOS LOS SERVICIOS PARA QUE NO GENEREN ERROR EN BASE DE DATOS 🔥
+                let promesasBusqueda = cart.filter(c => !c.es_servicio).map(item => {
                     return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                         if(snapProd.exists()) {
                             const key = Object.keys(snapProd.val())[0];
