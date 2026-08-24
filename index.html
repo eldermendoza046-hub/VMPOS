@@ -136,11 +136,11 @@
             <div class="zona-busqueda space-y-4">
 
                 <!-- 🔥 BOTÓN DE SERVICIO COMODÍN 🔥 -->
-<div class="mb-4">
-    <button onclick="abrirModalServicio()" class="w-full bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-2xl font-black text-sm uppercase shadow-md transition-transform active:scale-95 border-b-4 border-purple-800 flex items-center justify-center gap-2">
-        ➕ Servicio / Cobro Extra
-    </button>
-</div>
+                <div class="mb-4">
+                    <button onclick="abrirModalServicio()" class="w-full bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-2xl font-black text-sm uppercase shadow-md transition-transform active:scale-95 border-b-4 border-purple-800 flex items-center justify-center gap-2">
+                        ➕ Servicio / Cobro Extra
+                    </button>
+                </div>
 
                <input type="text" id="busqueda" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
                 <div id="res-busqueda" class="bg-white divide-y shadow-xl rounded-xl overflow-hidden border"></div>
@@ -152,6 +152,12 @@
                 <div class="text-5xl md:text-6xl font-black text-center mb-2 text-yellow-400">Q <span id="total-txt">0.00</span></div>
                 
                 <div id="desc-info-container" class="mt-2 mb-4"></div>
+
+                <!-- 🔥 BOTONES DE PEDIDOS EN ESPERA 🔥 -->
+                <div class="flex gap-2 mb-4">
+                    <button onclick="pausarPedido()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-yellow-900 py-3 rounded-xl font-black text-[10px] uppercase shadow-md transition-transform active:scale-95">⏸️ Pausar Venta</button>
+                    <button onclick="verPedidosPausados()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-black text-[10px] uppercase shadow-md transition-transform active:scale-95">📋 Recuperar (<span id="count-pausados">0</span>)</button>
+                </div>
 
                 <input type="number" id="pago-txt" class="w-full p-4 rounded-2xl bg-black/20 text-3xl text-center border-2 border-white/20 outline-none font-black" placeholder="PAGO Q" oninput="calcVuelto()">
                 <div class="text-2xl md:text-3xl font-bold text-green-400 text-center my-4 italic">Cambio: Q <span id="vuelto-txt">0.00</span></div>
@@ -503,6 +509,15 @@
         </div>
     </div>
 </div>
+
+    <!-- 🔥 MODAL PEDIDOS PAUSADOS 🔥 -->
+    <div id="modal-pausados" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-[500] backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl border-4 border-blue-500">
+            <h3 class="text-lg font-black mb-4 text-blue-700 uppercase italic">Ventas en Espera</h3>
+            <div id="lista-pausados" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div>
+            <button onclick="document.getElementById('modal-pausados').classList.replace('flex', 'hidden')" class="w-full bg-gray-200 py-3 rounded-xl font-black uppercase text-xs text-gray-600 hover:bg-gray-300">Cerrar</button>
+        </div>
+    </div>
 
     <!-- MODAL PRODUCTO -->
     <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
@@ -1021,6 +1036,7 @@
             }
 
             cargarCierres(); if(isA) cargarReportePorFechas();
+            actualizarContadorPausados(); // Actualiza el botón al renderizar
         }
 
         function abrirConfiguracion() {
@@ -1222,35 +1238,105 @@
         }
 
        // 🔥 FUNCIONES DE SERVICIO COMODÍN 🔥
-function abrirModalServicio() {
-    document.getElementById('input-desc-servicio').value = '';
-    document.getElementById('input-monto-servicio').value = '';
-    document.getElementById('modal-servicio').classList.replace('hidden', 'flex');
-    setTimeout(() => document.getElementById('input-monto-servicio').focus(), 100);
-}
+        function abrirModalServicio() {
+            document.getElementById('input-desc-servicio').value = '';
+            document.getElementById('input-monto-servicio').value = '';
+            document.getElementById('modal-servicio').classList.replace('hidden', 'flex');
+            setTimeout(() => document.getElementById('input-monto-servicio').focus(), 100);
+        }
 
-function guardarServicioDinamico() {
-    const monto = parseFloat(document.getElementById('input-monto-servicio').value) || 0;
-    let desc = document.getElementById('input-desc-servicio').value.trim().toUpperCase();
-    
-    if (monto <= 0) return sysAlert("Introduce un monto válido.");
-    if (desc === '') desc = "SERVICIO / COBRO EXTRA";
+        function guardarServicioDinamico() {
+            const monto = parseFloat(document.getElementById('input-monto-servicio').value) || 0;
+            let desc = document.getElementById('input-desc-servicio').value.trim().toUpperCase();
+            
+            if (monto <= 0) return sysAlert("Introduce un monto válido.");
+            if (desc === '') desc = "SERVICIO / COBRO EXTRA";
 
-    const idUnico = "SERV_" + Date.now();
+            const idUnico = "SERV_" + Date.now();
 
-    cart.unshift({
-        codigo: idUnico,
-        nombre: desc,
-        venta: monto,
-        cant: 1,
-        categoria: 'SERVICIOS',
-        propietario: 'S1', // Se registra a la caja del Socio 1 (caja principal)
-        es_servicio: true
-    });
+            cart.unshift({
+                codigo: idUnico,
+                nombre: desc,
+                venta: monto,
+                cant: 1,
+                categoria: 'SERVICIOS',
+                propietario: 'S1', // Se registra a la caja del Socio 1 (caja principal)
+                es_servicio: true
+            });
 
-    document.getElementById('modal-servicio').classList.replace('flex', 'hidden');
-    renderCart();
-}
+            document.getElementById('modal-servicio').classList.replace('flex', 'hidden');
+            renderCart();
+        }
+
+        // 🔥 LÓGICA DE VENTAS EN ESPERA (PAUSAR PEDIDOS) 🔥
+        let pedidosPausados = [];
+
+        function pausarPedido() {
+            if (cart.length === 0) return sysAlert("El carrito está vacío, no hay nada que pausar.");
+            
+            sysPrompt("Ingresa una referencia para guardar la venta (Ej. Cliente camisa roja):", (nombre) => {
+                if(!nombre) nombre = "Cliente " + (pedidosPausados.length + 1);
+                
+                // Guardamos el carrito en la memoria temporal
+                pedidosPausados.push({ id: Date.now(), nombre: nombre.toUpperCase(), cart: [...cart] });
+                
+                // Vaciamos la pantalla para atender al siguiente
+                cart = [];
+                document.getElementById('pago-txt').value = '';
+                renderCart();
+                actualizarContadorPausados();
+            }, "Pausar Venta");
+        }
+
+        function actualizarContadorPausados() {
+            const span = document.getElementById('count-pausados');
+            if(span) span.innerText = pedidosPausados.length;
+        }
+
+        function verPedidosPausados() {
+            if (pedidosPausados.length === 0) return sysAlert("No hay ventas en espera en este momento.");
+            
+            const contenedor = document.getElementById('lista-pausados');
+            contenedor.innerHTML = '';
+            
+            pedidosPausados.forEach(p => {
+                contenedor.innerHTML += `
+                    <div class="bg-blue-50 p-3 rounded-xl border border-blue-200 flex justify-between items-center mb-2">
+                        <div>
+                            <p class="font-black text-blue-900 text-sm">${p.nombre}</p>
+                            <p class="text-[10px] text-gray-500 font-bold">${p.cart.length} producto(s)</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="recuperarPedido(${p.id})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-black text-[10px] shadow">▶️ RECUPERAR</button>
+                            <button onclick="eliminarPedidoPausado(${p.id})" class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg font-black text-[10px]">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('modal-pausados').classList.replace('hidden', 'flex');
+        }
+
+        function recuperarPedido(id) {
+            if(cart.length > 0) return sysAlert("⚠️ Primero cobra o vacía los productos que tienes actualmente en pantalla antes de recuperar otro pedido.");
+            
+            const index = pedidosPausados.findIndex(p => p.id === id);
+            if(index > -1) {
+                cart = [...pedidosPausados[index].cart];
+                pedidosPausados.splice(index, 1);
+                
+                document.getElementById('modal-pausados').classList.replace('flex', 'hidden');
+                actualizarContadorPausados();
+                renderCart();
+            }
+        }
+
+        function eliminarPedidoPausado(id) {
+            pedidosPausados = pedidosPausados.filter(p => p.id !== id);
+            verPedidosPausados(); 
+            actualizarContadorPausados();
+            if (pedidosPausados.length === 0) document.getElementById('modal-pausados').classList.replace('flex', 'hidden');
+        }
 
         function abrirModalAjuste() {
             if(db.rol !== 'ADMIN') return sysAlert("Solo el administrador puede usar esta función.");
@@ -2500,7 +2586,7 @@ function guardarServicioDinamico() {
                         </tr>
                     </table>
                     <div style="text-align:center; font-size: 10px; color: #777; margin-top: 30px;">
-                        <p>*Los cálculos ya incluyen la distribución 50/50 de la categoría "Compartido".</p>
+                        <p>*Los cálculos ya incluyen la distribution 50/50 de la categoría "Compartido".</p>
                         <p>Reporte generado el: ${new Date().toLocaleString()}</p>
                     </div>
                 </div>`; 
