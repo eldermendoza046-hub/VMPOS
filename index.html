@@ -2766,9 +2766,7 @@
                 });
             });
         }
-                } // <- Esta es tu línea 2768 actual
-
-        // 🔥 FUNCIÓN PARA CERRAR SESIÓN DE FORMA SEGURA 🔥
+           // 🔥 FUNCIÓN PARA CERRAR SESIÓN DE FORMA SEGURA 🔥
         function cerrarSesion() {
             sysConfirm("¿Estás seguro que deseas cerrar sesión y salir del sistema?", () => {
                 firebase.auth().signOut().then(() => {
@@ -2783,5 +2781,6 @@
     </script>
 </body>
 </html>
+
 
     
