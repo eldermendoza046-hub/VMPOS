@@ -110,7 +110,6 @@
             </div>
         </div>
     </div>
-
     <nav id="navbar" class="text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50 no-print transition-colors">
         <div>
             <h1 id="tienda-txt" class="text-xl md:text-2xl font-black uppercase italic tracking-tighter">VARIEDADES M&M</h1>
@@ -123,9 +122,12 @@
             <button onclick="cambiarTienda()" class="bg-white text-gray-800 px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-gray-200 transition-colors">🔄 Tienda</button>
             <button id="btn-config" onclick="abrirConfiguracion()" class="hidden bg-gray-800 text-white px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-gray-900 transition-colors">⚙️ Ajustes</button>
             <button id="btn-admin" onclick="accesoAdmin()" class="bg-yellow-500 text-white px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-yellow-600 transition-colors">🔑 Admin</button>
+            <!-- 🔥 NUEVO BOTÓN DE SALIR 🔥 -->
+            <button onclick="cerrarSesion()" class="bg-red-600 text-white px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-red-700 transition-colors">🚪 Salir</button>
         </div>
     </nav>
 
+    
     <div id="tab-bar" class="shadow flex justify-around no-print border-b text-gray-200 sticky top-[68px] z-40 transition-colors">
         <button onclick="setTab('ventas')" id="tab-ventas" class="py-4 flex-1 tab-active text-[11px] md:text-sm font-black uppercase">🛒 Ventas</button>
         <button onclick="setTab('inventario')" id="tab-inventario" class="py-4 flex-1 text-[11px] md:text-sm font-black uppercase">📦 Stock</button>
@@ -2764,6 +2766,22 @@
                 });
             });
         }
+                } // <- Esta es tu línea 2768 actual
+
+        // 🔥 FUNCIÓN PARA CERRAR SESIÓN DE FORMA SEGURA 🔥
+        function cerrarSesion() {
+            sysConfirm("¿Estás seguro que deseas cerrar sesión y salir del sistema?", () => {
+                firebase.auth().signOut().then(() => {
+                    // Recarga la página para limpiar toda la memoria y volver a mostrar el Login
+                    window.location.reload(true);
+                }).catch((error) => {
+                    sysAlert("Error al cerrar sesión: " + error.message);
+                });
+            }, "Cerrar Sesión");
+        }
+
     </script>
 </body>
 </html>
+
+    
