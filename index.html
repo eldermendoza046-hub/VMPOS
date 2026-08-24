@@ -1469,7 +1469,7 @@
             });
         }
 
-       function guardarProd() { 
+      function guardarProd() { 
             const c = document.getElementById('p-cod').value.toUpperCase().trim();
             const n = document.getElementById('p-nom').value.toUpperCase().trim();
             const img = document.getElementById('p-imagen').value.trim(); 
@@ -1504,14 +1504,19 @@
             if (db.rol === 'ADMIN') datosGuardar.costo = cost;
 
             database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(c).once('value').then(snap => {
+                
+                // 🔥 EL ESCUDO: Detecta la tienda sin importar mayúsculas o espacios 🔥
+                let isMaria = String(db.tiendaActual).trim().toUpperCase().includes('MARIA');
+
                 if (snap.exists()) {
                     const key = Object.keys(snap.val())[0]; 
                     const prodOriginal = snap.val()[key];
                     
                     if (db.rol !== 'ADMIN') datosGuardar.costo = prodOriginal.costo || 0; 
                     
-                    datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? (parseInt(prodOriginal.stock_maria || 0) + st) : parseInt(prodOriginal.stock_maria || 0);
-                    datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? (parseInt(prodOriginal.stock_marisol || 0) + st) : parseInt(prodOriginal.stock_marisol || 0);
+                    // 🔥 CORRECCIÓN: Asignación a prueba de fallos 🔥
+                    datosGuardar.stock_maria = isMaria ? (parseInt(prodOriginal.stock_maria || 0) + st) : parseInt(prodOriginal.stock_maria || 0);
+                    datosGuardar.stock_marisol = !isMaria ? (parseInt(prodOriginal.stock_marisol || 0) + st) : parseInt(prodOriginal.stock_marisol || 0);
 
                     database.ref(`${db.ruta_datos}/productos/${key}`).update(datosGuardar).then(() => {
                         if (st > 0) registrarIngresoKardex(c, n, st); 
@@ -1520,8 +1525,9 @@
                     }).catch(err => sysAlert("❌ Error al guardar: " + err));
 
                 } else {
-                    datosGuardar.stock_maria = db.tiendaActual === 'Variedades Maria' ? st : 0;
-                    datosGuardar.stock_marisol = db.tiendaActual === 'Marisol' ? st : 0;
+                    // 🔥 Creación de producto nuevo con la misma seguridad 🔥
+                    datosGuardar.stock_maria = isMaria ? st : 0;
+                    datosGuardar.stock_marisol = !isMaria ? st : 0;
 
                     database.ref(`${db.ruta_datos}/productos`).push(datosGuardar).then(() => {
                         if (st > 0) registrarIngresoKardex(c, n, st); 
