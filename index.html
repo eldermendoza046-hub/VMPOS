@@ -2797,6 +2797,35 @@
                 });
             }, "Cerrar Sesión");
         }
+        // 🔥 FUNCIONES PANEL SÚPER ADMIN 🔥
+        function abrirPanelSuperAdmin() {
+            // Ocultamos las pestañas normales
+            document.getElementById("tab-bar").style.display = "none";
+            document.getElementById("tab-content").style.display = "none";
+            
+            // Mostramos el panel
+            document.getElementById("panelSuperAdmin").style.display = "block";
+        }
+
+        function cerrarPanelSuperAdmin() {
+            // Ocultamos el panel
+            document.getElementById("panelSuperAdmin").style.display = "none";
+            
+            // Mostramos las pestañas normales
+            document.getElementById("tab-bar").style.display = "flex";
+            document.getElementById("tab-content").style.display = "block";
+        }
+
+        // Escuchar quién inicia sesión para mostrar el botón
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                if (user.email.toLowerCase() === "ventas@vm.com") {
+                    document.getElementById("btnSuperAdmin").style.display = "inline-block";
+                } else {
+                    document.getElementById("btnSuperAdmin").style.display = "none";
+                }
+            }
+        });
 
     </script>
 </body>
