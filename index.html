@@ -2790,7 +2790,7 @@
         // Escuchar quién inicia sesión para mostrar el botón
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
-                if (user.email.toLowerCase() === "ventas@vm.com") {
+                if (user.email.toLowerCase() === "adm@vm.com") {
                     document.getElementById("btnSuperAdmin").style.display = "inline-block";
                 } else {
                     document.getElementById("btnSuperAdmin").style.display = "none";
