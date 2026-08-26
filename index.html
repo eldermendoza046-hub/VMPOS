@@ -131,21 +131,23 @@
             <button onclick="cerrarSesion()" class="bg-red-600 text-white px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-red-700 transition-colors">🚪 Salir</button>
         </div>
     </nav>
-<!-- 🔥 PANTALLA DE SÚPER ADMIN (Oculta) 🔥 -->
-<div id="panelSuperAdmin" style="display: none;" class="bg-white p-4 rounded-lg shadow mt-4 text-center text-black">
-    <h2 class="text-2xl font-bold text-purple-700">👑 CENTRO DE MANDO (VMPOS)</h2>
-    <p class="text-gray-600">Bienvenido, Creador del Sistema.</p>
-    <hr class="my-4">
-    
-    <div class="p-6 bg-gray-100 rounded border-2 border-dashed border-gray-400 mb-4">
-        <h3 class="font-bold text-lg">🚧 En Construcción 🚧</h3>
-        <p>Administración de licencias y activación de FEL (Facturación Electrónica).</p>
-    </div>
+        // 🔥 FUNCIONES PANEL SÚPER ADMIN (VERSIÓN ATAJO) 🔥
+        function abrirPanelSuperAdmin() {
+            // Esto abrirá tu panel maestro en una pestaña nueva
+            window.open("panel.html", "_blank");
+        }
 
-    <button onclick="cerrarPanelSuperAdmin()" class="bg-red-500 text-white px-6 py-2 rounded font-bold">
-        ⬅️ Volver a mi Tienda
-    </button>
-</div>
+        // Escuchar quién inicia sesión para mostrar el botón
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                if (user.email.toLowerCase() === "ventas@vm.com") {
+                    document.getElementById("btnSuperAdmin").style.display = "inline-block";
+                } else {
+                    document.getElementById("btnSuperAdmin").style.display = "none";
+                }
+            }
+        });
+
 
 
     <div id="tab-bar" class="shadow flex justify-around no-print border-b text-gray-200 sticky top-[68px] z-40 transition-colors">
