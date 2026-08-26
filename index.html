@@ -131,25 +131,7 @@
             <button onclick="cerrarSesion()" class="bg-red-600 text-white px-2 md:px-4 py-2 rounded font-black text-[10px] md:text-sm uppercase shadow hover:bg-red-700 transition-colors">🚪 Salir</button>
         </div>
     </nav>
-        // 🔥 FUNCIONES PANEL SÚPER ADMIN (VERSIÓN ATAJO) 🔥
-        function abrirPanelSuperAdmin() {
-            // Esto abrirá tu panel maestro en una pestaña nueva
-            window.open("panel.html", "_blank");
-        }
-
-        // Escuchar quién inicia sesión para mostrar el botón
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                if (user.email.toLowerCase() === "ventas@vm.com") {
-                    document.getElementById("btnSuperAdmin").style.display = "inline-block";
-                } else {
-                    document.getElementById("btnSuperAdmin").style.display = "none";
-                }
-            }
-        });
-
-
-
+        
     <div id="tab-bar" class="shadow flex justify-around no-print border-b text-gray-200 sticky top-[68px] z-40 transition-colors">
         <button onclick="setTab('ventas')" id="tab-ventas" class="py-4 flex-1 tab-active text-[11px] md:text-sm font-black uppercase">🛒 Ventas</button>
         <button onclick="setTab('inventario')" id="tab-inventario" class="py-4 flex-1 text-[11px] md:text-sm font-black uppercase">📦 Stock</button>
@@ -2799,23 +2781,10 @@
                 });
             }, "Cerrar Sesión");
         }
-        // 🔥 FUNCIONES PANEL SÚPER ADMIN 🔥
+                // 🔥 FUNCIONES PANEL SÚPER ADMIN (VERSIÓN ATAJO) 🔥
         function abrirPanelSuperAdmin() {
-            // Ocultamos las pestañas normales
-            document.getElementById("tab-bar").style.display = "none";
-            document.getElementById("tab-content").style.display = "none";
-            
-            // Mostramos el panel
-            document.getElementById("panelSuperAdmin").style.display = "block";
-        }
-
-        function cerrarPanelSuperAdmin() {
-            // Ocultamos el panel
-            document.getElementById("panelSuperAdmin").style.display = "none";
-            
-            // Mostramos las pestañas normales
-            document.getElementById("tab-bar").style.display = "flex";
-            document.getElementById("tab-content").style.display = "block";
+            // Esto abrirá tu panel maestro en una pestaña nueva
+            window.open("panel.html", "_blank");
         }
 
         // Escuchar quién inicia sesión para mostrar el botón
@@ -2828,6 +2797,7 @@
                 }
             }
         });
+
 
     </script>
 </body>
