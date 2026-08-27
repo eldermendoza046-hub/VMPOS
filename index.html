@@ -2798,7 +2798,7 @@
             window.open("panel.html", "_blank");
         }
 
-        // Escuchar quién inicia sesión para mostrar el botón Y vigilar bloqueos
+      // Escuchar quién inicia sesión para mostrar el botón Y vigilar bloqueos
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
                 // 1. Mostrar botón Súper Admin solo a ti
@@ -2816,10 +2816,10 @@
                         // Este código se queda escuchando tu panel 24/7
                         database.ref(`suscripciones/${idCliente}/estado`).on('value', estadoSnap => {
                             if (estadoSnap.val() === 'BLOQUEADO') {
-                                // Si en el panel dice BLOQUEADO, le cierra la sesión de golpe
+                                // Expulsar usando el diseño bonito (sin la alerta blanca fea)
                                 firebase.auth().signOut().then(() => {
-                                    alert("🚨 ACCESO DENEGADO: Tu suscripción ha sido suspendida o está vencida. Comunícate con soporte.");
-                                    window.location.reload(); // Recarga la página para sacarlo
+                                    sysAlert("🚨 ACCESO DENEGADO: Tu suscripción ha sido suspendida. Comunícate con soporte.", "Cuenta Bloqueada");
+                                    document.getElementById('login-modal').style.display = 'flex';
                                 });
                             }
                         });
