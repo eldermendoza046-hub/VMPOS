@@ -2238,6 +2238,15 @@
                 });
             });
         }
+function alternarTecladoTablet() {
+    const inputBusqueda = document.getElementById('busqueda');
+    if (inputBusqueda.getAttribute('inputmode') === 'none') {
+        inputBusqueda.setAttribute('inputmode', 'text');
+    } else {
+        inputBusqueda.setAttribute('inputmode', 'none');
+    }
+    inputBusqueda.focus(); 
+}
 
         let temporizadorBusqueda; 
         function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
