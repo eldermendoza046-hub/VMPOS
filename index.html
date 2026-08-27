@@ -805,7 +805,7 @@
             if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
         };
 
-       // 🔥 INICIO DE SESIÓN MULTI-TENANT (SaaS) 🔥
+        // 🔥 INICIO DE SESIÓN MULTI-TENANT (SaaS) 🔥
         function ejecutarLogin() {
             const u = document.getElementById('login-user').value.trim();
             const p = document.getElementById('login-pass').value.trim();
@@ -824,12 +824,23 @@
                     database.ref('suscripciones').orderByChild('email').equalTo(emailLogueado).once('value')
                     .then(snap => {
                         if (snap.exists()) {
-                            // ES UN CLIENTE
+                            // ES UN CLIENTE (Inquilino)
                             const idCliente = Object.keys(snap.val())[0];
                             const datosCliente = snap.val()[idCliente];
                             
-                            // Bloqueo por falta de pago
-                            if(datosCliente.estado === 'BLOQUEADO') {
+                            // ⏱️ LÓGICA DE VENCIMIENTO AUTOMÁTICO
+                            const hoy = new Date();
+                            hoy.setHours(0, 0, 0, 0);
+                            
+                            let vencidoPorFecha = false;
+                            if (datosCliente.fecha_vencimiento) {
+                                const parts = datosCliente.fecha_vencimiento.split('-');
+                                const fechaCorte = new Date(parts[0], parts[1] - 1, parts[2]);
+                                if (fechaCorte < hoy) vencidoPorFecha = true;
+                            }
+                            
+                            // Bloqueo manual O automático por fecha
+                            if(datosCliente.estado === 'BLOQUEADO' || vencidoPorFecha) {
                                 firebase.auth().signOut();
                                 sysAlert("🚨 SISTEMA SUSPENDIDO POR FALTA DE PAGO.\n\nPor favor comuníquese con el administrador para reactivar el servicio.", "Acceso Denegado");
                                 btn.innerText = "ENTRAR AL SISTEMA";
@@ -846,9 +857,8 @@
                             cargarBaseDeDatos();
                             
                         } else {
-                            // 🚨 AQUÍ ESTÁ LA CORRECCIÓN: Filtro estricto para dueños 🚨
+                            // 👑 ERES TÚ O TU VENDEDORA (Sin reglas de bloqueo)
                             if (emailLogueado === "adm@vm.com" || emailLogueado === "ventas@vm.com") {
-                                // ERES TÚ O TU VENDEDORA (Solo estos correos entran a tu tienda)
                                 db.ruta_datos = 'tienda_datos';
                                 db.ruta_historial = '';
                                 
@@ -856,7 +866,7 @@
                                 sysAlert("¡Inicio de sesión correcto! Conectando a tu base de datos...", "Bienvenido"); 
                                 cargarBaseDeDatos();
                             } else {
-                                // ES UN CLIENTE ELIMINADO, FANTASMA O DESCONOCIDO
+                                // ES UN CLIENTE ELIMINADO O DESCONOCIDO
                                 firebase.auth().signOut();
                                 sysAlert("🚨 ACCESO DENEGADO: Esta cuenta no existe o fue eliminada del sistema.", "Cuenta Inválida");
                                 btn.innerText = "ENTRAR AL SISTEMA";
@@ -880,6 +890,7 @@
                     }
                 });
         }
+
         
         function cargarBaseDeDatos() {
             database.ref(`${db.ruta_datos}/productos`).on('value', snap => {
