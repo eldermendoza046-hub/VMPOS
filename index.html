@@ -156,10 +156,11 @@
                <div class="flex items-center gap-2">
     <input type="text" id="busqueda" inputmode="none" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
     
-    <button type="button" onclick="alternarTecladoTablet()" class="md:hidden bg-indigo-600 text-white p-4 md:p-6 rounded-2xl text-2xl shadow-md hover:bg-indigo-700 flex-shrink-0 transition-transform active:scale-95" title="Activar/Desactivar teclado manual">
+    <button type="button" id="btn-teclado" onclick="alternarTecladoTablet()" class="md:hidden bg-gray-400 opacity-50 text-white p-4 md:p-6 rounded-2xl text-2xl shadow-md hover:bg-gray-500 flex-shrink-0 transition-all active:scale-95" title="Activar/Desactivar teclado manual">
         ⌨️
     </button>
 </div>
+
 
                 <div id="res-busqueda" class="bg-white divide-y shadow-xl rounded-xl overflow-hidden border"></div>
                 <div class="bg-white p-4 rounded-2xl shadow-md min-h-[300px] border">
@@ -2247,13 +2248,25 @@
         }
 function alternarTecladoTablet() {
     const inputBusqueda = document.getElementById('busqueda');
+    const btnTeclado = document.getElementById('btn-teclado');
+    
+    inputBusqueda.blur();
+    
     if (inputBusqueda.getAttribute('inputmode') === 'none') {
         inputBusqueda.setAttribute('inputmode', 'text');
+        btnTeclado.classList.replace('bg-gray-400', 'bg-indigo-600');
+        btnTeclado.classList.replace('hover:bg-gray-500', 'hover:bg-indigo-700');
+        btnTeclado.classList.remove('opacity-50');
+        setTimeout(() => inputBusqueda.focus(), 300);
     } else {
         inputBusqueda.setAttribute('inputmode', 'none');
+        btnTeclado.classList.replace('bg-indigo-600', 'bg-gray-400');
+        btnTeclado.classList.replace('hover:bg-indigo-700', 'hover:bg-gray-500');
+        btnTeclado.classList.add('opacity-50');
+        setTimeout(() => inputBusqueda.focus(), 300);
     }
-    inputBusqueda.focus(); 
 }
+
 
         let temporizadorBusqueda; 
         function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
