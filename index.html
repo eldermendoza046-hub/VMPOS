@@ -2781,23 +2781,43 @@
                 });
             }, "Cerrar Sesión");
         }
-                // 🔥 FUNCIONES PANEL SÚPER ADMIN (VERSIÓN ATAJO) 🔥
+              // 🔥 FUNCIONES PANEL SÚPER ADMIN Y SEGURIDAD 🔥
         function abrirPanelSuperAdmin() {
-            // Esto abrirá tu panel maestro en una pestaña nueva
             window.open("panel.html", "_blank");
         }
 
-        // Escuchar quién inicia sesión para mostrar el botón
+        // Escuchar quién inicia sesión para mostrar el botón Y vigilar bloqueos
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
+                // 1. Mostrar botón Súper Admin solo a ti
                 if (user.email.toLowerCase() === "adm@vm.com") {
                     document.getElementById("btnSuperAdmin").style.display = "inline-block";
                 } else {
                     document.getElementById("btnSuperAdmin").style.display = "none";
                 }
+
+                // 2. 🚨 GUARDIA EN TIEMPO REAL (Expulsa intrusos al instante) 🚨
+                database.ref('suscripciones').orderByChild('email').equalTo(user.email).once('value').then(snap => {
+                    if (snap.exists()) {
+                        const idCliente = Object.keys(snap.val())[0];
+                        
+                        // Este código se queda escuchando tu panel 24/7
+                        database.ref(`suscripciones/${idCliente}/estado`).on('value', estadoSnap => {
+                            if (estadoSnap.val() === 'BLOQUEADO') {
+                                // Si en el panel dice BLOQUEADO, le cierra la sesión de golpe
+                                firebase.auth().signOut().then(() => {
+                                    alert("🚨 ACCESO DENEGADO: Tu suscripción ha sido suspendida o está vencida. Comunícate con soporte.");
+                                    window.location.reload(); // Recarga la página para sacarlo
+                                });
+                            }
+                        });
+                    }
+                });
+
+            } else {
+                document.getElementById("btnSuperAdmin").style.display = "none";
             }
         });
-
 
     </script>
 </body>
