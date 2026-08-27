@@ -805,7 +805,7 @@
             if(!navigator.onLine) window.dispatchEvent(new Event('offline'));
         };
 
-        // 🔥 INICIO DE SESIÓN MULTI-TENANT (SaaS) 🔥
+       // 🔥 INICIO DE SESIÓN MULTI-TENANT (SaaS) 🔥
         function ejecutarLogin() {
             const u = document.getElementById('login-user').value.trim();
             const p = document.getElementById('login-pass').value.trim();
@@ -818,7 +818,7 @@
 
             firebase.auth().signInWithEmailAndPassword(u, p)
                 .then((userCred) => { 
-                    const emailLogueado = userCred.user.email;
+                    const emailLogueado = userCred.user.email.toLowerCase(); 
                     
                     // 1. Preguntamos a Firebase si este correo es de un Cliente / Franquicia
                     database.ref('suscripciones').orderByChild('email').equalTo(emailLogueado).once('value')
@@ -841,16 +841,28 @@
                             db.ruta_datos = 'clientes_datos/' + idCliente;
                             db.ruta_historial = 'clientes_datos/' + idCliente + '/';
                             
+                            document.getElementById('login-modal').style.display = 'none';
+                            sysAlert("¡Inicio de sesión correcto! Conectando a tu base de datos...", "Bienvenido"); 
+                            cargarBaseDeDatos();
+                            
                         } else {
-                            // ERES TÚ (El Súper Admin original)
-                            db.ruta_datos = 'tienda_datos';
-                            db.ruta_historial = '';
+                            // 🚨 AQUÍ ESTÁ LA CORRECCIÓN: Filtro estricto para dueños 🚨
+                            if (emailLogueado === "adm@vm.com" || emailLogueado === "ventas@vm.com") {
+                                // ERES TÚ O TU VENDEDORA (Solo estos correos entran a tu tienda)
+                                db.ruta_datos = 'tienda_datos';
+                                db.ruta_historial = '';
+                                
+                                document.getElementById('login-modal').style.display = 'none';
+                                sysAlert("¡Inicio de sesión correcto! Conectando a tu base de datos...", "Bienvenido"); 
+                                cargarBaseDeDatos();
+                            } else {
+                                // ES UN CLIENTE ELIMINADO, FANTASMA O DESCONOCIDO
+                                firebase.auth().signOut();
+                                sysAlert("🚨 ACCESO DENEGADO: Esta cuenta no existe o fue eliminada del sistema.", "Cuenta Inválida");
+                                btn.innerText = "ENTRAR AL SISTEMA";
+                                btn.disabled = false;
+                            }
                         }
-                        
-                        document.getElementById('login-modal').style.display = 'none';
-                        sysAlert("¡Inicio de sesión correcto! Conectando a tu base de datos...", "Bienvenido"); 
-                        
-                        cargarBaseDeDatos();
                     }).catch(err => {
                         sysAlert("Error al verificar tu negocio: " + err.message);
                         btn.innerText = "ENTRAR AL SISTEMA";
