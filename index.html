@@ -153,7 +153,14 @@
                     </button>
                 </div>
 
-               <input type="text" id="busqueda" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
+               <div class="flex items-center gap-2">
+    <input type="text" id="busqueda" inputmode="none" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
+    
+    <button type="button" onclick="alternarTecladoTablet()" class="md:hidden bg-indigo-600 text-white p-4 md:p-6 rounded-2xl text-2xl shadow-md hover:bg-indigo-700 flex-shrink-0 transition-transform active:scale-95" title="Activar/Desactivar teclado manual">
+        ⌨️
+    </button>
+</div>
+
                 <div id="res-busqueda" class="bg-white divide-y shadow-xl rounded-xl overflow-hidden border"></div>
                 <div class="bg-white p-4 rounded-2xl shadow-md min-h-[300px] border">
                     <table class="w-full text-left font-bold text-sm md:text-lg border-separate border-spacing-y-2"><tbody id="cart-body"></tbody></table>
