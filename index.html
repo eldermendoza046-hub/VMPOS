@@ -933,7 +933,7 @@
             return "1970-01-01";
         }
 
-        function buscarInventarioDebounce() { clearTimeout(debounceTimerInventario); debounceTimerInventario = setTimeout(() => { render(); }, 300); }
+        function buscarInventarioDebounce() { clearTimeout(debounceTimerInventario); debounceTimerInventario = setTimeout(() => { renderInventario(); }, 300); }
 
         function render() {
             if(!db.config) {
