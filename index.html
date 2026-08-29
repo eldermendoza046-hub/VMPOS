@@ -945,147 +945,166 @@ function cargarBaseDeDatos() {
 
         function buscarInventarioDebounce() { clearTimeout(debounceTimerInventario); debounceTimerInventario = setTimeout(() => { renderInventario(); }, 300); }
 
-        function render() {
-            if(!db.config) {
-                db.config = {
-                    nombre_tienda: "MI TIENDA",
-                    telefono: "00000000",
-                    nombre_s1: "SOCIO 1",
-                    cat_s1: "GENERAL",
-                    nombre_s2: "SOCIO 2",
-                    cat_s2: "GENERAL",
-                    sucursal_1: "SUCURSAL A",
-                    sucursal_2: "SUCURSAL B",
-                    mensaje_ticket: "¡GRACIAS POR SU COMPRA!",
-                    desc_activo: "NO", desc_porcentaje: 10, desc_minimo: 15, tamano_ticket: "72mm"
-                };
+       // 🔥 1. Función coordinadora principal
+function render() {
+    if(!db.config) {
+        db.config = {
+            nombre_tienda: "MI TIENDA", telefono: "00000000", nombre_s1: "SOCIO 1", cat_s1: "GENERAL", 
+            nombre_s2: "SOCIO 2", cat_s2: "GENERAL", sucursal_1: "SUCURSAL A", sucursal_2: "SUCURSAL B", 
+            mensaje_ticket: "¡GRACIAS POR SU COMPRA!", desc_activo: "NO", desc_porcentaje: 10, desc_minimo: 15, tamano_ticket: "72mm"
+        };
+    }
+    renderUI();
+    renderInventario();
+    renderHistorial();
+    
+    cargarCierres(); 
+    if(db.rol === 'ADMIN') cargarReportePorFechas();
+    actualizarContadorPausados();
+}
+
+// 🔥 2. Solo actualiza interfaz y textos
+function renderUI() {
+    const isA = db.rol === 'ADMIN'; 
+    const color = db.tiendaActual === 'Variedades Maria' ? '#312e81' : '#9d174d';
+    
+    document.getElementById('navbar').style.backgroundColor = isA ? '#000' : color; 
+    document.getElementById('tab-bar').style.backgroundColor = color;
+    document.getElementById('rol-txt').innerText = isA ? "ADMINISTRADOR (DUEÑO)" : "MODO CAJERO";
+    document.getElementById('btn-admin').innerText = isA ? "SALIR" : "🔑 Admin";
+    
+    const nombreSucursal1 = (db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "SUCURSAL A";
+    const nombreSucursal2 = (db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "SUCURSAL B";
+
+    document.getElementById('tienda-txt').innerText = db.tiendaActual === 'Variedades Maria' ? nombreSucursal1 : nombreSucursal2;
+    if(document.getElementById('btn-sel-suc1')) document.getElementById('btn-sel-suc1').innerText = "🏪 " + nombreSucursal1;
+    if(document.getElementById('btn-sel-suc2')) document.getElementById('btn-sel-suc2').innerText = "🏬 " + nombreSucursal2;
+
+    document.getElementById('c-lbl-s1').innerText = (db.config.nombre_s1 || "SOCIO 1").substring(0, 10);
+    document.getElementById('c-lbl-s2').innerText = (db.config.nombre_s2 || "SOCIO 2").substring(0, 10);
+    if(document.getElementById('rep-titulo-s1')) document.getElementById('rep-titulo-s1').innerText = "👤 Socio 1: " + (db.config.nombre_s1 || "SOCIO 1");
+    if(document.getElementById('rep-titulo-s2')) document.getElementById('rep-titulo-s2').innerText = "👤 Socio 2: " + (db.config.nombre_s2 || "SOCIO 2");
+    if(document.getElementById('th-rep-s1')) document.getElementById('th-rep-s1').innerText = (db.config.nombre_s1 || "SOCIO 1");
+    if(document.getElementById('th-rep-s2')) document.getElementById('th-rep-s2').innerText = (db.config.nombre_s2 || "SOCIO 2");
+    
+    if(document.getElementById('dep-opt-s1')) document.getElementById('dep-opt-s1').innerText = "A CUENTA DE " + (db.config.nombre_s1 || "SOCIO 1");
+    if(document.getElementById('dep-opt-s2')) document.getElementById('dep-opt-s2').innerText = "A CUENTA DE " + (db.config.nombre_s2 || "SOCIO 2");
+    if(document.getElementById('gas-opt-s1')) document.getElementById('gas-opt-s1').innerText = "SOLO " + (db.config.nombre_s1 || "SOCIO 1");
+    if(document.getElementById('gas-opt-s2')) document.getElementById('gas-opt-s2').innerText = "SOLO " + (db.config.nombre_s2 || "SOCIO 2");
+    if(document.getElementById('aju-opt-s1')) document.getElementById('aju-opt-s1').innerText = "CUENTA " + (db.config.nombre_s1 || "SOCIO 1");
+    if(document.getElementById('aju-opt-s2')) document.getElementById('aju-opt-s2').innerText = "CUENTA " + (db.config.nombre_s2 || "SOCIO 2");
+
+    ['tab-inventario','tab-historial','tab-cierre'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); });
+    
+    const tabRep = document.getElementById('tab-reportes'); if (tabRep) tabRep.classList.toggle('hidden', !isA); 
+    const secRep = document.getElementById('section-reportes'); if (!isA && secRep && !secRep.classList.contains('hidden')) setTab('ventas');
+    
+    ['btn-nuevo-prod', 'btn-excel-prod', 'btn-descargar-excel', 'btn-config', 'btn-vaciar-inv', 'admin-tools', 'th-costo', 'th-ganancia', 'admin-financial-cards', 'div-costo-modal', 'div-oferta-modal'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.classList.toggle('hidden', !isA);
+    });
+    
+    const cc = document.getElementById('cobro-card'); if(cc) cc.style.backgroundColor = color; 
+    const ctb = document.getElementById('c-total-bg'); if(ctb) ctb.style.backgroundColor = color;
+}
+
+// 🔥 3. Solo actualiza el inventario con límite visual de 60 productos
+function renderInventario() {
+    const isA = db.rol === 'ADMIN';
+    const ib = document.getElementById('inv-body'); 
+    let htmlInventario = ''; 
+    const filtroInv = document.getElementById('busqueda-inventario') ? document.getElementById('busqueda-inventario').value.trim().toLowerCase() : '';
+    
+    let acumuladoCapitalGlobal = 0; let acumuladoGananciaGlobal = 0;
+    let contadorRenderizados = 0;
+
+    db.productos.sort((a,b) => String(a.nombre || "").localeCompare(String(b.nombre || ""))).forEach((p) => {
+        const stockActualTienda = db.tiendaActual === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
+        const stockOtraTienda = db.tiendaActual === 'Variedades Maria' ? parseInt(p.stock_marisol || 0) : parseInt(p.stock_maria || 0);
+        
+        const precioAct = getPrecioActual(p); const estaEnOferta = (precioAct !== parseFloat(p.venta));
+
+        if (isA) { 
+            acumuladoCapitalGlobal += ((p.costo || 0) * stockActualTienda); 
+            acumuladoGananciaGlobal += ((precioAct - (p.costo || 0)) * stockActualTienda); 
+        }
+        
+        if (filtroInv !== '' && 
+            !String(p.nombre || "").toLowerCase().includes(filtroInv) && 
+            !String(p.codigo || "").toLowerCase().includes(filtroInv) &&
+            !String(p.propietario || "").toLowerCase().includes(filtroInv) &&
+            !String(p.categoria || "").toLowerCase().includes(filtroInv)
+        ) return;
+
+        let debeMostrarse = false;
+        if (stockActualTienda > 0) {
+            debeMostrarse = true; 
+        } else if (mostrarProductosEnCero) {
+            if (stockOtraTienda === 0) {
+                debeMostrarse = true;
             }
+        }
 
-            const isA = db.rol === 'ADMIN'; const color = db.tiendaActual === 'Variedades Maria' ? '#312e81' : '#9d174d';
-            document.getElementById('navbar').style.backgroundColor = isA ? '#000' : color; document.getElementById('tab-bar').style.backgroundColor = color;
-            document.getElementById('rol-txt').innerText = isA ? "ADMINISTRADOR (DUEÑO)" : "MODO CAJERO";
-            document.getElementById('btn-admin').innerText = isA ? "SALIR" : "🔑 Admin";
+        if(debeMostrarse && contadorRenderizados < 60) {
+            contadorRenderizados++;
+            const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
+            const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
+            let propColor = 'text-gray-400';
+            let propText = 'COMPARTIDO';
+            if(p.propietario === 'S1') { propColor = 'text-blue-500'; propText = (db.config.nombre_s1 || "SOCIO 1"); }
+            if(p.propietario === 'S2') { propColor = 'text-pink-500'; propText = (db.config.nombre_s2 || "SOCIO 2"); }
+
+            const imgThumb = p.imagen ? <img src="${p.imagen}" class="w-8 h-8 object-cover rounded border"> : <span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>;
+            htmlInventario += <tr><td class="p-3 text-left uppercase text-[10px] font-black"><div class="flex items-center gap-2">${imgThumb}<div>${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span> <span class="${propColor} text-[8px]">[${propText}]</span></div></div></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td> : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? <br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span> : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? <br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span> : ''}</td>${isA ? <td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td> : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? <button type="button" onclick="verKardex('${p.codigo}')" class="text-indigo-500 hover:text-indigo-700 transition-colors" title="Kárdex / Historial">📊</button> : ''} ${isA ? <button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button> : ''} ${isA ? <button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button> : '---'}</div></td></tr>`;
+        }
+    });
+
+    if (ib) ib.innerHTML = htmlInventario; 
+    const itc = document.getElementById('inv-total-capital'); if (isA && itc) itc.innerText = Q ${acumuladoCapitalGlobal.toFixed(2)}; 
+    const itg = document.getElementById('inv-total-ganancia'); if (isA && itg) itg.innerText = Q ${acumuladoGananciaGlobal.toFixed(2)}; 
+}
+
+// 🔥 4. Solo procesa el historial de Firebase
+function renderHistorial() {
+    const isA = db.rol === 'ADMIN';
+    const hb = document.getElementById('his-body'); 
+    const fechaFiltro = document.getElementById('filtro-fecha-ticket') ? document.getElementById('filtro-fecha-ticket').value : '';
+
+    if (fechaFiltro) {
+        database.ref(${db.ruta_historial}ventas_historial).orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
+            let htmlHistorial = ''; let tL=0, tM=0, tO=0, tT=0;
             
-            const nombreSucursal1 = (db.config && db.config.sucursal_1) ? db.config.sucursal_1 : "SUCURSAL A";
-            const nombreSucursal2 = (db.config && db.config.sucursal_2) ? db.config.sucursal_2 : "SUCURSAL B";
-
-            document.getElementById('tienda-txt').innerText = db.tiendaActual === 'Variedades Maria' ? nombreSucursal1 : nombreSucursal2;
-            
-            if(document.getElementById('btn-sel-suc1')) document.getElementById('btn-sel-suc1').innerText = "🏪 " + nombreSucursal1;
-            if(document.getElementById('btn-sel-suc2')) document.getElementById('btn-sel-suc2').innerText = "🏬 " + nombreSucursal2;
-
-            document.getElementById('c-lbl-s1').innerText = (db.config.nombre_s1 || "SOCIO 1").substring(0, 10);
-            document.getElementById('c-lbl-s2').innerText = (db.config.nombre_s2 || "SOCIO 2").substring(0, 10);
-            if(document.getElementById('rep-titulo-s1')) document.getElementById('rep-titulo-s1').innerText = "👤 Socio 1: " + (db.config.nombre_s1 || "SOCIO 1");
-            if(document.getElementById('rep-titulo-s2')) document.getElementById('rep-titulo-s2').innerText = "👤 Socio 2: " + (db.config.nombre_s2 || "SOCIO 2");
-            if(document.getElementById('th-rep-s1')) document.getElementById('th-rep-s1').innerText = (db.config.nombre_s1 || "SOCIO 1");
-            if(document.getElementById('th-rep-s2')) document.getElementById('th-rep-s2').innerText = (db.config.nombre_s2 || "SOCIO 2");
-            
-            if(document.getElementById('dep-opt-s1')) document.getElementById('dep-opt-s1').innerText = "A CUENTA DE " + (db.config.nombre_s1 || "SOCIO 1");
-            if(document.getElementById('dep-opt-s2')) document.getElementById('dep-opt-s2').innerText = "A CUENTA DE " + (db.config.nombre_s2 || "SOCIO 2");
-            if(document.getElementById('gas-opt-s1')) document.getElementById('gas-opt-s1').innerText = "SOLO " + (db.config.nombre_s1 || "SOCIO 1");
-            if(document.getElementById('gas-opt-s2')) document.getElementById('gas-opt-s2').innerText = "SOLO " + (db.config.nombre_s2 || "SOCIO 2");
-            
-            if(document.getElementById('aju-opt-s1')) document.getElementById('aju-opt-s1').innerText = "CUENTA " + (db.config.nombre_s1 || "SOCIO 1");
-            if(document.getElementById('aju-opt-s2')) document.getElementById('aju-opt-s2').innerText = "CUENTA " + (db.config.nombre_s2 || "SOCIO 2");
-
-            ['tab-inventario','tab-historial','tab-cierre'].forEach(id => document.getElementById(id).classList.remove('hidden'));
-            document.getElementById('tab-reportes').classList.toggle('hidden', !isA); if (!isA && !document.getElementById('section-reportes').classList.contains('hidden')) setTab('ventas');
-            document.getElementById('btn-nuevo-prod').classList.toggle('hidden', !isA); 
-            document.getElementById('btn-excel-prod').classList.toggle('hidden', !isA); 
-            document.getElementById('btn-descargar-excel').classList.toggle('hidden', !isA); 
-            document.getElementById('btn-config').classList.toggle('hidden', !isA); 
-            if(document.getElementById('btn-vaciar-inv')) document.getElementById('btn-vaciar-inv').classList.toggle('hidden', !isA);
-            document.getElementById('admin-tools').classList.toggle('hidden', !isA);
-            document.getElementById('th-costo').classList.toggle('hidden', !isA); document.getElementById('th-ganancia').classList.toggle('hidden', !isA); document.getElementById('admin-financial-cards').classList.toggle('hidden', !isA);
-            document.getElementById('div-costo-modal').classList.toggle('hidden', !isA); document.getElementById('div-oferta-modal').classList.toggle('hidden', !isA); 
-            document.getElementById('cobro-card').style.backgroundColor = color; document.getElementById('c-total-bg').style.backgroundColor = color;
-
-            const ib = document.getElementById('inv-body'); let htmlInventario = ''; const filtroInv = document.getElementById('busqueda-inventario') ? document.getElementById('busqueda-inventario').value.trim().toLowerCase() : '';
-            
-            let acumuladoCapitalGlobal = 0; let acumuladoGananciaGlobal = 0;
-
-            db.productos.sort((a,b) => String(a.nombre || "").localeCompare(String(b.nombre || ""))).forEach((p) => {
-                const stockActualTienda = db.tiendaActual === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0);
-                const stockOtraTienda = db.tiendaActual === 'Variedades Maria' ? parseInt(p.stock_marisol || 0) : parseInt(p.stock_maria || 0);
+            let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+            pendientes.forEach(v => {
+                if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
+                const fechaVentaStr = parseDateSafely(v.fecha, v.fecha_filtro);
+                if (fechaFiltro && fechaVentaStr !== fechaFiltro) return;
                 
-                const precioAct = getPrecioActual(p); const estaEnOferta = (precioAct !== parseFloat(p.venta));
-
-                if (isA) { 
-                    acumuladoCapitalGlobal += ((p.costo || 0) * stockActualTienda); 
-                    acumuladoGananciaGlobal += ((precioAct - (p.costo || 0)) * stockActualTienda); 
-                }
+                tT += v.total;
+                if(v.det) v.det.forEach(d => { let sub = d.cant * d.pre; if(d.propietario==='S1') tL += sub; else if(d.propietario==='S2') tM += sub; else tO += sub; });
                 
-                if (filtroInv !== '' && 
-                    !String(p.nombre || "").toLowerCase().includes(filtroInv) && 
-                    !String(p.codigo || "").toLowerCase().includes(filtroInv) &&
-                    !String(p.propietario || "").toLowerCase().includes(filtroInv) &&
-                    !String(p.categoria || "").toLowerCase().includes(filtroInv)
-                ) return;
-
-                let debeMostrarse = false;
-                if (stockActualTienda > 0) {
-                    debeMostrarse = true; 
-                } else if (mostrarProductosEnCero) {
-                    if (stockOtraTienda === 0) {
-                        debeMostrarse = true;
-                    }
-                }
-
-                if(debeMostrarse) {
-                    const classOferta = estaEnOferta ? 'bg-yellow-100 text-yellow-800 px-1 rounded animate-pulse' : 'text-indigo-600';
-                    const medIcon = p.categoria === 'FARMACIA' ? '💊 ' : '';
-                    let propColor = 'text-gray-400';
-                    let propText = 'COMPARTIDO';
-                    if(p.propietario === 'S1') { propColor = 'text-blue-500'; propText = (db.config.nombre_s1 || "SOCIO 1"); }
-                    if(p.propietario === 'S2') { propColor = 'text-pink-500'; propText = (db.config.nombre_s2 || "SOCIO 2"); }
-
-                    const imgThumb = p.imagen ? `<img src="${p.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center text-[10px]">📷</span>`;
-                    htmlInventario += `<tr><td class="p-3 text-left uppercase text-[10px] font-black"><div class="flex items-center gap-2">${imgThumb}<div>${medIcon}${p.nombre} <br><span class="text-gray-400 font-mono text-[9px]">${p.codigo}</span> <span class="${propColor} text-[8px]">[${propText}]</span></div></div></td>${isA ? `<td class="p-3 text-red-500">Q${(p.costo || 0).toFixed(2)}</td>` : ''}<td class="p-3 font-black"><span class="${classOferta}">Q${precioAct.toFixed(2)}</span> ${estaEnOferta ? `<br><span class="text-[8px] line-through text-gray-400">Q${p.venta}</span>` : ''} ${p.categoria==='FARMACIA' && p.precio_blister ? `<br><span class="text-[9px] text-green-700">📦 Blister: Q${p.precio_blister}</span>` : ''}</td>${isA ? `<td class="p-3 text-green-600 font-black">+Q${(precioAct - (p.costo || 0)).toFixed(2)}</td>` : ''}<td class="p-3 ${stockActualTienda<5?'text-red-600 font-black':''}">${stockActualTienda}</td><td class="p-3"><div class="flex gap-2 justify-center">${isA ? `<button type="button" onclick="verKardex('${p.codigo}')" class="text-indigo-500 hover:text-indigo-700 transition-colors" title="Kárdex / Historial">📊</button>` : ''} ${isA ? `<button type="button" onclick="editarProd('${p.codigo}')" class="text-blue-500 hover:text-blue-700 transition-colors">✏️</button>` : ''} ${isA ? `<button type="button" onclick="eliminarProductoDefinitivo('${p.codigo}')" class="text-red-500 hover:text-red-700 transition-colors">🗑️</button>` : '---'}</div></td></tr>`;
-                }
+                htmlHistorial += <tr class="bg-yellow-50 opacity-80"><td class="p-3 text-yellow-700 font-bold">⏳ PEND</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">OFFLINE</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button></td></tr>;
             });
 
-            ib.innerHTML = htmlInventario; 
-            if (isA) { 
-                document.getElementById('inv-total-capital').innerText = `Q ${acumuladoCapitalGlobal.toFixed(2)}`; 
-                document.getElementById('inv-total-ganancia').innerText = `Q ${acumuladoGananciaGlobal.toFixed(2)}`; 
-            }
-
-            const hb = document.getElementById('his-body'); 
-            const fechaFiltro = document.getElementById('filtro-fecha-ticket') ? document.getElementById('filtro-fecha-ticket').value : '';
-
-            if (fechaFiltro) {
-                database.ref(`${db.ruta_historial}ventas_historial`).orderByChild('fecha_filtro').equalTo(fechaFiltro).once('value').then(snap => {
-                    let htmlHistorial = ''; let tL=0, tM=0, tO=0, tT=0;
-                    
-                    let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
-                    pendientes.forEach(v => {
-                        if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
-                        const fechaVentaStr = parseDateSafely(v.fecha, v.fecha_filtro);
-                        if (fechaFiltro && fechaVentaStr !== fechaFiltro) return;
-                        
-                        tT += v.total;
-                        if(v.det) v.det.forEach(d => { let sub = d.cant * d.pre; if(d.propietario==='S1') tL += sub; else if(d.propietario==='S2') tM += sub; else tO += sub; });
-                        
-                        htmlHistorial += `<tr class="bg-yellow-50 opacity-80"><td class="p-3 text-yellow-700 font-bold">⏳ PEND</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">OFFLINE</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button></td></tr>`;
-                    });
-
-                    snap.forEach(child => {
-                        let v = child.val();
-                        let idx = child.key; 
-                        if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
-                        if(v.estado !== 'ANULADA' && v.jornada_abierta) {
-                            tT += v.total;
-                            if(v.det) v.det.forEach(d => { let sub = d.cant * d.pre; if(d.propietario==='S1') tL += sub; else if(d.propietario==='S2') tM += sub; else tO += sub; });
-                        }
-                        htmlHistorial += `<tr class="${v.estado==='ANULADA'?'opacity-30 bg-red-50':''}"><td class="p-3">#${v.ticket}</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">${v.estado}</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button>${v.estado==='OK' && isA ? `<button type="button" onclick="anularVentaNube('${idx}')" class="text-red-500 font-black hover:text-red-700 transition-colors">X</button>` : ''} ${isA ? `<button type="button" onclick="eliminarVentaNube('${idx}')" class="text-red-700 font-black hover:scale-125 transition-transform">🗑️</button>` : ''}</td></tr>`;
-                    });
-                    if (hb) hb.innerHTML = htmlHistorial; 
-                    document.getElementById('c-lib').innerText = `Q ${tL.toFixed(2)}`; document.getElementById('c-maq').innerText = `Q ${tM.toFixed(2)}`; document.getElementById('c-otr').innerText = `Q ${tO.toFixed(2)}`; document.getElementById('c-total').innerText = `Q ${tT.toFixed(2)}`;
-                });
-            } else {
-                if (hb) hb.innerHTML = '';
-            }
+            snap.forEach(child => {
+                let v = child.val();
+                let idx = child.key; 
+                if(String(v.tienda).trim() !== String(db.tiendaActual).trim()) return;
+                if(v.estado !== 'ANULADA' && v.jornada_abierta) {
+                    tT += v.total;
+                    if(v.det) v.det.forEach(d => { let sub = d.cant * d.pre; if(d.propietario==='S1') tL += sub; else if(d.propietario==='S2') tM += sub; else tO += sub; });
+                }
+                htmlHistorial += <tr class="${v.estado==='ANULADA'?'opacity-30 bg-red-50':''}"><td class="p-3">#${v.ticket}</td><td class="p-3 font-black text-indigo-700">Q${v.total.toFixed(2)}</td><td class="p-3 text-[8px] font-bold">${v.estado}</td><td class="p-3 flex gap-3 justify-center items-center"><button type="button" onclick='imprimirTicket(${JSON.stringify(v).replace(/'/g, "&#39;")})' class="hover:scale-125 transition-transform">🖨️</button>${v.estado==='OK' && isA ? `<button type="button" onclick="anularVentaNube('${idx}')" class="text-red-500 font-black hover:text-red-700 transition-colors">X</button> : ''} ${isA ? <button type="button" onclick="eliminarVentaNube('${idx}')" class="text-red-700 font-black hover:scale-125 transition-transform">🗑️</button> : ''}</td></tr>`;
+            });
+            if (hb) hb.innerHTML = htmlHistorial; 
+            const cl = document.getElementById('c-lib'); if(cl) cl.innerText = Q ${tL.toFixed(2)}; 
+            const cm = document.getElementById('c-maq'); if(cm) cm.innerText = Q ${tM.toFixed(2)}; 
+            const co = document.getElementById('c-otr'); if(co) co.innerText = Q ${tO.toFixed(2)}; 
+            const ct = document.getElementById('c-total'); if(ct) ct.innerText = Q ${tT.toFixed(2)};
+        });
+    } else {
+        if (hb) hb.innerHTML = '';
+    }
+}
 
             cargarCierres(); if(isA) cargarReportePorFechas();
             actualizarContadorPausados(); // Actualiza el botón al renderizar
