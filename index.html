@@ -900,22 +900,32 @@
         }
 
         
-        function cargarBaseDeDatos() {
-            database.ref(`${db.ruta_datos}/productos`).on('value', snap => {
-                let data = snap.val() || [];
-                let listaObj = Array.isArray(data) ? data : Object.values(data);
-                db.productos = listaObj.filter(p => p !== null && p !== undefined);
-                localStorage.setItem('backup_pos', JSON.stringify(db)); 
-                render();
-            });
-            database.ref(`${db.ruta_datos}/config`).on('value', snap => {
-                db.config = snap.val() || null;
-                render();
-            });
-            database.ref(`${db.ruta_datos}/admin_pin`).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
-            database.ref(`${db.ruta_datos}/cMaria`).on('value', snap => { db.cMaria = snap.val() || 1; });
-            database.ref(`${db.ruta_datos}/cMarisol`).on('value', snap => { db.cMarisol = snap.val() || 1; });
+     let sistemaIniciado = false; // 🔥 Control de arranque seguro
+
+function cargarBaseDeDatos() {
+    database.ref(${db.ruta_datos}/productos).on('value', snap => {
+        let data = snap.val() || [];
+        let listaObj = Array.isArray(data) ? data : Object.values(data);
+        db.productos = listaObj.filter(p => p !== null && p !== undefined);
+        localStorage.setItem('backup_pos', JSON.stringify(db)); 
+        
+        if (!sistemaIniciado) {
+            render(); 
+            sistemaIniciado = true;
+        } else {
+            renderInventario();
         }
+    });
+    
+    database.ref(${db.ruta_datos}/config).on('value', snap => {
+        db.config = snap.val() || null;
+        if (sistemaIniciado) renderUI(); 
+    });
+    
+    database.ref(${db.ruta_datos}/admin_pin).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
+    database.ref(${db.ruta_datos}/cMaria).on('value', snap => { db.cMaria = snap.val() || 1; });
+    database.ref(${db.ruta_datos}/cMarisol).on('value', snap => { db.cMarisol = snap.val() || 1; });
+}
 
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
