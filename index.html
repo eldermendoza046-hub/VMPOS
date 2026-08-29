@@ -900,41 +900,42 @@
         }
 
      
-function cargarBaseDeDatos() {
-    const refProductos = database.ref(${db.ruta_datos}/productos);
+// Variable global para agrupar redibujados y evitar congelamientos
+let renderTimerBaseDatos; 
 
-    // Función que agrupa múltiples cambios rápidos en un solo redibujado
+function cargarBaseDeDatos() {
+    const refProductos = database.ref(`${db.ruta_datos}/productos`);
+
     const actualizarPantalla = () => {
         clearTimeout(renderTimerBaseDatos);
         renderTimerBaseDatos = setTimeout(() => {
-            persistir(); // Guarda en localStorage una sola vez al terminar los cambios
-            render();    // Redibuja la pantalla una sola vez
-        }, 150); // Espera 150 milisegundos después del último cambio detectado
+            persistir(); 
+            render();    
+        }, 150); 
     };
 
-    // 1. CARGA INICIAL COMPLETA (Solo ocurre al iniciar sesión)
+    // 1. CARGA INICIAL COMPLETA
     refProductos.once('value', snap => {
         let data = snap.val() || [];
         let listaObj = Array.isArray(data) ? data : Object.values(data);
         db.productos = listaObj.filter(p => p !== null && p !== undefined);
         actualizarPantalla();
 
-        // 2. ESCUCHAR NUEVOS (Ej. Alguien crea un producto en otra sucursal)
+        // 2. ESCUCHAR NUEVOS PRODUCTOS
         refProductos.on('child_added', snap => {
             const nuevoProd = snap.val();
-            // Previene duplicar lo que ya se descargó en la carga inicial
             if (!db.productos.find(p => p.codigo === nuevoProd.codigo)) {
                 db.productos.push(nuevoProd);
                 actualizarPantalla();
             }
         });
 
-        // 3. ESCUCHAR CAMBIOS (Ej. Se hace una venta y baja el stock)
+        // 3. ESCUCHAR CAMBIOS (Ventas o ediciones)
         refProductos.on('child_changed', snap => {
             const prodCambiado = snap.val();
             const index = db.productos.findIndex(p => p.codigo === prodCambiado.codigo);
             if (index > -1) {
-                db.productos[index] = prodCambiado; // Actualiza el producto específico
+                db.productos[index] = prodCambiado;
                 actualizarPantalla();
             }
         });
@@ -947,19 +948,20 @@ function cargarBaseDeDatos() {
         });
     });
 
-    // Se mantienen los listeners de configuración que ya tenías
-    database.ref(${db.ruta_datos}/config).on('value', snap => {
+    // Se mantienen los parámetros generales que ya tenías
+    database.ref(`${db.ruta_datos}/config`).on('value', snap => {
         db.config = snap.val() || null;
         render();
     });
-    database.ref(${db.ruta_datos}/admin_pin).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
-    database.ref(${db.ruta_datos}/cMaria).on('value', snap => { db.cMaria = snap.val() || 1; });
-    database.ref(${db.ruta_datos}/cMarisol).on('value', snap => { db.cMarisol = snap.val() || 1; });
+    database.ref(`${db.ruta_datos}/admin_pin`).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
+    database.ref(`${db.ruta_datos}/cMaria`).on('value', snap => { db.cMaria = snap.val() || 1; });
+    database.ref(`${db.ruta_datos}/cMarisol`).on('value', snap => { db.cMarisol = snap.val() || 1; });
 }
 
 function persistir() { 
     localStorage.setItem('backup_pos', JSON.stringify(db)); 
 }
+
         
         function parseDateSafely(locStr, filtroStr) {
             if(filtroStr) return filtroStr; 
