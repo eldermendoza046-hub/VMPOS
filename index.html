@@ -901,21 +901,61 @@
 
         
         function cargarBaseDeDatos() {
-            database.ref(`${db.ruta_datos}/productos`).on('value', snap => {
-                let data = snap.val() || [];
-                let listaObj = Array.isArray(data) ? data : Object.values(data);
-                db.productos = listaObj.filter(p => p !== null && p !== undefined);
-                localStorage.setItem('backup_pos', JSON.stringify(db)); 
-                render();
-            });
-            database.ref(`${db.ruta_datos}/config`).on('value', snap => {
-                db.config = snap.val() || null;
-                render();
-            });
-            database.ref(`${db.ruta_datos}/admin_pin`).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
-            database.ref(`${db.ruta_datos}/cMaria`).on('value', snap => { db.cMaria = snap.val() || 1; });
-            database.ref(`${db.ruta_datos}/cMarisol`).on('value', snap => { db.cMarisol = snap.val() || 1; });
-        }
+    const refProductos = database.ref(${db.ruta_datos}/productos);
+
+    // Función que agrupa múltiples cambios rápidos en un solo redibujado
+    const actualizarPantalla = () => {
+        clearTimeout(renderTimerBaseDatos);
+        renderTimerBaseDatos = setTimeout(() => {
+            persistir(); // Guarda en localStorage una sola vez al terminar los cambios
+            render();    // Redibuja la pantalla una sola vez
+        }, 150); // Espera 150 milisegundos después del último cambio detectado
+    };
+
+    // 1. CARGA INICIAL COMPLETA (Solo ocurre al iniciar sesión)
+    refProductos.once('value', snap => {
+        let data = snap.val() || [];
+        let listaObj = Array.isArray(data) ? data : Object.values(data);
+        db.productos = listaObj.filter(p => p !== null && p !== undefined);
+        actualizarPantalla();
+
+        // 2. ESCUCHAR NUEVOS (Ej. Alguien crea un producto en otra sucursal)
+        refProductos.on('child_added', snap => {
+            const nuevoProd = snap.val();
+            // Previene duplicar lo que ya se descargó en la carga inicial
+            if (!db.productos.find(p => p.codigo === nuevoProd.codigo)) {
+                db.productos.push(nuevoProd);
+                actualizarPantalla();
+            }
+        });
+
+        // 3. ESCUCHAR CAMBIOS (Ej. Se hace una venta y baja el stock)
+        refProductos.on('child_changed', snap => {
+            const prodCambiado = snap.val();
+            const index = db.productos.findIndex(p => p.codigo === prodCambiado.codigo);
+            if (index > -1) {
+                db.productos[index] = prodCambiado; // Actualiza el producto específico
+                actualizarPantalla();
+            }
+        });
+
+        // 4. ESCUCHAR ELIMINADOS
+        refProductos.on('child_removed', snap => {
+            const prodBorrado = snap.val();
+            db.productos = db.productos.filter(p => p.codigo !== prodBorrado.codigo);
+            actualizarPantalla();
+        });
+    });
+
+    // Se mantienen los listeners de configuración que ya tenías
+    database.ref(${db.ruta_datos}/config).on('value', snap => {
+        db.config = snap.val() || null;
+        render();
+    });
+    database.ref(${db.ruta_datos}/admin_pin).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
+    database.ref(${db.ruta_datos}/cMaria).on('value', snap => { db.cMaria = snap.val() || 1; });
+    database.ref(${db.ruta_datos}/cMarisol).on('value', snap => { db.cMarisol = snap.val() || 1; });
+}
 
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
