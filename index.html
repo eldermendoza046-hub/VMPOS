@@ -905,22 +905,31 @@ function buscarInventarioDebounce() {
         }
 
         
-        function cargarBaseDeDatos() {
-            database.ref(`${db.ruta_datos}/productos`).on('value', snap => {
-                let data = snap.val() || [];
-                let listaObj = Array.isArray(data) ? data : Object.values(data);
-                db.productos = listaObj.filter(p => p !== null && p !== undefined);
-                localStorage.setItem('backup_pos', JSON.stringify(db)); 
-                render();
-            });
-            database.ref(`${db.ruta_datos}/config`).on('value', snap => {
-                db.config = snap.val() || null;
-                render();
-            });
-            database.ref(`${db.ruta_datos}/admin_pin`).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
-            database.ref(`${db.ruta_datos}/cMaria`).on('value', snap => { db.cMaria = snap.val() || 1; });
-            database.ref(`${db.ruta_datos}/cMarisol`).on('value', snap => { db.cMarisol = snap.val() || 1; });
+       function cargarBaseDeDatos() {
+    database.ref(${db.ruta_datos}/productos).on('value', snap => {
+        let data = snap.val() || [];
+        let listaObj = Array.isArray(data) ? data : Object.values(data);
+        db.productos = listaObj.filter(p => p !== null && p !== undefined);
+        localStorage.setItem('backup_pos', JSON.stringify(db)); 
+        
+        // 🔥 Modificado: Solo renderiza todo la primera vez. 
+        // Si la UI ya cargó, solo actualiza la tabla de inventario.
+        if(document.getElementById('tienda-txt').innerText === "") {
+            render(); 
+        } else {
+            renderInventario();
         }
+    });
+    
+    database.ref(${db.ruta_datos}/config).on('value', snap => {
+        db.config = snap.val() || null;
+        renderUI(); // 🔥 Modificado: Si cambias ajustes, solo actualiza la interfaz
+    });
+    
+    database.ref(${db.ruta_datos}/admin_pin).on('value', snap => { db.admin_pin = snap.val() || '1892'; });
+    database.ref(${db.ruta_datos}/cMaria).on('value', snap => { db.cMaria = snap.val() || 1; });
+    database.ref(${db.ruta_datos}/cMarisol).on('value', snap => { db.cMarisol = snap.val() || 1; });
+}
 
         function persistir() { 
             localStorage.setItem('backup_pos', JSON.stringify(db)); 
