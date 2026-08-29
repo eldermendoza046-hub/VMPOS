@@ -899,7 +899,8 @@
                 });
         }
 
-        
+        // Variable global para agrupar redibujados y evitar congelamientos
+let renderTimerBaseDatos; 
         function cargarBaseDeDatos() {
     const refProductos = database.ref(${db.ruta_datos}/productos);
 
