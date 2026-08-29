@@ -696,17 +696,17 @@
         let mostrarProductosEnCero = false; 
         
         function toggleMostrarCeros() {
-            mostrarProductosEnCero = !mostrarProductosEnCero;
-            const btn = document.getElementById('btn-mostrar-ceros');
-            if (mostrarProductosEnCero) {
-                btn.innerText = "🙈 Ocultar Productos en 0";
-                btn.classList.replace('bg-gray-600', 'bg-red-500');
-            } else {
-                btn.innerText = "👁️ Ver Productos en 0";
-                btn.classList.replace('bg-red-500', 'bg-gray-600');
-            }
-            render(); 
-        }
+    mostrarProductosEnCero = !mostrarProductosEnCero;
+    const btn = document.getElementById('btn-mostrar-ceros');
+    if (mostrarProductosEnCero) {
+        btn.innerText = "🙈 Ocultar Productos en 0";
+        btn.classList.replace('bg-gray-600', 'bg-red-500');
+    } else {
+        btn.innerText = "👁️ Ver Productos en 0";
+        btn.classList.replace('bg-red-500', 'bg-gray-600');
+    }
+    renderInventario(); // 🔥 Modificado
+}
 
         function sysAlert(text, title = "Atención") {
             document.getElementById('sys-msg-title').innerText = title;
