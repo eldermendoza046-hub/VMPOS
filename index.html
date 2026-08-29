@@ -899,9 +899,9 @@
                 });
         }
 
-        // Variable global para agrupar redibujados y evitar congelamientos
+       // Variable global para agrupar redibujados y evitar congelamientos
 let renderTimerBaseDatos; 
-        function cargarBaseDeDatos() {
+function cargarBaseDeDatos() {
     const refProductos = database.ref(${db.ruta_datos}/productos);
 
     // Función que agrupa múltiples cambios rápidos en un solo redibujado
@@ -958,9 +958,9 @@ let renderTimerBaseDatos;
     database.ref(${db.ruta_datos}/cMarisol).on('value', snap => { db.cMarisol = snap.val() || 1; });
 }
 
-        function persistir() { 
-            localStorage.setItem('backup_pos', JSON.stringify(db)); 
-        }
+function persistir() { 
+    localStorage.setItem('backup_pos', JSON.stringify(db)); 
+}
         
         function parseDateSafely(locStr, filtroStr) {
             if(filtroStr) return filtroStr; 
