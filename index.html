@@ -2312,7 +2312,40 @@ function alternarTecladoTablet() {
 
         let temporizadorBusqueda; 
         function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
-        function buscarVenta(e) { clearTimeout(temporizadorBusqueda); temporizadorBusqueda = setTimeout(() => { const q = e.target.value.trim().toLowerCase(); const res = document.getElementById('res-busqueda'); if (!res) return; res.innerHTML = ''; if(q.length < 2) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if(exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if(s > 0) { addCart(exacto); e.target.value = ''; return; } } let htmlResultado = ''; db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q) || String(x.codigo || "").toLowerCase().includes(q)).slice(0, 10).forEach(x => { const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); if(s > 0) { const precioAct = getPrecioActual(x); const miniImg = x.imagen ? `<img src="${x.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-[10px]">📷</span>`; htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><div class="flex items-center gap-2">${miniImg} <span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span></div><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; } }); res.innerHTML = htmlResultado; }, 250); }
+        function buscarVenta(e) { 
+    clearTimeout(temporizadorBusqueda); 
+    temporizadorBusqueda = setTimeout(() => { 
+        const q = e.target.value.trim().toLowerCase(); 
+        const res = document.getElementById('res-busqueda'); 
+        if (!res) return; 
+        res.innerHTML = ''; 
+        if(q.length < 2) return; 
+        
+        const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); 
+        if(exacto) { 
+            const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); 
+            if(s > 0) { 
+                addCart(exacto); 
+                e.target.value = ''; 
+                return; 
+            } 
+        } 
+        
+        let htmlResultado = ''; 
+        db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q) || String(x.codigo || "").toLowerCase().includes(q))
+        .slice(0, 50) 
+        .forEach(x => { 
+            const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); 
+            if(s > 0) { 
+                const precioAct = getPrecioActual(x); 
+                const miniImg = x.imagen ? `<img src="${x.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-[10px]">📷</span>`; 
+                htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><div class="flex items-center gap-2">${miniImg} <span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span></div><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; 
+            } 
+        }); 
+        res.innerHTML = htmlResultado; 
+    }, 250); 
+}
+
         function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
         
         function addCart(p) { 
