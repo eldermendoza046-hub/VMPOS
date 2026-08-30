@@ -2321,6 +2321,7 @@ function alternarTecladoTablet() {
         res.innerHTML = ''; 
         if(q.length < 2) return; 
         
+        // 1. Escaneo exacto (Pistola de códigos)
         const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); 
         if(exacto) { 
             const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); 
@@ -2331,20 +2332,32 @@ function alternarTecladoTablet() {
             } 
         } 
         
+        // 2. Búsqueda inteligente multi-palabra
+        const terminos = q.split(' ').filter(t => t.length > 0);
+        
         let htmlResultado = ''; 
-        db.productos.filter(x => String(x.nombre || "").toLowerCase().includes(q) || String(x.codigo || "").toLowerCase().includes(q))
+        db.productos.filter(x => {
+            const nombreItem = String(x.nombre || "").toLowerCase();
+            const codigoItem = String(x.codigo || "").toLowerCase();
+            return terminos.every(termino => nombreItem.includes(termino) || codigoItem.includes(termino));
+        })
+        .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""))) // 3. Orden alfabético
         .slice(0, 50) 
         .forEach(x => { 
             const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); 
             if(s > 0) { 
                 const precioAct = getPrecioActual(x); 
-                const miniImg = x.imagen ? `<img src="${x.imagen}" class="w-8 h-8 object-cover rounded border">` : `<span class="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-[10px]">📷</span>`; 
-                htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center font-black uppercase text-[11px] border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><div class="flex items-center gap-2">${miniImg} <span>${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span></div><span class="text-indigo-600">Q${precioAct.toFixed(2)}</span></div>`; 
+                
+                // 4. Imágenes grandes (w-16 h-16) y mejor separación (gap-4)
+                const miniImg = x.imagen ? `<img src="${x.imagen}" class="w-16 h-16 object-cover rounded-lg border shadow-sm">` : `<span class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-2xl shadow-sm">📷</span>`; 
+                
+                htmlResultado += `<div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center font-black uppercase text-xs border-b" onclick="agregarProductoDesdeBusqueda('${x.codigo}')"><div class="flex items-center gap-4">${miniImg} <span class="leading-tight">${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span></div><span class="text-indigo-600 text-sm">Q${precioAct.toFixed(2)}</span></div>`; 
             } 
         }); 
         res.innerHTML = htmlResultado; 
     }, 250); 
 }
+
 
         function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
         
