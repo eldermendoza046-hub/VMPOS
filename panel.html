@@ -341,63 +341,101 @@
         }
 
         function crearCliente() {
-            const id = document.getElementById('cli-id').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-            const nombre = document.getElementById('cli-nombre').value.trim().toUpperCase();
-            const email = document.getElementById('cli-correo').value.trim().toLowerCase();
-            const pass = document.getElementById('cli-pass').value.trim();
-            const fecha = document.getElementById('cli-fecha').value;
+    const id = document.getElementById('cli-id').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const nombre = document.getElementById('cli-nombre').value.trim().toUpperCase();
+    const email = document.getElementById('cli-correo').value.trim().toLowerCase();
+    const pass = document.getElementById('cli-pass').value.trim();
+    const fecha = document.getElementById('cli-fecha').value;
 
-            if (!id || !nombre || !email || !pass || !fecha) return sysToast("❌ Llena todos los campos.", 'warning');
-            if (pass.length < 6) return sysToast("❌ La contraseña debe tener al menos 6 caracteres.", 'warning');
+    // 🔥 CAPTURA DE DATOS FEL 🔥
+    const usaFel = document.getElementById('check-fel').checked ? "SI" : "NO";
+    const felNit = usaFel === "SI" ? document.getElementById('fel-nit').value.trim() : "";
+    const felCertificador = usaFel === "SI" ? document.getElementById('fel-certificador').value : "INFILE";
+    const felToken = usaFel === "SI" ? document.getElementById('fel-token').value.trim() : "";
 
-            const btn = document.getElementById('btn-crear');
-            btn.innerText = "CREANDO...";
-            btn.disabled = true;
+    if (!id || !nombre || !email || !pass || !fecha) return sysToast("❌ Llena todos los campos.", 'warning');
+    if (pass.length < 6) return sysToast("❌ La contraseña debe tener al menos 6 caracteres.", 'warning');
 
-            secondaryApp.auth().setPersistence(firebase.auth.Auth.Persistence.NONE)
-            .then(() => {
-                return secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
-            })
-            .then(() => {
-                const nuevoCliente = {
-                    nombre_negocio: nombre, email: email, fecha_vencimiento: fecha, estado: "ACTIVO", fecha_creacion: new Date().toISOString()
-                };
+    const btn = document.getElementById('btn-crear');
+    btn.innerText = "CREANDO...";
+    btn.disabled = true;
 
-                database.ref(`suscripciones/${id}`).set(nuevoCliente).then(() => {
-                    database.ref(`clientes_datos/${id}/config`).set({
-                        nombre_tienda: nombre, mensaje_ticket: "¡GRACIAS POR SU COMPRA!", desc_activo: "NO", tamano_ticket: "72mm"
-                    }).then(() => {
-                        sysToast(`✅ ¡Éxito! El cliente ${nombre} ha sido creado.`);
-                        document.getElementById('cli-id').value = '';
-                        document.getElementById('cli-nombre').value = '';
-                        document.getElementById('cli-correo').value = '';
-                        document.getElementById('cli-pass').value = '';
-                        btn.innerText = "CREAR Y ACTIVAR CLIENTE";
-                        btn.disabled = false;
-                    });
-                }).catch(err => {
-                    sysToast("❌ Error al guardar en base de datos.", 'error');
-                    btn.innerText = "CREAR Y ACTIVAR CLIENTE";
-                    btn.disabled = false;
-                });
-            })
-            .catch((error) => {
+    secondaryApp.auth().setPersistence(firebase.auth.Auth.Persistence.NONE)
+    .then(() => {
+        return secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+    })
+    .then(() => {
+        const nuevoCliente = {
+            nombre_negocio: nombre, email: email, fecha_vencimiento: fecha, estado: "ACTIVO", fecha_creacion: new Date().toISOString()
+        };
+
+        database.ref(`suscripciones/${id}`).set(nuevoCliente).then(() => {
+            database.ref(`clientes_datos/${id}/config`).set({
+                nombre_tienda: nombre, 
+                mensaje_ticket: "¡GRACIAS POR SU COMPRA!", 
+                desc_activo: "NO", 
+                tamano_ticket: "72mm",
+                // 🔥 SE GUARDAN LOS DATOS DE FACTURACIÓN AQUÍ 🔥
+                emite_fel: usaFel,
+                fel_nit: felNit,
+                fel_certificador: felCertificador,
+                fel_token: felToken
+            }).then(() => {
+                sysToast(`✅ ¡Éxito! El cliente ${nombre} ha sido creado.`);
+                
+                // Limpieza de campos generales
+                document.getElementById('cli-id').value = '';
+                document.getElementById('cli-nombre').value = '';
+                document.getElementById('cli-correo').value = '';
+                document.getElementById('cli-pass').value = '';
+                
+                // 🔥 Limpieza de campos FEL 🔥
+                document.getElementById('check-fel').checked = false;
+                document.getElementById('campos-fel').style.display = 'none';
+                document.getElementById('fel-nit').value = '';
+                document.getElementById('fel-token').value = '';
+                
                 btn.innerText = "CREAR Y ACTIVAR CLIENTE";
                 btn.disabled = false;
-                if(error.code === 'auth/email-already-in-use') {
-                    if(confirm("Este correo ya se había creado antes. ¿Deseas forzar la creación de la carpeta de este cliente ahora mismo?")) {
-                        const nuevoCliente = { nombre_negocio: nombre, email: email, fecha_vencimiento: fecha, estado: "ACTIVO", fecha_creacion: new Date().toISOString() };
-                        database.ref(`suscripciones/${id}`).set(nuevoCliente).then(() => {
-                            database.ref(`clientes_datos/${id}/config`).set({
-                                nombre_tienda: nombre, mensaje_ticket: "¡GRACIAS POR SU COMPRA!", desc_activo: "NO", tamano_ticket: "72mm"
-                            }).then(() => sysToast("✅ ¡Carpeta forzada y creada con éxito!"));
-                        });
-                    }
-                } else {
-                    sysToast("❌ Error de Firebase: " + error.message, 'error');
-                }
             });
+        }).catch(err => {
+            sysToast("❌ Error al guardar en base de datos.", 'error');
+            btn.innerText = "CREAR Y ACTIVAR CLIENTE";
+            btn.disabled = false;
+        });
+    })
+    .catch((error) => {
+        btn.innerText = "CREAR Y ACTIVAR CLIENTE";
+        btn.disabled = false;
+        if(error.code === 'auth/email-already-in-use') {
+            if(confirm("Este correo ya se había creado antes. ¿Deseas forzar la creación de la carpeta de este cliente ahora mismo?")) {
+                const nuevoCliente = { nombre_negocio: nombre, email: email, fecha_vencimiento: fecha, estado: "ACTIVO", fecha_creacion: new Date().toISOString() };
+                database.ref(`suscripciones/${id}`).set(nuevoCliente).then(() => {
+                    database.ref(`clientes_datos/${id}/config`).set({
+                        nombre_tienda: nombre, 
+                        mensaje_ticket: "¡GRACIAS POR SU COMPRA!", 
+                        desc_activo: "NO", 
+                        tamano_ticket: "72mm",
+                        // 🔥 También se guardan si se fuerza la creación 🔥
+                        emite_fel: usaFel,
+                        fel_nit: felNit,
+                        fel_certificador: felCertificador,
+                        fel_token: felToken
+                    }).then(() => {
+                        sysToast("✅ ¡Carpeta forzada y creada con éxito!");
+                        document.getElementById('check-fel').checked = false;
+                        document.getElementById('campos-fel').style.display = 'none';
+                        document.getElementById('fel-nit').value = '';
+                        document.getElementById('fel-token').value = '';
+                    });
+                });
+            }
+        } else {
+            sysToast("❌ Error de Firebase: " + error.message, 'error');
         }
+    });
+}
+
 
         function eliminarClienteCompleto(id, nombre) {
             let codigoConfirmacion = prompt(`⚠️ ¡PELIGRO DE BORRADO IRREVERSIBLE! ⚠️\n\nEstás a punto de borrar para siempre TODO el inventario de "${nombre}".\n\nSi estás absolutamente seguro, escribe la palabra BORRAR en mayúsculas:`);
