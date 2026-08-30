@@ -63,34 +63,64 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <!-- Formulario Nuevo Cliente -->
-            <div class="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700 h-fit">
-                <h2 class="text-xl font-black mb-4 text-white uppercase italic">➕ Alta de Nuevo Cliente</h2>
-                
-                <div class="space-y-4 font-bold text-xs">
-                    <div>
-                        <label class="text-gray-400 uppercase">ID Único (Sin espacios, ej: ferreteria_sol)</label>
-                        <input type="text" id="cli-id" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500" placeholder="ID del sistema">
-                    </div>
-                    <div>
-                        <label class="text-gray-400 uppercase">Nombre Comercial del Negocio</label>
-                        <input type="text" id="cli-nombre" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500 uppercase" placeholder="Ej: Ferretería El Sol">
-                    </div>
-                    <div>
-                        <label class="text-gray-400 uppercase">Correo (Para Iniciar Sesión)</label>
-                        <input type="email" id="cli-correo" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500" placeholder="correo@empresa.com">
-                    </div>
-                    <div>
-                        <label class="text-gray-400 uppercase">Contraseña (Mín 6 Caracteres)</label>
-                        <input type="password" id="cli-pass" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500" placeholder="••••••••">
-                    </div>
-                    <div>
-                        <label class="text-gray-400 uppercase text-yellow-400">Fecha Límite de Pago (Corte)</label>
-                        <input type="date" id="cli-fecha" class="w-full p-3 bg-gray-900 border border-yellow-600 rounded-xl text-yellow-400 outline-none focus:border-yellow-400">
-                    </div>
-                    <button onclick="crearCliente()" id="btn-crear" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black uppercase transition-colors shadow-lg mt-2">Crear y Activar Cliente</button>
+ <!-- Formulario Nuevo Cliente -->
+<div class="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700 h-fit">
+    <h2 class="text-xl font-black mb-4 text-white uppercase italic">➕ Alta de Nuevo Cliente</h2>
+    
+    <div class="space-y-4 font-bold text-xs">
+        <div>
+            <label class="text-gray-400 uppercase">ID Único (Sin espacios, ej: ferreteria_sol)</label>
+            <input type="text" id="cli-id" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500" placeholder="ID del sistema">
+        </div>
+        <div>
+            <label class="text-gray-400 uppercase">Nombre Comercial del Negocio</label>
+            <input type="text" id="cli-nombre" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500 uppercase" placeholder="Ej: Ferretería El Sol">
+        </div>
+        <div>
+            <label class="text-gray-400 uppercase">Correo (Para Iniciar Sesión)</label>
+            <input type="email" id="cli-correo" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500" placeholder="correo@empresa.com">
+        </div>
+        <div>
+            <label class="text-gray-400 uppercase">Contraseña (Mín 6 Caracteres)</label>
+            <input type="password" id="cli-pass" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white outline-none focus:border-blue-500" placeholder="••••••••">
+        </div>
+        <div>
+            <label class="text-gray-400 uppercase text-yellow-400">Fecha Límite de Pago (Corte)</label>
+            <input type="date" id="cli-fecha" class="w-full p-3 bg-gray-900 border border-yellow-600 rounded-xl text-yellow-400 outline-none focus:border-yellow-400">
+        </div>
+
+        <!-- 🔥 NUEVA SECCIÓN FEL (Oculta por defecto) 🔥 -->
+        <div class="border border-gray-600 p-4 rounded-xl mt-2 bg-gray-900/50">
+            <label class="flex items-center gap-2 cursor-pointer text-blue-400 uppercase font-black">
+                <input type="checkbox" id="check-fel" onchange="document.getElementById('campos-fel').style.display = this.checked ? 'block' : 'none'" class="w-4 h-4 accent-blue-500">
+                Activar Facturación (FEL)
+            </label>
+            
+            <div id="campos-fel" style="display: none;" class="mt-4 space-y-3">
+                <div>
+                    <label class="text-gray-500 uppercase text-[10px]">NIT Emisor (Sin guiones)</label>
+                    <input type="text" id="fel-nit" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white outline-none focus:border-blue-500" placeholder="Ej: 12345678">
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase text-[10px]">Certificador Autorizado</label>
+                    <select id="fel-certificador" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white outline-none focus:border-blue-500 uppercase">
+                        <option value="INFILE">Infile</option>
+                        <option value="MEGAPRINT">Megaprint</option>
+                        <option value="SAT">SAT (Gratuito)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-gray-500 uppercase text-[10px]">Token / Firma (Llave API)</label>
+                    <input type="password" id="fel-token" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white outline-none focus:border-blue-500" placeholder="Pega el token aquí...">
                 </div>
             </div>
+        </div>
+        <!-- FIN SECCIÓN FEL -->
+
+        <button onclick="crearCliente()" id="btn-crear" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black uppercase transition-colors shadow-lg mt-2">Crear y Activar Cliente</button>
+    </div>
+</div>
+
 
             <!-- Lista de Clientes -->
             <div class="lg:col-span-2 bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
