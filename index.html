@@ -1204,70 +1204,76 @@ function persistir() {
         }
 
       function anularVentaNube(idVenta) { 
-            sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
-                database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
-                    const v = snap.val();
-                    if(!v || v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada.");
-                    
-                    let isMaria = v.tienda === 'Variedades Maria';
-                    
-                    let promesasDevolucion = v.det.map(item => {
-                        if (item.es_servicio) return Promise.resolve(); // No devuelve stock de servicios
-                        return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
-                            if(snapProd.exists()) {
-                                const key = Object.keys(snapProd.val())[0];
-                                const prodOriginal = snapProd.val()[key];
-                                const stockDevuelto = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) + parseInt(item.cant);
-                                return database.ref(`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
-                            }
-                        });
-                    });
-
-                    Promise.all(promesasDevolucion).then(() => {
-                        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}/estado`).set('ANULADA').then(() => {
-                            sysAlert("✅ Venta anulada. Stock devuelto al instante.", "Éxito");
-                            render();
-                        });
-                    }).catch(() => sysAlert("❌ Error al devolver el stock."));
-                });
-            });
-        }
-
-        function eliminarVentaNube(idVenta) { 
-            sysConfirm("⚠️ ¿ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
-                database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
-                    const v = snap.val();
-                    if(!v) return;
-                    
-                    if (v.estado !== 'ANULADA') {
-                        let isMaria = v.tienda === 'Variedades Maria';
-                        let promesasDevolucion = v.det.map(item => {
-                            if (item.es_servicio) return Promise.resolve(); // No devuelve stock de servicios
-                            return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
-                                if(snapProd.exists()) {
-                                    const key = Object.keys(snapProd.val())[0];
-                                    const prodOriginal = snapProd.val()[key];
-                                    const stockDevuelto = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) + parseInt(item.cant);
-                                    return database.ref(`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`).set(stockDevuelto);
-                                }
-                            });
-                        });
-
-                        Promise.all(promesasDevolucion).then(() => {
-                            database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).remove().then(() => {
-                                sysAlert("✅ Registro eliminado y stock devuelto.");
-                                render();
-                            });
-                        });
-                    } else {
-                        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).remove().then(() => {
-                            sysAlert("✅ Registro eliminado.");
-                            render();
+    sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
+        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
+            const v = snap.val();
+            if(!v || v.estado === 'ANULADA') return sysAlert("Esta venta ya fue anulada.");
+            
+            let isMaria = v.tienda === 'Variedades Maria';
+            let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
+            
+            let promesasDevolucion = v.det.map(item => {
+                if (item.es_servicio) return Promise.resolve(); 
+                return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                    if(snapProd.exists()) {
+                        const key = Object.keys(snapProd.val())[0];
+                        // 🔥 TRANSACCIÓN ATÓMICA: Suma el stock de forma segura
+                        return database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
+                            return (currentStock || 0) + parseInt(item.cant || 1);
                         });
                     }
                 });
             });
-        }
+
+            Promise.all(promesasDevolucion).then(() => {
+                database.ref(`${db.ruta_historial}ventas_historial/${idVenta}/estado`).set('ANULADA').then(() => {
+                    sysAlert("✅ Venta anulada. Stock devuelto al instante.", "Éxito");
+                    render();
+                });
+            }).catch(() => sysAlert("❌ Error al devolver el stock."));
+        });
+    });
+}
+
+function eliminarVentaNube(idVenta) { 
+    sysConfirm("⚠️ ¿ELIMINAR DEFINITIVAMENTE este registro de la lista?", () => {
+        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
+            const v = snap.val();
+            if(!v) return;
+            
+            if (v.estado !== 'ANULADA') {
+                let isMaria = v.tienda === 'Variedades Maria';
+                let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
+
+                let promesasDevolucion = v.det.map(item => {
+                    if (item.es_servicio) return Promise.resolve(); 
+                    return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                        if(snapProd.exists()) {
+                            const key = Object.keys(snapProd.val())[0];
+                            // 🔥 TRANSACCIÓN ATÓMICA: Suma el stock de forma segura
+                            return database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
+                                return (currentStock || 0) + parseInt(item.cant || 1);
+                            });
+                        }
+                    });
+                });
+
+                Promise.all(promesasDevolucion).then(() => {
+                    database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).remove().then(() => {
+                        sysAlert("✅ Registro eliminado y stock devuelto.");
+                        render();
+                    });
+                });
+            } else {
+                database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).remove().then(() => {
+                    sysAlert("✅ Registro eliminado.");
+                    render();
+                });
+            }
+        });
+    });
+}
+
 
         function sincronizarVentasOffline() {
             let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
