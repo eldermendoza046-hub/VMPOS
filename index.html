@@ -2759,157 +2759,160 @@ function alternarTecladoTablet() {
         }
 
        function procesarVenta() { 
-            const t = parseFloat(document.getElementById('total-txt').innerText); 
-            if(!cart.length || t <= 0) return; 
-            const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
-            if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
+    const t = parseFloat(document.getElementById('total-txt').innerText); 
+    if(!cart.length || t <= 0) return; 
+    const pago = parseFloat(document.getElementById('pago-txt').value) || 0; 
+    if(pago < t) return sysAlert("PAGO INSUFICIENTE"); 
 
-            const tiendaLocal = db.tiendaActual;
+    const tiendaLocal = db.tiendaActual;
+    
+    // 1. Validación inicial superficial
+    for (let item of cart) { 
+        if (item.es_servicio) continue; 
+        const p = db.productos.find(x => x.codigo === item.codigo); 
+        if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
+        const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
+        if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
+    }
+
+    const btnCobrar = document.getElementById('btn-cobrar');
+    btnCobrar.innerText = "COBRANDO...";
+    btnCobrar.disabled = true;
+
+    const f = new Date(); 
+    const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
+
+    let descActivo = (db.config && db.config.desc_activo === 'SI');
+    let descPorc = parseFloat(db.config && db.config.desc_porcentaje ? db.config.desc_porcentaje : 10);
+    let descMin = parseInt(db.config && db.config.desc_minimo ? db.config.desc_minimo : 15);
+    let totalUnidades = 0;
+    cart.forEach(c => totalUnidades += parseInt(c.cant));
+    let aplicaDescuento = (descActivo && totalUnidades >= descMin);
+
+    let ahorroTotalFactura = 0;
+
+    const detallesVenta = cart.map(c => { 
+        let sub = calcularSubtotal(c, c.cant); 
+        let subOriginal = sub;
+        if (aplicaDescuento && c.categoria && (c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA'))) {
+            let ahorroItem = sub * (descPorc / 100);
+            sub = sub - ahorroItem;
+            ahorroTotalFactura += ahorroItem;
+        }
+        return { 
+            codigo: c.codigo, 
+            nombre: c.nombre, 
+            cant: parseInt(c.cant), 
+            pre: sub / c.cant, 
+            pre_original: subOriginal / c.cant,
+            costo_uni: (c.costo || 0), 
+            cat: c.categoria || 'OTROS', 
+            propietario: c.propietario || 'OTROS',
+            es_servicio: c.es_servicio || false
+        }; 
+    });
+
+    const nuevaVenta = {
+        fecha: new Date().toLocaleString(),
+        fecha_filtro: fechaFiltro,
+        total: t,
+        pago: pago,
+        ahorro_escolar: ahorroTotalFactura,
+        tienda: tiendaLocal,
+        estado: 'OK',
+        jornada_abierta: true,
+        det: detallesVenta
+    };
+
+    if (!navigator.onLine) {
+        nuevaVenta.ticket = "PENDIENTE";
+        nuevaVenta.id_offline = idUnicoOffline;
+        
+        let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
+        pendientes.push(nuevaVenta);
+        localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
+
+        cart.forEach(item => { 
+            if (item.es_servicio) return; 
+            const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
+            if(pIdx > -1) { 
+                if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
+                else db.productos[pIdx].stock_marisol -= item.cant; 
+            } 
+        });
+        
+        persistir(); 
+        cart = []; 
+        document.getElementById('pago-txt').value = ''; 
+        renderCart(); 
+        render();
+        btnCobrar.innerText = "COBRAR";
+        btnCobrar.disabled = false;
+        setTimeout(() => sysConfirm(`⚠️ VENTA REGISTRADA SIN INTERNET.\nSe guardó en la sala de espera.\n¿IMPRIMIR comprobante temporal?`, () => imprimirTicket(nuevaVenta), "Cobro Local Activo"), 100);
+        return;
+    }
+
+    let isMaria = tiendaLocal === 'Variedades Maria';
+    let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
+    let refContador = isMaria ? database.ref(`${db.ruta_datos}/cMaria`) : database.ref(`${db.ruta_datos}/cMarisol`);
+
+    refContador.transaction(actual => (actual || 1) + 1, (err, committed, snap) => {
+        if (err || !committed) {
+            btnCobrar.innerText = "COBRAR";
+            btnCobrar.disabled = false;
+            return sysAlert("❌ Error de conexión al generar ticket.");
+        }
+
+        nuevaVenta.ticket = snap.val() - 1;
+        const idNuevaVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
+
+        // 🔥 TRANSACCIÓN ATÓMICA DE STOCK: Descuenta de forma 100% segura en Firebase
+        let promesasStock = cart.filter(c => !c.es_servicio).map(item => {
+            return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                if(snapProd.exists()) {
+                    const key = Object.keys(snapProd.val())[0];
+                    return database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
+                        // Si mientras el botón de cobrar procesaba, otro dispositivo agotó el stock, esta transacción rechaza la resta.
+                        if (currentStock === null || currentStock < parseInt(item.cant)) {
+                            return; // Cancela silenciosamente la resta para no dejar saldo negativo
+                        }
+                        return currentStock - parseInt(item.cant);
+                    });
+                }
+            });
+        });
+
+        Promise.all(promesasStock).then(resultados => {
+            // Verificamos si alguna transacción de stock falló (retorna .committed === false)
+            const algunFallo = resultados.some(res => res && !res.committed);
             
-            for (let item of cart) { 
-                if (item.es_servicio) continue; // 🔥 EVITA BUSCAR INVENTARIO PARA SERVICIOS O COPIAS 🔥
-                const p = db.productos.find(x => x.codigo === item.codigo); 
-                if (!p) return sysAlert("ERROR: El producto " + item.nombre + " ya no existe."); 
-                const stockDisp = tiendaLocal === 'Variedades Maria' ? parseInt(p.stock_maria || 0) : parseInt(p.stock_marisol || 0); 
-                if (item.cant > stockDisp) return sysAlert("❌ ¡VENTA DETENIDA!\nSolo quedan " + stockDisp + " unidades de " + p.nombre); 
+            if (algunFallo) {
+                // Si alguien nos robó el último producto mientras cobrábamos, revertimos el ticket y avisamos.
+                btnCobrar.innerText = "COBRAR";
+                btnCobrar.disabled = false;
+                return sysAlert("❌ VENTA RECHAZADA: Otro cajero acaba de vender el último stock de un producto de tu lista.");
             }
 
-            const btnCobrar = document.getElementById('btn-cobrar');
-            btnCobrar.innerText = "COBRANDO...";
-            btnCobrar.disabled = true;
-
-            const f = new Date(); 
-            const fechaFiltro = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
-            const idUnicoOffline = "OFF-" + Date.now() + "-" + Math.floor(Math.random() * 10000); 
-
-            let descActivo = (db.config && db.config.desc_activo === 'SI');
-            let descPorc = parseFloat(db.config && db.config.desc_porcentaje ? db.config.desc_porcentaje : 10);
-            let descMin = parseInt(db.config && db.config.desc_minimo ? db.config.desc_minimo : 15);
-            let totalUnidades = 0;
-            cart.forEach(c => totalUnidades += parseInt(c.cant));
-            let aplicaDescuento = (descActivo && totalUnidades >= descMin);
-
-            let ahorroTotalFactura = 0;
-
-            const detallesVenta = cart.map(c => { 
-                let sub = calcularSubtotal(c, c.cant); 
-                let subOriginal = sub;
-                if (aplicaDescuento && c.categoria && (c.categoria.includes('PAPELERIA') || c.categoria.includes('LIBRERIA'))) {
-                    let ahorroItem = sub * (descPorc / 100);
-                    sub = sub - ahorroItem;
-                    ahorroTotalFactura += ahorroItem;
-                }
-                return { 
-                    codigo: c.codigo, 
-                    nombre: c.nombre, 
-                    cant: parseInt(c.cant), 
-                    pre: sub / c.cant, 
-                    pre_original: subOriginal / c.cant,
-                    costo_uni: (c.costo || 0), 
-                    cat: c.categoria || 'OTROS', 
-                    propietario: c.propietario || 'OTROS',
-                    es_servicio: c.es_servicio || false
-                }; 
-            });
-
-            const nuevaVenta = {
-                fecha: new Date().toLocaleString(),
-                fecha_filtro: fechaFiltro,
-                total: t,
-                pago: pago,
-                ahorro_escolar: ahorroTotalFactura,
-                tienda: tiendaLocal,
-                estado: 'OK',
-                jornada_abierta: true,
-                det: detallesVenta
-            };
-
-            if (!navigator.onLine) {
-                nuevaVenta.ticket = "PENDIENTE";
-                nuevaVenta.id_offline = idUnicoOffline;
-                
-                let pendientes = JSON.parse(localStorage.getItem('ventas_offline') || '[]');
-                pendientes.push(nuevaVenta);
-                localStorage.setItem('ventas_offline', JSON.stringify(pendientes));
-
-                cart.forEach(item => { 
-                    if (item.es_servicio) return; // 🔥 NO RESTAR INVENTARIO OFFLINE 🔥
-                    const pIdx = db.productos.findIndex(x => x.codigo === item.codigo);
-                    if(pIdx > -1) { 
-                        if(tiendaLocal === 'Variedades Maria') db.productos[pIdx].stock_maria -= item.cant; 
-                        else db.productos[pIdx].stock_marisol -= item.cant; 
-                    } 
-                });
-                
-                persistir(); 
-
+            // Si el stock se restó con éxito, procedemos a guardar el registro histórico de la venta
+            database.ref(`${db.ruta_historial}ventas_historial/${idNuevaVenta}`).set(nuevaVenta).then(() => {
+                btnCobrar.innerText = "COBRAR";
+                btnCobrar.disabled = false;
                 cart = []; 
                 document.getElementById('pago-txt').value = ''; 
                 renderCart(); 
                 render();
-
-                btnCobrar.innerText = "COBRAR";
-                btnCobrar.disabled = false;
-
+                
                 setTimeout(() => {
-                    sysConfirm(`⚠️ VENTA REGISTRADA SIN INTERNET.\nSe guardó en la sala de espera y se subirá al volver la conexión.\n\n¿Desea IMPRIMIR el comprobante temporal?`, () => {
+                    sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
                         imprimirTicket(nuevaVenta);
-                    }, "Cobro Local Activo");
+                    }, "Venta Exitosa");
                 }, 100);
-                return;
-            }
-
-            let isMaria = tiendaLocal === 'Variedades Maria';
-            let refContador = isMaria ? database.ref(`${db.ruta_datos}/cMaria`) : database.ref(`${db.ruta_datos}/cMarisol`);
-
-            refContador.transaction(actual => (actual || 1) + 1, (err, committed, snap) => {
-                if (err || !committed) {
-                    btnCobrar.innerText = "COBRAR";
-                    btnCobrar.disabled = false;
-                    return sysAlert("❌ Error de conexión al generar ticket.");
-                }
-
-                nuevaVenta.ticket = snap.val() - 1;
-
-                let actualizaciones = {};
-                const idNuevaVenta = database.ref(`${db.ruta_historial}ventas_historial`).push().key;
-                actualizaciones[`${db.ruta_historial}ventas_historial/${idNuevaVenta}`] = nuevaVenta;
-
-                // 🔥 FILTRAMOS LOS SERVICIOS PARA QUE NO GENEREN ERROR EN BASE DE DATOS 🔥
-                let promesasBusqueda = cart.filter(c => !c.es_servicio).map(item => {
-                    return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
-                        if(snapProd.exists()) {
-                            const key = Object.keys(snapProd.val())[0];
-                            const prodOriginal = snapProd.val()[key];
-                            const stockRestante = parseInt(isMaria ? (prodOriginal.stock_maria || 0) : (prodOriginal.stock_marisol || 0)) - parseInt(item.cant);
-                            actualizaciones[`${db.ruta_datos}/productos/${key}/${isMaria ? 'stock_maria' : 'stock_marisol'}`] = stockRestante;
-                        }
-                    });
-                });
-
-                Promise.all(promesasBusqueda).then(() => {
-                    database.ref().update(actualizaciones).then(() => {
-                        btnCobrar.innerText = "COBRAR";
-                        btnCobrar.disabled = false;
-                        
-                        cart = []; 
-                        document.getElementById('pago-txt').value = ''; 
-                        renderCart(); 
-                        render();
-                        
-                        setTimeout(() => {
-                            sysConfirm(`✅ VENTA COBRADA Y REGISTRADA EXITOSAMENTE.\nTicket #${nuevaVenta.ticket}.\n\n¿Desea IMPRIMIR el comprobante?`, () => {
-                                imprimirTicket(nuevaVenta);
-                            }, "Venta Exitosa");
-                        }, 100);
-                    }).catch(err => {
-                        btnCobrar.innerText = "COBRAR";
-                        btnCobrar.disabled = false;
-                        sysAlert("❌ Error al descontar stock: " + err);
-                    });
-                });
             });
-        }
+        });
+    });
+}
+
            // 🔥 FUNCIÓN PARA CERRAR SESIÓN DE FORMA SEGURA 🔥
         function cerrarSesion() {
             sysConfirm("¿Estás seguro que deseas cerrar sesión y salir del sistema?", () => {
