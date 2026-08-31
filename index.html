@@ -333,23 +333,32 @@
                 </div>
 
                 <!-- ========================================== -->
-                <!-- 2. FORMULARIOS DE REGISTRO (DEPÓSITOS Y GASTOS) -->
-                <!-- ========================================== -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <!-- REGISTRO DE DEPÓSITOS -->
-                    <div class="bg-white p-5 rounded-2xl border-2 border-green-200 shadow-md">
-                        <h3 class="text-md font-black uppercase mb-4 text-green-800 italic">📥 Ingresar Nuevo Depósito</h3>
-                        <div class="space-y-3 text-xs font-bold">
-                            <label class="text-gray-500 uppercase">El depósito pertenece a:</label>
-                            <select id="dep-area" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black uppercase outline-none">
-                                <option value="S1" id="dep-opt-s1">A CUENTA DE SOCIO 1</option>
-                                <option value="S2" id="dep-opt-s2">A CUENTA DE SOCIO 2</option>
-                            </select>
-                            <input type="text" id="dep-ref" placeholder="No. Boleta o Referencia..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
-                            <input type="number" id="dep-monto" placeholder="Monto Depositado Q" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none">
-                            <button onclick="guardarDeposito(this)" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors">Registrar Depósito</button>
-                        </div>
-                    </div>
+<!-- 2. FORMULARIOS DE REGISTRO (DEPÓSITOS Y GASTOS) -->
+<!-- ========================================== -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <!-- REGISTRO DE DEPÓSITOS -->
+    <div class="bg-white p-5 rounded-2xl border-2 border-green-200 shadow-md">
+        <h3 class="text-md font-black uppercase mb-4 text-green-800 italic">📥 Ingresar Nuevo Depósito</h3>
+        <div class="space-y-3 text-xs font-bold">
+            <label class="text-gray-500 uppercase">El depósito pertenece a:</label>
+            <select id="dep-area" class="w-full p-3 border-2 rounded-xl bg-gray-50 font-black uppercase outline-none">
+                <option value="S1" id="dep-opt-s1">A CUENTA DE SOCIO 1</option>
+                <option value="S2" id="dep-opt-s2">A CUENTA DE SOCIO 2</option>
+            </select>
+            
+            <input type="text" id="dep-ref" placeholder="No. Boleta o Referencia..." class="w-full p-3 border-2 rounded-xl uppercase outline-none">
+            <input type="number" id="dep-monto" placeholder="Monto Depositado Q" class="w-full p-3 border-2 rounded-xl text-green-600 text-lg font-black outline-none">
+            
+            <!-- 🔥 NUEVO CAMPO: FECHA A LA QUE PERTENECE EL DINERO 🔥 -->
+            <div class="flex flex-col">
+                <label class="text-gray-500 uppercase text-[10px] mb-1">¿A qué fecha corresponden estas ventas?</label>
+                <input type="date" id="dep-fecha-venta" class="w-full p-3 border-2 border-yellow-400 bg-yellow-50 rounded-xl text-gray-700 outline-none focus:border-yellow-600 cursor-pointer" title="Cambia esta fecha si estás depositando ventas de días anteriores">
+            </div>
+
+            <button onclick="guardarDeposito(this)" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black text-xs uppercase shadow-md transition-colors mt-2">Registrar Depósito</button>
+        </div>
+    </div>
+
 
                     <!-- REGISTRO DE GASTOS -->
                     <div class="bg-white p-5 rounded-2xl border-2 border-red-200 shadow-md">
