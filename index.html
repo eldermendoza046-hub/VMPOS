@@ -1874,43 +1874,56 @@ function eliminarVentaNube(idVenta) {
         function eliminarGasto(key) { sysConfirm("¿Eliminar este registro de gasto?", () => database.ref(`${db.ruta_historial}gastos_historial/${key}`).remove().then(() => cargarReportePorFechas())); }
 
         function guardarDeposito(btn) {
-            const area = document.getElementById('dep-area').value;
-            const ref = document.getElementById('dep-ref').value.trim().toUpperCase();
-            const monto = parseFloat(document.getElementById('dep-monto').value) || 0;
-            
-            if(monto <= 0) return sysAlert("Introduce un monto válido mayor a 0.");
-            if(!ref) return sysAlert("Introduce una referencia o número de boleta.");
+    const area = document.getElementById('dep-area').value;
+    const ref = document.getElementById('dep-ref').value.trim().toUpperCase();
+    const monto = parseFloat(document.getElementById('dep-monto').value) || 0;
+    
+    // 🔥 Capturamos la fecha manual de la venta que eligió la vendedora
+    let fechaVentaSeleccionada = document.getElementById('dep-fecha-venta').value;
 
-            const fIniStr = document.getElementById('rep-inicio').value;
-            const fFinStr = document.getElementById('rep-fin').value;
-            if(!fIniStr || !fFinStr) return sysAlert("Por favor selecciona un rango de fechas arriba primero.");
+    if(monto <= 0) return sysAlert("Introduce un monto válido mayor a 0.");
+    if(!ref) return sysAlert("Introduce una referencia o número de boleta.");
+    
+    // Si la vendedora no escoge fecha, le obligamos a que lo haga para evitar errores
+    if(!fechaVentaSeleccionada) {
+        return sysAlert("⚠️ Selecciona a qué fecha pertenecen estas ventas.");
+    }
 
-            const f = new Date(); 
-            const fechaFiltroUniv = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    const fIniStr = document.getElementById('rep-inicio').value;
+    const fFinStr = document.getElementById('rep-fin').value;
+    if(!fIniStr || !fFinStr) return sysAlert("Por favor selecciona un rango de fechas arriba primero.");
 
-            const nuevoDeposito = { 
-                is_deposito: true,
-                area: area, 
-                referencia: ref, 
-                monto: monto, 
-                tienda: db.tiendaActual, 
-                fechaRegistro: new Date().toLocaleString(), 
-                fecha_filtro: fechaFiltroUniv 
-            };
-            
-            if(btn) { btn.disabled = true; btn.innerText = "GUARDANDO..."; }
+    // La fecha en que se está grabando en la compu (hoy)
+    const fechaRegistroReal = new Date().toLocaleString();
 
-            database.ref(`${db.ruta_historial}gastos_historial`).push(nuevoDeposito).then(() => { 
-                document.getElementById('dep-ref').value = ''; 
-                document.getElementById('dep-monto').value = ''; 
-                if(btn) { btn.disabled = false; btn.innerText = "REGISTRAR DEPÓSITO"; }
-                cargarReportePorFechas(); 
-                sysAlert("✅ Depósito registrado correctamente."); 
-            }).catch(err => {
-                sysAlert("Error al guardar: " + err);
-                if(btn) { btn.disabled = false; btn.innerText = "REGISTRAR DEPÓSITO"; }
-            });
-        }
+    const nuevoDeposito = {
+        is_deposito: true,
+        area: area,
+        referencia: ref,
+        monto: monto,
+        tienda: db.tiendaActual,
+        // 🔥 Aquí está la magia: engañamos al sistema para que asigne este depósito 
+        // a la fecha de la venta, no a la fecha de hoy.
+        fecha_filtro: fechaVentaSeleccionada, 
+        fechaRegistro: fechaRegistroReal // Mantenemos el registro de cuándo se hizo el clic real
+    };
+
+    if(btn) { btn.disabled = true; btn.innerText = "GUARDANDO..."; }
+
+    database.ref(`${db.ruta_historial}gastos_historial`).push(nuevoDeposito).then(() => {
+        document.getElementById('dep-ref').value = '';
+        document.getElementById('dep-monto').value = '';
+        document.getElementById('dep-fecha-venta').value = ''; // Limpiamos la fecha
+        
+        if(btn) { btn.disabled = false; btn.innerText = "REGISTRAR DEPÓSITO"; }
+        cargarReportePorFechas();
+        sysAlert("✅ Depósito registrado correctamente.");
+    }).catch(err => {
+        sysAlert("Error al guardar: " + err);
+        if(btn) { btn.disabled = false; btn.innerText = "REGISTRAR DEPÓSITO"; }
+    });
+}
+
         
         function eliminarDeposito(key) { 
             sysConfirm("⚠️ ¿Estás seguro de eliminar este registro de depósito?", () => {
