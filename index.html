@@ -1447,48 +1447,56 @@ function eliminarVentaNube(idVenta) {
             document.getElementById('modal-ajuste').classList.add('flex');
         }
 
-        function ejecutarAjuste() {
-            const tiendaDestino = document.getElementById('ajuste-tienda').value;
-            const catSocio = document.getElementById('ajuste-cat').value;
-            const fechaStr = document.getElementById('ajuste-fecha').value;
-            const monto = parseFloat(document.getElementById('ajuste-monto').value);
+       function ejecutarAjuste() {
+    const tiendaDestino = document.getElementById('ajuste-tienda').value;
+    const catSocio = document.getElementById('ajuste-cat').value;
+    const fechaStr = document.getElementById('ajuste-fecha').value;
+    const monto = parseFloat(document.getElementById('ajuste-monto').value);
 
-            if (!fechaStr || isNaN(monto) || monto <= 0) return sysAlert("Por favor, ingrese un monto válido y una fecha.");
+    if (!fechaStr || isNaN(monto) || monto <= 0) return sysAlert("Por favor, ingrese un monto válido y una fecha.");
 
-            const parts = fechaStr.split('-');
-            const fakeDate = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0);
-            
-            const ventaFantasma = { 
-                fecha: fakeDate.toLocaleString(), 
-                fecha_filtro: fechaStr, 
-                total: monto, 
-                pago: monto, 
-                tienda: tiendaDestino, 
-                estado: 'OK', 
-                jornada_abierta: false, 
-                is_ajuste: true,
-                det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: 'AJUSTE', propietario: catSocio, es_servicio: true }] 
-            }; 
+    const parts = fechaStr.split('-');
+    const fakeDate = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0);
+    
+    const ventaFantasma = { 
+        fecha: fakeDate.toLocaleString(), 
+        fecha_filtro: fechaStr, 
+        total: monto, 
+        pago: monto, 
+        tienda: tiendaDestino, 
+        estado: 'OK', 
+        jornada_abierta: false, 
+        is_ajuste: true,
+        det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: 'AJUSTE', propietario: catSocio, es_servicio: true }] 
+    }; 
 
-            database.ref(db.ruta_datos).transaction(curr => {
-                if(!curr) return curr;
-                let isMaria = tiendaDestino === 'Variedades Maria';
-                let num = isMaria ? (curr.cMaria || 1) : (curr.cMarisol || 1);
-                ventaFantasma.ticket = "AJ-" + num;
-                if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
-                return curr;
-            }, (error, committed) => {
-                if(committed) {
-                    database.ref(`${db.ruta_historial}ventas_historial`).push(ventaFantasma).then(() => {
-                        sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${catSocio}. El stock no fue modificado.`, "Éxito");
-                        document.getElementById('modal-ajuste').classList.add('hidden');
-                        cargarReportePorFechas();
-                    });
-                } else {
-                    sysAlert("❌ Error al guardar el ajuste. Intenta de nuevo.");
-                }
+    // 🔥 MEJORA DE EXPERIENCIA: Cierra la ventana y avisa que está guardando al instante 🔥
+    document.getElementById('modal-ajuste').classList.add('hidden');
+    document.getElementById('modal-ajuste').classList.remove('flex');
+    sysAlert("Guardando ajuste financiero, por favor espera...", "⏳ PROCESANDO");
+
+    database.ref(db.ruta_datos).transaction(curr => {
+        if(!curr) return curr;
+        let isMaria = tiendaDestino === 'Variedades Maria';
+        let num = isMaria ? (curr.cMaria || 1) : (curr.cMarisol || 1);
+        ventaFantasma.ticket = "AJ-" + num;
+        if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
+        return curr;
+    }, (error, committed) => {
+        if(committed) {
+            database.ref(`${db.ruta_historial}ventas_historial`).push(ventaFantasma).then(() => {
+                // Limpiamos la caja del monto para el próximo ajuste
+                document.getElementById('ajuste-monto').value = '';
+                
+                // Sobrescribe el mensaje de procesando con el de éxito
+                sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${catSocio}. El stock no fue modificado.`, "Éxito");
+                cargarReportePorFechas();
             });
+        } else {
+            sysAlert("❌ Error al guardar el ajuste. Intenta de nuevo.");
         }
+    });
+}
 
         document.addEventListener('DOMContentLoaded', () => {
             const pCod = document.getElementById('p-cod');
