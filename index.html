@@ -1447,7 +1447,7 @@ function eliminarVentaNube(idVenta) {
             document.getElementById('modal-ajuste').classList.add('flex');
         }
 
-       function ejecutarAjuste() {
+      function ejecutarAjuste() {
     const tiendaDestino = document.getElementById('ajuste-tienda').value;
     const catSocio = document.getElementById('ajuste-cat').value;
     const fechaStr = document.getElementById('ajuste-fecha').value;
@@ -1470,27 +1470,32 @@ function eliminarVentaNube(idVenta) {
         det: [{ codigo: "AJUSTE-SYS", nombre: "INGRESO VENTAS ATRASADAS", cant: 1, pre: monto, costo_uni: 0, cat: 'AJUSTE', propietario: catSocio, es_servicio: true }] 
     }; 
 
-    // 🔥 MEJORA DE EXPERIENCIA: Cierra la ventana y avisa que está guardando al instante 🔥
+    // Cierra el formulario amarillo al instante
     document.getElementById('modal-ajuste').classList.add('hidden');
     document.getElementById('modal-ajuste').classList.remove('flex');
-    sysAlert("Guardando ajuste financiero, por favor espera...", "⏳ PROCESANDO");
 
-    database.ref(db.ruta_datos).transaction(curr => {
-        if(!curr) return curr;
-        let isMaria = tiendaDestino === 'Variedades Maria';
-        let num = isMaria ? (curr.cMaria || 1) : (curr.cMarisol || 1);
-        ventaFantasma.ticket = "AJ-" + num;
-        if(isMaria) curr.cMaria = num + 1; else curr.cMarisol = num + 1;
-        return curr;
-    }, (error, committed) => {
+    // Muestra pantalla de carga rápida sin botón para evitar interrupciones
+    document.getElementById('sys-msg-title').innerText = "⏳ PROCESANDO";
+    document.getElementById('sys-msg-text').innerText = "Guardando registro...";
+    document.getElementById('sys-msg-buttons').innerHTML = ''; 
+    document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+
+    // 🔥 LA SOLUCIÓN A LA LENTITUD: Consultar SOLO el contador de tickets, no toda la base de datos
+    let isMaria = tiendaDestino === 'Variedades Maria';
+    let refContador = isMaria ? database.ref(`${db.ruta_datos}/cMaria`) : database.ref(`${db.ruta_datos}/cMarisol`);
+
+    refContador.transaction(actual => (actual || 1) + 1, (error, committed, snap) => {
         if(committed) {
+            // Se le asigna el ticket en menos de 1 segundo
+            ventaFantasma.ticket = "AJ-" + (snap.val() - 1);
+            
             database.ref(`${db.ruta_historial}ventas_historial`).push(ventaFantasma).then(() => {
-                // Limpiamos la caja del monto para el próximo ajuste
                 document.getElementById('ajuste-monto').value = '';
                 
-                // Sobrescribe el mensaje de procesando con el de éxito
-                sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${catSocio}. El stock no fue modificado.`, "Éxito");
+                // Lanza el mensaje de éxito inmediato y actualiza los reportes
+                sysAlert(`✅ Ajuste financiero de Q${monto.toFixed(2)} registrado con éxito para ${catSocio}.`, "Operación Exitosa");
                 cargarReportePorFechas();
+                render(); 
             });
         } else {
             sysAlert("❌ Error al guardar el ajuste. Intenta de nuevo.");
