@@ -2597,117 +2597,130 @@ function alternarTecladoTablet() {
             setTimeout(() => document.getElementById('p-cod').focus(), 50); 
         }
 
-        function verKardex(codigo) {
-            const p = db.productos.find(x => x.codigo === codigo);
-            if (!p) return;
-            
-            const codBuscado = String(codigo).trim().toUpperCase();
-            document.getElementById('kardex-prod-nombre').innerText = `${p.codigo} - ${p.nombre}`;
-            const body = document.getElementById('kardex-body');
-            body.innerHTML = '<tr><td colspan="4" class="text-center py-4 font-bold text-gray-500">Cargando bitácora...</td></tr>';
-            
-            document.getElementById('modal-kardex').classList.remove('hidden');
-            document.getElementById('modal-kardex').classList.add('flex');
+       function verKardex(codigo) {
+    const p = db.productos.find(x => x.codigo === codigo);
+    if (!p) return;
+    
+    const codBuscado = String(codigo).trim().toUpperCase();
+    document.getElementById('kardex-prod-nombre').innerText = `${p.codigo} - ${p.nombre}`;
+    const body = document.getElementById('kardex-body');
+    body.innerHTML = '<tr><td colspan="4" class="text-center py-4 font-bold text-gray-500">Cargando bitácora...</td></tr>';
+    
+    document.getElementById('modal-kardex').classList.remove('hidden');
+    document.getElementById('modal-kardex').classList.add('flex');
 
-            let eventos = [];
-            let totalSalidas = 0;
-            let totalIngresos = 0;
-            let procesados = new Set(); 
+    let eventos = [];
+    let totalSalidas = 0;
+    let totalIngresos = 0;
+    let procesados = new Set(); 
 
-            const esMismaTienda = (t1, t2) => {
-                if (!t1 || !t2) return true;
-                const a = String(t1).toUpperCase();
-                const b = String(t2).toUpperCase();
-                return a.includes(b) || b.includes(a);
-            };
+    const esMismaTienda = (t1, t2) => {
+        if (!t1 || !t2) return true;
+        const a = String(t1).toUpperCase();
+        const b = String(t2).toUpperCase();
+        return a.includes(b) || b.includes(a);
+    };
 
-            let p1 = database.ref(`${db.ruta_historial}ventas_historial`).once('value').then(snap => {
-                snap.forEach(child => {
-                    let v = child.val() || {};
-                    if(esMismaTienda(v.tienda, db.tiendaActual) && v.det) {
-                        const item = v.det.find(i => String(i.codigo).trim().toUpperCase() === codBuscado);
-                        if(item) {
-                            const isAnulada = v.estado === 'ANULADA';
-                            if (!isAnulada) totalSalidas += parseInt(item.cant || 0);
-                            
-                            eventos.push({
-                                fechaStr: v.fecha || "---",
-                                timestamp: v.timestamp || new Date(v.fecha || 0).getTime() || 0,
-                                ticket: 'TICKET #' + (v.ticket || '0'),
-                                estado: v.estado === 'OK' ? 'VENTA' : 'ANULADA',
-                                cant: parseInt(item.cant || 0),
-                                tipo: 'SALIDA',
-                                isAnulada: isAnulada
-                            });
-                        }
-                    }
-                });
-            }).catch(() => {});
+    // 🔥 TRADUCTOR DE FECHAS LATINAS A NÚMEROS PARA ORDENAR CORRECTAMENTE 🔥
+    const parseFechaLatina = (fechaStr) => {
+        if (!fechaStr || fechaStr === "---") return 0;
+        let cleanStr = String(fechaStr).replace(',', '').trim();
+        const partes = cleanStr.split(' ');
+        const fecha = partes[0].split('/'); // Extrae [Día, Mes, Año]
+        const hora = partes[1] ? partes[1].split(':') : ['00', '00', '00']; 
+        
+        if (fecha.length === 3) {
+            // Se resta 1 al mes porque JavaScript cuenta los meses de 0 a 11
+            return new Date(fecha[2], fecha[1] - 1, fecha[0], hora[0] || 0, hora[1] || 0, hora[2] || 0).getTime();
+        }
+        return 0;
+    };
 
-            let p2 = database.ref(`${db.ruta_datos}/kardex_historial`).orderByChild('codigo').equalTo(codBuscado).once('value').then(snap => {
-                snap.forEach(child => {
-                    if (procesados.has(child.key)) return;
-                    procesados.add(child.key);
+    let p1 = database.ref(`${db.ruta_historial}ventas_historial`).once('value').then(snap => {
+        snap.forEach(child => {
+            let v = child.val() || {};
+            if(esMismaTienda(v.tienda, db.tiendaActual) && v.det) {
+                const item = v.det.find(i => String(i.codigo).trim().toUpperCase() === codBuscado);
+                if(item) {
+                    const isAnulada = v.estado === 'ANULADA';
+                    if (!isAnulada) totalSalidas += parseInt(item.cant || 0);
                     
-                    let k = child.val() || {};
-                    if(esMismaTienda(k.tienda, db.tiendaActual)) {
-                        const cantIngresada = parseInt(k.cant || 0);
-                        totalIngresos += cantIngresada;
-                        eventos.push({
-                            fechaStr: k.fecha || "---",
-                            timestamp: k.timestamp || new Date(k.fecha || 0).getTime() || 0,
-                            ticket: 'NUEVO STOCK',
-                            estado: 'INGRESO',
-                            cant: cantIngresada,
-                            tipo: 'INGRESO',
-                            isAnulada: false
-                        });
-                    }
+                    eventos.push({
+                        fechaStr: v.fecha || "---",
+                        // 🔥 Aquí usamos el traductor para calcular el valor de tiempo exacto 🔥
+                        timestamp: v.timestamp || parseFechaLatina(v.fecha), 
+                        ticket: 'TICKET #' + (v.ticket || '0'),
+                        estado: v.estado === 'OK' ? 'VENTA' : 'ANULADA',
+                        cant: parseInt(item.cant || 0),
+                        tipo: 'SALIDA',
+                        isAnulada: isAnulada
+                    });
+                }
+            }
+        });
+    }).catch(() => {});
+
+    let p2 = database.ref(`${db.ruta_datos}/kardex_historial`).orderByChild('codigo').equalTo(codBuscado).once('value').then(snap => {
+        snap.forEach(child => {
+            if (procesados.has(child.key)) return;
+            procesados.add(child.key);
+            
+            let k = child.val() || {};
+            if(esMismaTienda(k.tienda, db.tiendaActual)) {
+                const cantIngresada = parseInt(k.cant || 0);
+                totalIngresos += cantIngresada;
+                eventos.push({
+                    fechaStr: k.fecha || "---",
+                    // 🔥 También usamos el traductor en los ingresos 🔥
+                    timestamp: k.timestamp || parseFechaLatina(k.fecha),
+                    ticket: 'NUEVO STOCK',
+                    estado: 'INGRESO',
+                    cant: cantIngresada,
+                    tipo: 'INGRESO',
+                    isAnulada: false
                 });
-            }).catch(() => {});
+            }
+        });
+    }).catch(() => {});
 
-            Promise.all([p1, p2]).then(() => {
-                eventos.sort((a, b) => b.timestamp - a.timestamp);
-                
-                let htmlKardex = '';
-                eventos.forEach(ev => {
-                    let dateParts = String(ev.fechaStr).split(',');
-                    let fPart1 = dateParts[0] || "---";
-                    let fPart2 = dateParts[1] ? dateParts[1].trim() : "";
+    Promise.all([p1, p2]).then(() => {
+        // 🔥 AHORA LA LISTA SE ORDENARÁ SIEMPRE DESDE EL EVENTO MÁS RECIENTE HACIA ABAJO 🔥
+        eventos.sort((a, b) => b.timestamp - a.timestamp);
+        
+        let htmlKardex = '';
+        eventos.forEach(ev => {
+            let dateParts = String(ev.fechaStr).split(',');
+            let fPart1 = dateParts[0] || "---";
+            let fPart2 = dateParts[1] ? dateParts[1].trim() : "";
 
-                    if (ev.tipo === 'SALIDA') {
-                        const statusClass = ev.isAnulada ? 'text-red-500 line-through' : 'text-red-600';
-                        const bgClass = ev.isAnulada ? 'bg-red-50 opacity-60' : '';
-                        htmlKardex += `<tr class="uppercase text-[11px] ${bgClass}">
-                            <td class="p-3">${fPart1} <br><span class="text-[9px] text-gray-400">${fPart2}</span></td>
-                            <td class="p-3 text-center text-gray-700 font-black">${ev.ticket}</td>
-                            <td class="p-3 text-center text-[9px] ${ev.isAnulada ? 'text-red-500' : 'text-gray-500'}">${ev.estado}</td>
-                            <td class="p-3 text-center font-black ${statusClass}">${ev.isAnulada ? '0' : '-' + ev.cant}</td>
-                        </tr>`;
-                    } else {
-                        htmlKardex += `<tr class="uppercase text-[11px] bg-green-50 border-l-4 border-green-500">
-                            <td class="p-3">${fPart1} <br><span class="text-[9px] text-green-600/60">${fPart2}</span></td>
-                            <td class="p-3 text-center text-green-700 font-black">${ev.ticket}</td>
-                            <td class="p-3 text-center text-[9px] text-green-600 font-bold">${ev.estado}</td>
-                            <td class="p-3 text-center font-black text-green-600 text-base">+${ev.cant}</td>
-                        </tr>`;
-                    }
-                });
-                
-                if(htmlKardex === '') htmlKardex = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No hay movimientos registrados.</td></tr>';
-                document.getElementById('kardex-body').innerHTML = htmlKardex;
-                
-                document.getElementById('kardex-total-cant').innerHTML = `
-                    <div class="text-green-600">📥 +${totalIngresos} In</div>
-                    <div class="text-red-600">📤 -${totalSalidas} Out</div>
-                `;
-            });
-        }
-
-        function cerrarKardex() {
-            document.getElementById('modal-kardex').classList.add('hidden');
-            document.getElementById('modal-kardex').classList.remove('flex');
-        }
+            if (ev.tipo === 'SALIDA') {
+                const statusClass = ev.isAnulada ? 'text-red-500 line-through' : 'text-red-600';
+                const bgClass = ev.isAnulada ? 'bg-red-50 opacity-60' : '';
+                htmlKardex += `<tr class="uppercase text-[11px] ${bgClass}">
+                    <td class="p-3">${fPart1} <br><span class="text-[9px] text-gray-400">${fPart2}</span></td>
+                    <td class="p-3 text-center text-gray-700 font-black">${ev.ticket}</td>
+                    <td class="p-3 text-center text-[9px] ${ev.isAnulada ? 'text-red-500' : 'text-gray-500'}">${ev.estado}</td>
+                    <td class="p-3 text-center font-black ${statusClass}">${ev.isAnulada ? '0' : '-' + ev.cant}</td>
+                </tr>`;
+            } else {
+                htmlKardex += `<tr class="uppercase text-[11px] bg-green-50 border-l-4 border-green-500">
+                    <td class="p-3">${fPart1} <br><span class="text-[9px] text-green-600/60">${fPart2}</span></td>
+                    <td class="p-3 text-center text-green-700 font-black">${ev.ticket}</td>
+                    <td class="p-3 text-center text-[9px] text-green-600 font-bold">${ev.estado}</td>
+                    <td class="p-3 text-center font-black text-green-600 text-base">+${ev.cant}</td>
+                </tr>`;
+            }
+        });
+        
+        if(htmlKardex === '') htmlKardex = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No hay movimientos registrados.</td></tr>';
+        document.getElementById('kardex-body').innerHTML = htmlKardex;
+        
+        document.getElementById('kardex-total-cant').innerHTML = `
+            <div class="text-green-600">📥 +${totalIngresos} In</div>
+            <div class="text-red-600">📤 -${totalSalidas} Out</div>
+        `;
+    });
+}
 
         function imprimirReporteMaestro() {
             try {
