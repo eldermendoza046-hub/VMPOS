@@ -2721,7 +2721,10 @@ function alternarTecladoTablet() {
         `;
     });
 }
-
+function cerrarKardex() {
+    document.getElementById('modal-kardex').classList.add('hidden');
+    document.getElementById('modal-kardex').classList.remove('flex');
+}
         function imprimirReporteMaestro() {
             try {
                 const fIniStr = document.getElementById('rep-inicio') ? document.getElementById('rep-inicio').value : ""; 
