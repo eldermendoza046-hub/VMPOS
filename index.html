@@ -1242,56 +1242,73 @@ function abrirDevolucionParcial(idVenta) {
 }
 
 function devolverUnProductoNube(idVenta, indexProducto) { 
-    document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden'); // Cierra el menú
+    document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden'); // Cierra el menú de opciones
 
-    sysConfirm(`¿Seguro que deseas devolver este producto al inventario y descontar el dinero del reporte de ventas?`, () => {
+    database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
+        const v = snap.val();
+        if(!v) return;
         
-        // ⏳ Muestra pantalla de carga para evitar que den doble clic
-        document.getElementById('sys-msg-title').innerText = "PROCESANDO";
-        document.getElementById('sys-msg-text').innerText = "Devolviendo stock y ajustando caja...";
-        document.getElementById('sys-msg-buttons').innerHTML = ''; 
-        document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+        const item = v.det[indexProducto];
+        if (!item || item.devuelto || item.cant === 0) return sysAlert("Este producto ya fue devuelto por completo.");
 
-        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
-            const v = snap.val();
-            if(!v) return;
+        // 🔥 PREGUNTA LA CANTIDAD EXACTA A DEVOLVER 🔥
+        sysPrompt(`¿Cuántas unidades de "${item.nombre}" deseas devolver? (Compró: ${item.cant})`, (input) => {
+            let cantADevolver = parseInt(input);
             
-            const item = v.det[indexProducto];
-            if (!item || item.devuelto || item.cant === 0) return sysAlert("Este producto ya fue devuelto.");
+            if (isNaN(cantADevolver) || cantADevolver <= 0 || cantADevolver > item.cant) {
+                return sysAlert(`❌ Cantidad inválida. Ingresa un número entre 1 y ${item.cant}.`);
+            }
 
-            let isMaria = v.tienda === 'Variedades Maria';
-            let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
-            
-            database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
-                if(snapProd.exists()) {
-                    const key = Object.keys(snapProd.val())[0];
-                    
-                    // 1. Sumar el stock físico en la base de datos de manera segura
-                    database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
-                        return (currentStock || 0) + parseInt(item.cant);
-                    }).then(() => {
-                        // 2. Modificar el ticket original para que los reportes financieros CUADREN
-                        let nuevoTotal = v.total - (item.cant * item.pre);
-                        let nuevoPago = v.pago - (item.cant * item.pre);
+            sysConfirm(`¿Seguro que deseas devolver ${cantADevolver} unidad(es) al inventario y descontar el dinero de la caja?`, () => {
+                
+                // Pantalla de carga
+                document.getElementById('sys-msg-title').innerText = "PROCESANDO";
+                document.getElementById('sys-msg-text').innerText = "Devolviendo stock y ajustando caja...";
+                document.getElementById('sys-msg-buttons').innerHTML = ''; 
+                document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+
+                let isMaria = v.tienda === 'Variedades Maria';
+                let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
+                
+                database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                    if(snapProd.exists()) {
+                        const key = Object.keys(snapProd.val())[0];
                         
-                        let updates = {};
-                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/det/${indexProducto}/cant`] = 0; // Se pone en 0 para que no sume dinero en caja
-                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/det/${indexProducto}/devuelto`] = true;
-                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/total`] = Math.max(0, nuevoTotal);
-                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/pago`] = Math.max(0, nuevoPago);
-                        
-                        database.ref().update(updates).then(() => {
-                            sysAlert("✅ Producto devuelto. \nStock restablecido y totales de caja corregidos al instante.", "Operación Exitosa");
-                            render(); // Actualiza los números del cierre de caja
-                            cargarReportePorFechas(); // Actualiza las tablas del reporte maestro
-                        });
-                        
-                    }).catch(() => sysAlert("❌ Error al sumar el stock. Revisa tu internet."));
-                } else {
-                    sysAlert("❌ El producto ya no existe en el catálogo maestro.");
-                }
+                        // 1. Sumar SOLAMENTE la cantidad que el cajero escribió
+                        database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
+                            return (currentStock || 0) + cantADevolver;
+                        }).then(() => {
+                            // 2. Calcular cuánto quedó y cuánto dinero se resta
+                            let cantidadRestante = item.cant - cantADevolver;
+                            let dineroADescontar = cantADevolver * item.pre;
+                            
+                            let nuevoTotal = v.total - dineroADescontar;
+                            let nuevoPago = v.pago - dineroADescontar;
+                            
+                            let updates = {};
+                            updates[`${db.ruta_historial}ventas_historial/${idVenta}/det/${indexProducto}/cant`] = cantidadRestante;
+                            
+                            // Si el cliente devolvió TODOS los que compró, se marca como devuelto definitivo
+                            if (cantidadRestante === 0) {
+                                updates[`${db.ruta_historial}ventas_historial/${idVenta}/det/${indexProducto}/devuelto`] = true;
+                            }
+                            
+                            updates[`${db.ruta_historial}ventas_historial/${idVenta}/total`] = Math.max(0, nuevoTotal);
+                            updates[`${db.ruta_historial}ventas_historial/${idVenta}/pago`] = Math.max(0, nuevoPago);
+                            
+                            database.ref().update(updates).then(() => {
+                                sysAlert(`✅ Se devolvieron ${cantADevolver} unidad(es). Stock y caja actualizados.`, "Operación Exitosa");
+                                render(); 
+                                cargarReportePorFechas(); 
+                            });
+                            
+                        }).catch(() => sysAlert("❌ Error al sumar el stock. Revisa tu internet."));
+                    } else {
+                        sysAlert("❌ El producto ya no existe en el catálogo maestro.");
+                    }
+                });
             });
-        });
+        }, "Cantidad a Devolver");
     });
 }
 // ==============================================================
