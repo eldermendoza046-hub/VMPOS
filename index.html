@@ -1295,7 +1295,7 @@ function devolverUnProductoNube(idVenta, indexProducto) {
     });
 }
 // ==============================================================
-     function anularVentaNube(idVenta) { 
+    function anularVentaNube(idVenta) { 
     sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
         database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
             const v = snap.val();
@@ -1305,16 +1305,19 @@ function devolverUnProductoNube(idVenta, indexProducto) {
             let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
             
             let promesasDevolucion = v.det.map(item => {
-                // 🔥 CORRECCIÓN 1: El sistema ahora ignora los productos que YA fueron devueltos individualmente
-                if (item.es_servicio || item.devuelto) return Promise.resolve(); 
+                let cantidadFisica = parseInt(item.cant);
+                
+                // 🔥 TRIPLE CANDADO DE SEGURIDAD 🔥
+                // Si la cantidad es 0 (porque se devolvió con la flecha), tiene marca 'devuelto', o es servicio... LO IGNORA.
+                if (isNaN(cantidadFisica) || cantidadFisica <= 0 || item.devuelto || item.es_servicio) {
+                    return Promise.resolve(); 
+                }
                 
                 return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                     if(snapProd.exists()) {
                         const key = Object.keys(snapProd.val())[0];
                         return database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
-                            // 🔥 CORRECCIÓN 2: Se elimina el bug que sumaba 1 cuando detectaba un 0
-                            let cantidadADevolver = item.cant !== undefined ? parseInt(item.cant) : 1;
-                            return (currentStock || 0) + cantidadADevolver;
+                            return (currentStock || 0) + cantidadFisica;
                         });
                     }
                 });
@@ -1341,16 +1344,18 @@ function eliminarVentaNube(idVenta) {
                 let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
 
                 let promesasDevolucion = v.det.map(item => {
-                    // 🔥 CORRECCIÓN 1: Ignora los devueltos
-                    if (item.es_servicio || item.devuelto) return Promise.resolve(); 
+                    let cantidadFisica = parseInt(item.cant);
+                    
+                    // 🔥 TRIPLE CANDADO DE SEGURIDAD 🔥
+                    if (isNaN(cantidadFisica) || cantidadFisica <= 0 || item.devuelto || item.es_servicio) {
+                        return Promise.resolve(); 
+                    }
                     
                     return database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
                         if(snapProd.exists()) {
                             const key = Object.keys(snapProd.val())[0];
                             return database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
-                                // 🔥 CORRECCIÓN 2: Evita bug del 0
-                                let cantidadADevolver = item.cant !== undefined ? parseInt(item.cant) : 1;
-                                return (currentStock || 0) + cantidadADevolver;
+                                return (currentStock || 0) + cantidadFisica;
                             });
                         }
                     });
