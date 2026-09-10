@@ -1211,7 +1211,90 @@ function persistir() {
             const esPapeleria = selectCat.value.includes('PAPELERIA') || selectCat.value.includes('LIBRERIA');
             document.getElementById('div-papeleria-modal').classList.toggle('hidden', !esPapeleria);
         }
+// ==============================================================
+// 🔥 MÓDULO: DEVOLUCIÓN PARCIAL (1 SOLO PRODUCTO) 🔥
+// ==============================================================
+function abrirDevolucionParcial(idVenta) {
+    database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
+        const v = snap.val();
+        if(!v || v.estado === 'ANULADA') return sysAlert("Esta venta no existe o ya fue anulada por completo.");
+        
+        // Construir la lista de botones con los productos de este ticket
+        let opcionesHTML = v.det.map((item, index) => {
+            if(item.devuelto || item.cant === 0) {
+                return `<div class="p-2 text-gray-400 text-[10px] line-through mb-2 border border-gray-200 rounded bg-gray-50">${item.nombre} (Ya devuelto)</div>`;
+            }
+            if(item.es_servicio) {
+                return `<div class="p-2 text-gray-400 text-[10px] mb-2 border border-gray-200 rounded">${item.nombre} (Servicio - No devuelve stock)</div>`;
+            }
+            return `<button onclick="devolverUnProductoNube('${idVenta}', ${index})" class="w-full bg-orange-100 hover:bg-orange-200 text-orange-900 p-3 rounded mb-2 text-[11px] font-black border border-orange-300 shadow-sm transition-colors uppercase">Devolver: ${item.nombre} (x${item.cant})</button>`;
+        }).join('');
 
+        // Reutilizamos tu modal del sistema para mostrar el selector
+        document.getElementById('sys-msg-title').innerText = "DEVOLUCIÓN DE 1 PRODUCTO";
+        document.getElementById('sys-msg-text').innerHTML = `<p class="mb-4 text-xs font-bold text-gray-700">Selecciona el artículo del <span class="text-indigo-600">Ticket #${v.ticket}</span> que regresará al inventario:</p><div class="max-h-60 overflow-y-auto text-left pr-2">${opcionesHTML}</div>`;
+        
+        const btnContainer = document.getElementById('sys-msg-buttons');
+        btnContainer.innerHTML = `<button onclick="document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 w-full py-3 rounded-xl font-black uppercase text-xs transition-colors shadow-sm">Cancelar / Cerrar</button>`;
+        
+        document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+    });
+}
+
+function devolverUnProductoNube(idVenta, indexProducto) { 
+    document.getElementById('sys-msg-modal').classList.replace('flex', 'hidden'); // Cierra el menú
+
+    sysConfirm(`¿Seguro que deseas devolver este producto al inventario y descontar el dinero del reporte de ventas?`, () => {
+        
+        // ⏳ Muestra pantalla de carga para evitar que den doble clic
+        document.getElementById('sys-msg-title').innerText = "PROCESANDO";
+        document.getElementById('sys-msg-text').innerText = "Devolviendo stock y ajustando caja...";
+        document.getElementById('sys-msg-buttons').innerHTML = ''; 
+        document.getElementById('sys-msg-modal').classList.replace('hidden', 'flex');
+
+        database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
+            const v = snap.val();
+            if(!v) return;
+            
+            const item = v.det[indexProducto];
+            if (!item || item.devuelto || item.cant === 0) return sysAlert("Este producto ya fue devuelto.");
+
+            let isMaria = v.tienda === 'Variedades Maria';
+            let campoStock = isMaria ? 'stock_maria' : 'stock_marisol';
+            
+            database.ref(`${db.ruta_datos}/productos`).orderByChild('codigo').equalTo(item.codigo).once('value').then(snapProd => {
+                if(snapProd.exists()) {
+                    const key = Object.keys(snapProd.val())[0];
+                    
+                    // 1. Sumar el stock físico en la base de datos de manera segura
+                    database.ref(`${db.ruta_datos}/productos/${key}/${campoStock}`).transaction(currentStock => {
+                        return (currentStock || 0) + parseInt(item.cant);
+                    }).then(() => {
+                        // 2. Modificar el ticket original para que los reportes financieros CUADREN
+                        let nuevoTotal = v.total - (item.cant * item.pre);
+                        let nuevoPago = v.pago - (item.cant * item.pre);
+                        
+                        let updates = {};
+                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/det/${indexProducto}/cant`] = 0; // Se pone en 0 para que no sume dinero en caja
+                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/det/${indexProducto}/devuelto`] = true;
+                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/total`] = Math.max(0, nuevoTotal);
+                        updates[`${db.ruta_historial}ventas_historial/${idVenta}/pago`] = Math.max(0, nuevoPago);
+                        
+                        database.ref().update(updates).then(() => {
+                            sysAlert("✅ Producto devuelto. \nStock restablecido y totales de caja corregidos al instante.", "Operación Exitosa");
+                            render(); // Actualiza los números del cierre de caja
+                            cargarReportePorFechas(); // Actualiza las tablas del reporte maestro
+                        });
+                        
+                    }).catch(() => sysAlert("❌ Error al sumar el stock. Revisa tu internet."));
+                } else {
+                    sysAlert("❌ El producto ya no existe en el catálogo maestro.");
+                }
+            });
+        });
+    });
+}
+// ==============================================================
       function anularVentaNube(idVenta) { 
     sysConfirm(`¿ANULAR ESTA VENTA Y DEVOLVER STOCK?`, () => {
         database.ref(`${db.ruta_historial}ventas_historial/${idVenta}`).once('value').then(snap => {
