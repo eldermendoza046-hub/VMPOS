@@ -2464,7 +2464,70 @@ function alternarTecladoTablet() {
 
         let temporizadorBusqueda; 
         function escanearConPistola(e) { if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim().toLowerCase(); if (q.length === 0) return; const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); if (exacto) { const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); if (s > 0) { addCart(exacto); e.target.value = ''; const res = document.getElementById('res-busqueda'); if(res) res.innerHTML = ''; clearTimeout(temporizadorBusqueda); } else sysAlert("SIN STOCK EN ESTA TIENDA: " + exacto.nombre); e.target.value = ''; } else { sysAlert("CÓDIGO NO ENCONTRADO"); e.target.value = ''; } } }
-       function buscarVenta(e) {
+       function buscarVenta(e) { 
+    clearTimeout(temporizadorBusqueda); 
+    temporizadorBusqueda = setTimeout(() => { 
+        const q = e.target.value.trim().toLowerCase(); 
+        const res = document.getElementById('res-busqueda'); 
+        if (!res) return; 
+        res.innerHTML = ''; 
+        res.style.maxHeight = '520px'; // Amplía el espacio vertical para ver más filas completas
+        
+        // 1. Escaneo exacto (Pistola de códigos)
+        if (q.length > 0) {
+            const exacto = db.productos.find(x => x.codigo.toLowerCase() === q); 
+            if(exacto) { 
+                const s = db.tiendaActual === 'Variedades Maria' ? (exacto.stock_maria || 0) : (exacto.stock_marisol || 0); 
+                if(s > 0) { 
+                    addCart(exacto); 
+                    e.target.value = ''; 
+                    return; 
+                } 
+            } 
+        }
+        
+        if(q.length < 2) return;
+
+        // 2. Búsqueda inteligente multi-palabra
+        const terminos = q.split(' ').filter(t => t.length > 0);
+        
+        let htmlResultado = ''; 
+        db.productos.filter(x => {
+            const nombreItem = String(x.nombre || "").toLowerCase();
+            const codigoItem = String(x.codigo || "").toLowerCase();
+            return terminos.every(termino => nombreItem.includes(termino) || codigoItem.includes(termino));
+        })
+        .sort((a, b) => getPrecioActual(a) - getPrecioActual(b)) // Orden del más bajo al más alto
+        .slice(0, 50) 
+        .forEach(x => { 
+            const s = db.tiendaActual === 'Variedades Maria' ? (x.stock_maria || 0) : (x.stock_marisol || 0); 
+            if(s > 0) { 
+                const precioAct = getPrecioActual(x); 
+                
+                // Imagen completa sin recortes (object-contain + h-32 + p-2)
+                const miniImg = x.imagen 
+                    ? `<img src="${x.imagen}" class="w-full h-32 object-contain bg-white p-2 rounded-t-xl border-b">` 
+                    : `<div class="w-full h-32 bg-gray-100 rounded-t-xl flex items-center justify-center text-3xl border-b">📷</div>`; 
+                
+                // Diseño de Tarjeta
+                htmlResultado += `
+                <div class="bg-white border-2 rounded-xl hover:border-indigo-500 cursor-pointer flex flex-col justify-between text-center font-black uppercase text-[10px] shadow-sm transition-all transform active:scale-95 overflow-hidden" onclick="agregarProductoDesdeBusqueda('${x.codigo}')">
+                    ${miniImg}
+                    <div class="p-2 flex-1 flex flex-col justify-between">
+                        <span class="leading-tight line-clamp-2 mb-2 text-gray-700 min-h-[2rem] flex items-center justify-center">${x.categoria==='FARMACIA'?'💊 ':''}${x.nombre}</span>
+                        <span class="text-indigo-700 text-lg bg-indigo-50 py-1 rounded-lg w-full">Q${precioAct.toFixed(2)}</span>
+                    </div>
+                </div>`; 
+            } 
+        }); 
+
+        if(htmlResultado !== '') {
+            res.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-3 bg-gray-50">${htmlResultado}</div>`;
+        } else {
+            res.innerHTML = `<div class="p-4 text-center text-gray-500 font-bold uppercase">No se encontraron productos</div>`;
+        }
+    }, 250); 
+}
 
 
         function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
