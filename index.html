@@ -2527,6 +2527,7 @@ function alternarTecladoTablet() {
             res.innerHTML = `<div class="p-4 text-center text-gray-500 font-bold uppercase">No se encontraron productos</div>`;
         }
     }, 250); 
+           }
         function agregarProductoDesdeBusqueda(codigo) { const p = db.productos.find(x => x.codigo === codigo); if(p) { addCart(p); document.getElementById('busqueda').value = ''; document.getElementById('res-busqueda').innerHTML = ''; document.getElementById('busqueda').focus(); } }
         
         function addCart(p) { 
