@@ -153,14 +153,18 @@
                     </button>
                 </div>
 
-               <div class="flex items-center gap-2">
-    <input type="text" id="busqueda" inputmode="none" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
+              <div class="sticky top-[120px] z-30 bg-gray-100 py-2 flex items-center gap-2">
+    <div class="relative w-full">
+        <input type="text" id="busqueda" inputmode="none" autocomplete="off" placeholder="ESCANEÉ O BUSQUE..." class="w-full p-4 md:p-6 pr-14 border-4 rounded-2xl text-xl md:text-2xl outline-none focus:border-indigo-500 font-bold shadow-md bg-white" onfocus="this.select()" onclick="this.select()" oninput="buscarVenta(event)" onkeydown="escanearConPistola(event)">
+        <button type="button" onclick="limpiarBusquedaVentas()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-200 hover:bg-red-500 hover:text-white text-gray-600 w-9 h-9 rounded-full font-black text-base flex items-center justify-center transition-colors" title="Limpiar búsqueda (Esc)">
+            ✕
+        </button>
+    </div>
     
     <button type="button" id="btn-teclado" onclick="alternarTecladoTablet()" class="md:hidden bg-gray-400 opacity-50 text-white p-4 md:p-6 rounded-2xl text-2xl shadow-md hover:bg-gray-500 flex-shrink-0 transition-all active:scale-95" title="Activar/Desactivar teclado manual">
         ⌨️
     </button>
 </div>
-
 
                 <div id="res-busqueda" class="bg-white divide-y shadow-xl rounded-xl overflow-y-auto max-h-[350px] border relative z-40"></div>
                 <div class="bg-white p-4 rounded-2xl shadow-md min-h-[300px] border">
@@ -2476,6 +2480,20 @@ function alternarTecladoTablet() {
             });
         }
 
+      function limpiarBusquedaVentas() {
+            const busq = document.getElementById('busqueda');
+            const res = document.getElementById('res-busqueda');
+            indiceResultadoSel = -1;
+            if (res) {
+                res.innerHTML = '';
+                res.scrollTop = 0;
+            }
+            if (busq) {
+                busq.value = '';
+                busq.focus();
+            }
+        }
+
         function escanearConPistola(e) { 
             const cards = document.querySelectorAll('#res-busqueda .card-resultado-busqueda');
 
@@ -2504,6 +2522,10 @@ function alternarTecladoTablet() {
                         indiceResultadoSel -= columnas;
                     } else {
                         indiceResultadoSel = -1;
+                        const res = document.getElementById('res-busqueda');
+                        if (res) res.scrollTop = 0;
+                        e.target.select(); // Sombrea la búsqueda anterior para escribir encima sin usar Delete
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 } else if (e.key === 'ArrowRight') {
                     if (indiceResultadoSel < cards.length - 1) indiceResultadoSel++;
@@ -2517,10 +2539,7 @@ function alternarTecladoTablet() {
 
             // 2. Tecla Escape: limpia la búsqueda y cierra las tarjetas
             if (e.key === 'Escape') {
-                e.target.value = '';
-                const res = document.getElementById('res-busqueda');
-                if (res) res.innerHTML = '';
-                indiceResultadoSel = -1;
+                limpiarBusquedaVentas();
                 return;
             }
 
